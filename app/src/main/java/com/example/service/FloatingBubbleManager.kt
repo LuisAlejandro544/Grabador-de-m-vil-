@@ -22,7 +22,8 @@ class FloatingBubbleManager(
     private val onResumeClicked: () -> Unit,
     private val onStopClicked: () -> Unit,
     private val onMicToggleClicked: (() -> Unit)? = null,
-    private val onScreenshotRequested: (() -> Unit)? = null
+    private val onScreenshotRequested: (() -> Unit)? = null,
+    private val onFacecamToggleClicked: (() -> Unit)? = null
 ) {
 
     companion object {
@@ -91,6 +92,9 @@ class FloatingBubbleManager(
                 },
                 onDrawToolClicked = {
                     toggleDrawingOverlay()
+                },
+                onFacecamToggleClicked = {
+                    onFacecamToggleClicked?.invoke()
                 }
             )
             this.bubbleOverlayView = overlay
@@ -149,6 +153,14 @@ class FloatingBubbleManager(
     fun updateMicStatus(muted: Boolean) {
         if (!isShowingInternal) return
         bubbleOverlayView?.updateMicStatus(muted)
+    }
+
+    /**
+     * Actualiza el estado visual de la cámara flotante Facecam.
+     */
+    fun updateFacecamStatus(active: Boolean) {
+        if (!isShowingInternal) return
+        bubbleOverlayView?.updateFacecamStatus(active)
     }
 
     /**

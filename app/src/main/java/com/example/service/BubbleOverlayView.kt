@@ -28,7 +28,8 @@ class BubbleOverlayView(
     private val onStopClicked: () -> Unit,
     private val onMicToggleClicked: () -> Unit,
     private val onScreenshotClicked: () -> Unit,
-    private val onDrawToolClicked: () -> Unit
+    private val onDrawToolClicked: () -> Unit,
+    private val onFacecamToggleClicked: () -> Unit = {}
 ) {
 
     companion object {
@@ -43,6 +44,8 @@ class BubbleOverlayView(
         private const val COLOR_MIC_ON_TEXT = 0xFF34D399.toInt()
         private const val COLOR_MIC_OFF_BG = 0x3364748B.toInt()
         private const val COLOR_MIC_OFF_TEXT = 0xFF94A3B8.toInt()
+        private const val COLOR_FACECAM_ON_BG = 0x440284C7.toInt()
+        private const val COLOR_FACECAM_ON_TEXT = 0xFF38BDF8.toInt()
     }
 
     val rootView: LinearLayout
@@ -55,6 +58,9 @@ class BubbleOverlayView(
     private val btnMicToggle: LinearLayout
     private val iconMicToggle: ImageView
     private val tvMicToggleLabel: TextView
+    private val btnFacecamToggle: LinearLayout
+    private val iconFacecamToggle: ImageView
+    private val tvFacecamToggleLabel: TextView
     private val btnToggleExpand: ImageView
     private var dotPulseAnimator: ObjectAnimator? = null
 
@@ -63,6 +69,8 @@ class BubbleOverlayView(
     var isPaused: Boolean = false
         private set
     var isMicMuted: Boolean = false
+        private set
+    var isFacecamActive: Boolean = false
         private set
     var isToolsMenuOpen: Boolean = false
         private set
@@ -340,6 +348,12 @@ class BubbleOverlayView(
             gravity = Gravity.CENTER_VERTICAL
             background = createCardDrawable(0x33FFFFFF.toInt(), dpToPx(12))
             setPadding(dpToPx(8), dpToPx(4), dpToPx(8), dpToPx(4))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                marginEnd = dpToPx(8)
+            }
 
             val icon = ImageView(context).apply {
                 setImageResource(android.R.drawable.ic_menu_edit)
@@ -365,6 +379,38 @@ class BubbleOverlayView(
             }
         }
         toolsSubmenuLayout.addView(btnDraw)
+
+        // Opción 3: Cámara Facecam Flotante
+        btnFacecamToggle = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = createCardDrawable(0x33FFFFFF.toInt(), dpToPx(12))
+            setPadding(dpToPx(8), dpToPx(4), dpToPx(8), dpToPx(4))
+        }
+
+        iconFacecamToggle = ImageView(context).apply {
+            setImageResource(android.R.drawable.ic_menu_camera)
+            layoutParams = LinearLayout.LayoutParams(dpToPx(15), dpToPx(15)).apply {
+                marginEnd = dpToPx(4)
+            }
+            setColorFilter(Color.WHITE)
+        }
+        btnFacecamToggle.addView(iconFacecamToggle)
+
+        tvFacecamToggleLabel = TextView(context).apply {
+            text = "Facecam"
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        btnFacecamToggle.addView(tvFacecamToggleLabel)
+
+        btnFacecamToggle.setOnClickListener {
+            vibrateQuick()
+            toggleToolsMenu()
+            onFacecamToggleClicked()
+        }
+        toolsSubmenuLayout.addView(btnFacecamToggle)
 
         rootView.addView(toolsSubmenuLayout)
     }
@@ -430,6 +476,23 @@ class BubbleOverlayView(
                 iconMicToggle.setColorFilter(COLOR_MIC_ON_TEXT)
                 tvMicToggleLabel.text = "Voz ON"
                 tvMicToggleLabel.setTextColor(COLOR_MIC_ON_TEXT)
+            }
+        }
+    }
+
+    fun updateFacecamStatus(active: Boolean) {
+        this.isFacecamActive = active
+        rootView.post {
+            if (active) {
+                btnFacecamToggle.background = createCardDrawable(COLOR_FACECAM_ON_BG, dpToPx(12))
+                iconFacecamToggle.setColorFilter(COLOR_FACECAM_ON_TEXT)
+                tvFacecamToggleLabel.text = "Facecam ON"
+                tvFacecamToggleLabel.setTextColor(COLOR_FACECAM_ON_TEXT)
+            } else {
+                btnFacecamToggle.background = createCardDrawable(COLOR_BTN_BG, dpToPx(12))
+                iconFacecamToggle.setColorFilter(Color.WHITE)
+                tvFacecamToggleLabel.text = "Facecam"
+                tvFacecamToggleLabel.setTextColor(Color.WHITE)
             }
         }
     }

@@ -32,6 +32,19 @@ enum class AudioSourceType(val label: String) {
     NONE("Sin Audio (Mudo)")
 }
 
+enum class FacecamShape(val label: String) {
+    CIRCLE("Circular (1:1)"),
+    ROUNDED_SQUARE("Cuadrado Redondeado"),
+    SQUARE("Cuadrado"),
+    RECTANGLE("Rectangular (16:9)")
+}
+
+enum class FacecamSize(val label: String, val dpSize: Int) {
+    SMALL("Pequeño (100 dp)", 100),
+    MEDIUM("Mediano (140 dp)", 140),
+    LARGE("Grande (180 dp)", 180)
+}
+
 data class RecordingConfig(
     val resolution: VideoResolution = VideoResolution.RES_1080P,
     val fps: VideoFps = VideoFps.FPS_60,
@@ -39,7 +52,11 @@ data class RecordingConfig(
     val audioSource: AudioSourceType = AudioSourceType.INTERNAL_AND_MIC,
     val countdownSeconds: Int = 3,
     val isGameMode: Boolean = true,
-    val showFloatingBubble: Boolean = true
+    val showFloatingBubble: Boolean = true,
+    val showFacecam: Boolean = false,
+    val facecamShape: FacecamShape = FacecamShape.CIRCLE,
+    val facecamSize: FacecamSize = FacecamSize.MEDIUM,
+    val isFrontCamera: Boolean = true
 )
 
 enum class RecordingStatus {

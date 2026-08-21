@@ -15,6 +15,11 @@
   - **Mudo:** Graba únicamente el video para optimizar espacio de almacenamiento.
 - **⚡ Control en Segundo Plano & Burbuja Flotante con Herramientas:** 
   - Servicio persistente con notificación interactiva y widget flotante superpuesto en pantalla (`WindowManager`) con cronómetro en vivo, botón de conmutación rápida de voz/juego, pausa, reanudación y parada directa sin salir del juego.
+  - **📹 Facecam / Cámara Flotante en Vivo:**
+    - Superposición de cámara en tiempo real mediante **CameraX** y `WindowManager` sin cortes de FPS.
+    - **Múltiples Diseños Geométricos:** Selector de formas con un solo toque (Circular 1:1, Cuadrado Redondeado Moderno, Cuadrado Clásico 1:1 y Rectangular Panorámico 16:9 estilo webcam streamer).
+    - **Dimensiones y Lentes:** Tamaños configurables (Pequeño 100dp, Mediano 140dp, Grande 180dp) y conmutación instantánea entre cámara frontal (selfie) y trasera.
+    - **Control Integrado en Burbuja:** Activación/desactivación instantánea del Facecam desde el submenú de herramientas de la burbuja flotante.
   - **🛠️ Menú de Herramientas en Vivo:**
     - 📸 **Captura Rápida (Screenshot):** Captura instantáneas en alta calidad durante la grabación y las guarda en la galería de imágenes del dispositivo.
     - ✏️ **Pincel / Lapicero en Pantalla:** Lienzo transparente acelerado por hardware para dibujar marcas, flechas y notas sobre cualquier juego en tiempo real con selector de colores, grosores, deshacer y limpiar trazos.

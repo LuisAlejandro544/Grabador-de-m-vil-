@@ -91,5 +91,48 @@ class ExampleRobolectricTest {
     assertTrue(processed >= 0)
     com.example.nativecore.NativeAudioDSPBridge.releaseAudioDsp()
   }
+
+  @Test
+  fun `settings repository persists and updates recording configuration`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val repository = com.example.data.SettingsRepository(context)
+
+    // Test updating resolution and fps
+    repository.updateResolution(com.example.model.VideoResolution.RES_720P)
+    repository.updateFps(com.example.model.VideoFps.FPS_30)
+    repository.updateBitrate(com.example.model.VideoBitrate.BITRATE_4M)
+    repository.updateAudioSource(com.example.model.AudioSourceType.INTERNAL_GAME)
+    repository.updateCountdown(5)
+    repository.toggleFloatingBubble(false)
+
+    val saved = repository.loadConfig()
+    assertEquals(com.example.model.VideoResolution.RES_720P, saved.resolution)
+    assertEquals(com.example.model.VideoFps.FPS_30, saved.fps)
+    assertEquals(com.example.model.VideoBitrate.BITRATE_4M, saved.bitrate)
+    assertEquals(com.example.model.AudioSourceType.INTERNAL_GAME, saved.audioSource)
+    assertEquals(5, saved.countdownSeconds)
+    assertEquals(false, saved.showFloatingBubble)
+  }
+
+  @Test
+  fun `settings repository persists facecam shapes and size selection`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val repository = com.example.data.SettingsRepository(context)
+
+    repository.toggleFacecam(true)
+    repository.updateFacecamShape(com.example.model.FacecamShape.RECTANGLE)
+    repository.updateFacecamSize(com.example.model.FacecamSize.LARGE)
+    repository.setFacecamCamera(false)
+
+    val saved = repository.loadConfig()
+    assertTrue(saved.showFacecam)
+    assertEquals(com.example.model.FacecamShape.RECTANGLE, saved.facecamShape)
+    assertEquals(com.example.model.FacecamSize.LARGE, saved.facecamSize)
+    assertEquals(false, saved.isFrontCamera)
+
+    // Test cycle shape
+    repository.updateFacecamShape(com.example.model.FacecamShape.ROUNDED_SQUARE)
+    assertEquals(com.example.model.FacecamShape.ROUNDED_SQUARE, repository.loadConfig().facecamShape)
+  }
 }
 

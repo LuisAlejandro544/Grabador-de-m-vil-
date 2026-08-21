@@ -1,13 +1,10 @@
-feat(audio): procesamiento de audio pro en vivo en C++ (DSP) con noise gate, ducking inteligente y selector dinamico
+feat(facecam): implementar camara flotante con multiples disenos geometricos y conmutacion desde la burbuja de grabacion
 
-- Integrar motor nativo de procesamiento digital de señales (DSP) en C++ (`audio_dsp_engine.hpp`, `audio_dsp_engine.cpp`) en la librería `obs_core` con soporte multihilo de alta eficiencia a 48 kHz estéreo.
-- Implementar Puerta de Ruido (Noise Gate) en C++ con filtro envelope follower (Attack 5ms, Release 70ms) para atenuar de forma limpia respiraciones, ruidos de ambiente y ventiladores cuando el usuario no habla.
-- Desarrollar Ducking Inteligente de Audio en C++: atenúa suavemente el volumen del juego (-9 dB / 35%) al detectar voz en el micrófono y recupera el 100% de forma musical cuando el usuario guarda silencio.
-- Añadir Soft Limiter / Saturation Shaper con curva polinomial no lineal en C++ para evitar clipping y distorsión digital al mezclar los canales del juego y del micrófono.
-- Conectar puente JNI de alto rendimiento `NativeAudioDSPBridge` en Kotlin directamente con el pipeline de mezcla en caliente de `ScreenCaptureEngine`.
-- Implementar pipeline de mezcla dual de audio PCM (16-bit estéreo a 48 kHz) en `ScreenCaptureEngine` combinando `AudioPlaybackCapture` (audio interno del juego) y `AudioRecord` (micrófono del usuario).
-- Añadir conmutador dinámico de micrófono en tiempo real (`setMicrophoneMuted` / `toggleMicrophoneMuted`) mediante `AtomicBoolean`, permitiendo al usuario activar o silenciar su voz en vivo durante la grabación sin reiniciar `MediaCodec` ni cortar el archivo de video.
-- Integrar botón interactivo de micrófono (`Voz ON` / `Solo Juego`) en la barra principal de `BubbleOverlayView` y `FloatingBubbleManager` con feedback visual, colores diferenciados y respuesta táctil.
-- Añadir acción rápida de conmutación de voz en la notificación en primer plano (`RecordNotificationHelper`) mediante el intent `ACTION_TOGGLE_MIC` en `ScreenRecordService`.
-- Incorporar nueva opción `INTERNAL_AND_MIC` ("Juego + Micrófono conmutables") en `AudioSourceType`, `RecordingConfig`, `RecordControlCard` y `SettingsView`.
-- Añadir pruebas unitarias en `ExampleRobolectricTest` para validar la configuración de audio y valores por defecto del conmutador dinámico y del puente C++ DSP.
+- Integrar módulo de Facecam flotante (`FacecamOverlayManager`) mediante CameraX y `WindowManager` con ciclo de vida desacoplado (`FacecamLifecycleOwner`) para renderizado fluido en segundo plano.
+- Añadir soporte para múltiples diseños y formas geométricas aceleradas por hardware: Circular 1:1, Cuadrado Redondeado Moderno, Cuadrado 1:1 y Rectangular Panorámico 16:9 estilo webcam.
+- Implementar control de tamaños configurables (Pequeño 100dp, Mediano 140dp, Grande 180dp) y alternancia instantánea entre lente frontal (selfie) y lente trasero.
+- Integrar botón de conmutación rápida de Facecam (`Activar / Desactivar Cámara`) dentro del submenú de herramientas de la burbuja flotante (`BubbleOverlayView` y `FloatingBubbleManager`).
+- Ampliar `RecordingConfig` y `SettingsRepository` para persistir las preferencias de Facecam (estado activo, forma geométrica, tamaño y selección de cámara).
+- Añadir sección dedicada de configuración visual de Facecam en `SettingsView` con selectores interactivos y gestión dinámica del permiso `android.permission.CAMERA`.
+- Declarar permisos de cámara y tipo `FOREGROUND_SERVICE_TYPE_CAMERA` en `AndroidManifest.xml` y `ScreenRecordService` para compatibilidad con Android 14+.
+- Actualizar la documentación técnica del proyecto (`README.md`, `ROADMAP.md`, `STRUCTURE.md` y `AI_CONTEXT.md`).

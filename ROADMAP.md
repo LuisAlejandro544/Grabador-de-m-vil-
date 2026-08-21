@@ -29,7 +29,11 @@ Este documento detalla las fases de evolución del proyecto para transformar la 
 
 ---
 
-## 📍 Fase 3: Composición de Escenas en C++ (En Progreso 🚀)
+## 📍 Fase 3: Composición de Escenas y Facecam (En Progreso 🚀)
+- [x] **Facecam Flotante con Diseños Geométricos (CameraX & WindowManager):**
+  - Superposición flotante arrastrable con cámara frontal y trasera en tiempo real.
+  - Diseños configurables con clip nativo: Circular 1:1, Cuadrado redondeado, Cuadrado y Rectangular 16:9.
+  - Control de activación/desactivación dinámica desde la burbuja flotante del grabador y persistencia de estado.
 - [x] **Motor Gráfico C++ con OpenGL ES 3.0 & EGL:**
   - Contexto EGL nativo y renderizado acelerado por GPU a 60 FPS.
   - Soporte de múltiples capas (*z-order*): Juego, Facecam, Overlays, Texto.

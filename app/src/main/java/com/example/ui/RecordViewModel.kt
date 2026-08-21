@@ -11,7 +11,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.InstalledAppItem
 import com.example.data.InstalledGamesHelper
 import com.example.data.RecordingsRepository
+import com.example.data.SettingsRepository
 import com.example.model.AudioSourceType
+import com.example.model.FacecamShape
+import com.example.model.FacecamSize
 import com.example.model.RecordedVideo
 import com.example.model.RecordingConfig
 import com.example.model.RecordingStatus
@@ -47,8 +50,9 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     private val repository = RecordingsRepository(application)
     private val gamesHelper = InstalledGamesHelper(application)
+    private val settingsRepository = SettingsRepository(application)
 
-    private val _config = MutableStateFlow(RecordingConfig())
+    private val _config = MutableStateFlow(settingsRepository.getConfig())
     private val _countdownNumber = MutableStateFlow(0)
     private val _isCountingDown = MutableStateFlow(false)
     private val _videos = MutableStateFlow<List<RecordedVideo>>(emptyList())
@@ -101,6 +105,13 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         loadVideos()
         loadInstalledGames()
 
+        // Sincronizar reactivamente los cambios en la configuración persistida
+        viewModelScope.launch {
+            settingsRepository.configFlow.collect { persistentConfig ->
+                _config.value = persistentConfig
+            }
+        }
+
         viewModelScope.launch {
             ScreenRecordService.lastSavedFilePath.collect { savedPath ->
                 if (savedPath != null) {
@@ -142,43 +153,47 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun updateResolution(resolution: VideoResolution) {
-        _config.value = _config.value.copy(resolution = resolution)
+        settingsRepository.updateResolution(resolution)
     }
 
     fun updateFps(fps: VideoFps) {
-        _config.value = _config.value.copy(fps = fps)
+        settingsRepository.updateFps(fps)
     }
 
     fun updateBitrate(bitrate: VideoBitrate) {
-        _config.value = _config.value.copy(bitrate = bitrate)
+        settingsRepository.updateBitrate(bitrate)
     }
 
     fun updateAudioSource(source: AudioSourceType) {
-        _config.value = _config.value.copy(audioSource = source)
+        settingsRepository.updateAudioSource(source)
     }
 
     fun updateCountdown(seconds: Int) {
-        _config.value = _config.value.copy(countdownSeconds = seconds)
+        settingsRepository.updateCountdown(seconds)
     }
 
     fun toggleFloatingBubble(enabled: Boolean) {
-        _config.value = _config.value.copy(showFloatingBubble = enabled)
+        settingsRepository.toggleFloatingBubble(enabled)
+    }
+
+    fun toggleFacecam(enabled: Boolean) {
+        settingsRepository.toggleFacecam(enabled)
+    }
+
+    fun updateFacecamShape(shape: FacecamShape) {
+        settingsRepository.updateFacecamShape(shape)
+    }
+
+    fun updateFacecamSize(size: FacecamSize) {
+        settingsRepository.updateFacecamSize(size)
+    }
+
+    fun toggleFacecamCamera() {
+        settingsRepository.toggleFacecamCamera()
     }
 
     fun toggleGameMode(enabled: Boolean) {
-        if (enabled) {
-            _config.value = _config.value.copy(
-                isGameMode = true,
-                fps = VideoFps.FPS_60,
-                bitrate = VideoBitrate.BITRATE_12M
-            )
-        } else {
-            _config.value = _config.value.copy(
-                isGameMode = false,
-                fps = VideoFps.FPS_30,
-                bitrate = VideoBitrate.BITRATE_8M
-            )
-        }
+        settingsRepository.toggleGameMode(enabled)
     }
 
     fun startRecordingFlow(
@@ -241,6 +256,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             putExtra(ScreenRecordService.EXTRA_BITRATE, config.bitrate.bps)
             putExtra(ScreenRecordService.EXTRA_AUDIO_SOURCE, config.audioSource.name)
             putExtra(ScreenRecordService.EXTRA_SHOW_FLOATING_BUBBLE, config.showFloatingBubble)
+            putExtra(ScreenRecordService.EXTRA_SHOW_FACECAM, config.showFacecam)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

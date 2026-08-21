@@ -101,6 +101,9 @@ fun HomeScreen(
     fun requestStartRecording(gamePackage: String? = null) {
         pendingGameLaunchPackage = gamePackage
         val perms = mutableListOf(Manifest.permission.RECORD_AUDIO)
+        if (uiState.config.showFacecam) {
+            perms.add(Manifest.permission.CAMERA)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             perms.add(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -199,7 +202,16 @@ fun HomeScreen(
                     onUpdateAudioSource = { viewModel.updateAudioSource(it) },
                     onUpdateCountdown = { viewModel.updateCountdown(it) },
                     onToggleGameMode = { viewModel.toggleGameMode(it) },
-                    onToggleFloatingBubble = { viewModel.toggleFloatingBubble(it) }
+                    onToggleFloatingBubble = { viewModel.toggleFloatingBubble(it) },
+                    onToggleFacecam = { enabled ->
+                        if (enabled) {
+                            permissionsLauncher.launch(arrayOf(Manifest.permission.CAMERA))
+                        }
+                        viewModel.toggleFacecam(enabled)
+                    },
+                    onUpdateFacecamShape = { viewModel.updateFacecamShape(it) },
+                    onUpdateFacecamSize = { viewModel.updateFacecamSize(it) },
+                    onToggleFacecamCamera = { viewModel.toggleFacecamCamera() }
                 )
             }
         }

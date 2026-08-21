@@ -50,6 +50,7 @@ obs-mobile/
 │       │   │   │   ├── RecordStorageHelper.kt     # Rutas seguras de archivos MP4 e indexación en MediaStore
 │       │   │   │   ├── ScreenshotHelper.kt        # Captura instantánea de pantalla y extracción de fotogramas
 │       │   │   │   ├── ScreenDrawingOverlay.kt    # Lienzo interactivo y pincel de dibujo en tiempo real sobre la pantalla
+│       │   │   │   ├── FacecamOverlayManager.kt   # Gestor de Facecam flotante (CameraX, formas círculo/cuadrado/rectángulo y flip)
 │       │   │   │   ├── FloatingBubbleManager.kt   # Coordinador del ciclo de vida del widget flotante y herramientas
 │       │   │   │   ├── BubbleOverlayView.kt       # Jerarquía visual del widget, selector dinámico de voz en vivo, cronómetro y menú
 │       │   │   │   └── BubbleTouchHandler.kt      # Detección y cálculo de arrastre táctil y toques

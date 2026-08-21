@@ -29,7 +29,12 @@ Construir una suite de grabación de pantalla y streaming en vivo para Android e
    - **`ScreenDrawingOverlay`:** Dibuja directamente sobre una ventana transparente acelerada por GPU (`Canvas`/`Path`), siendo capturada de inmediato por el stream de `MediaProjection` sin requerir recodificación en C++.
    - **`ScreenshotHelper`:** Extracción de fotogramas e instantáneas guardadas en `Pictures/Screenshots` con indexación en `MediaStore`.
 
-5. **Integración Nativa Segura (C++, DSP y Rust):**
+5. **Facecam Flotante Multiforma (CameraX & WindowManager):**
+   - **`FacecamOverlayManager`:** Despliega una vista de cámara flotante arrastrable con soporte de formas geométricas por hardware (`ViewOutlineProvider` y `GradientDrawable`): Circular 1:1, Cuadrado Redondeado, Cuadrado 1:1 y Rectangular 16:9.
+   - **Ciclo de vida desacoplado:** Implementa un `LifecycleOwner` personalizado para CameraX (`FacecamLifecycleOwner`) dentro del contexto de `ScreenRecordService`.
+   - **Control de permisos y segundo plano:** Compatible con `FOREGROUND_SERVICE_TYPE_CAMERA` y conmutación de lente frontal/trasero en caliente.
+
+6. **Integración Nativa Segura (C++, DSP y Rust):**
    - Toda llamada a librerías nativas debe estar envuelta con protección contra `UnsatisfiedLinkError` en sus respectivos puentes (`NativeOBSBridge.kt`, `NativeAudioDSPBridge.kt`, `NativeFFmpegBridge.kt`, `NativeRustNetwork.kt`).
    - Esto asegura que el frontend en Compose funcione fluidamente incluso en entornos donde las bibliotecas nativas se compilan por separado.
 
@@ -45,7 +50,11 @@ data class RecordingConfig(
     val audioSource: AudioSourceType = AudioSourceType.INTERNAL_AND_MIC,
     val countdownSeconds: Int = 3,
     val isGameMode: Boolean = true,
-    val showFloatingBubble: Boolean = true
+    val showFloatingBubble: Boolean = true,
+    val showFacecam: Boolean = false,
+    val facecamShape: FacecamShape = FacecamShape.ROUNDED_SQUARE,
+    val facecamSize: FacecamSize = FacecamSize.MEDIUM,
+    val isFrontCamera: Boolean = true
 )
 
 data class RecordedVideo(

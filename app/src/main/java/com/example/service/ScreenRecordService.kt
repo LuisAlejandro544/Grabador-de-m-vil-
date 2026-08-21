@@ -9,6 +9,7 @@ import android.os.IBinder
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.WindowManager
+import com.example.data.SettingsRepository
 import com.example.model.AudioSourceType
 import com.example.model.RecordingStatus
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +38,7 @@ class ScreenRecordService : Service() {
         const val ACTION_RESUME = "com.example.service.RESUME"
         const val ACTION_SCREENSHOT = "com.example.service.SCREENSHOT"
         const val ACTION_TOGGLE_MIC = "com.example.service.TOGGLE_MIC"
+        const val ACTION_TOGGLE_FACECAM = "com.example.service.TOGGLE_FACECAM"
 
         const val EXTRA_RESULT_CODE = "extra_result_code"
         const val EXTRA_RESULT_DATA = "extra_result_data"
@@ -46,6 +48,7 @@ class ScreenRecordService : Service() {
         const val EXTRA_BITRATE = "extra_bitrate"
         const val EXTRA_AUDIO_SOURCE = "extra_audio_source"
         const val EXTRA_SHOW_FLOATING_BUBBLE = "extra_show_floating_bubble"
+        const val EXTRA_SHOW_FACECAM = "extra_show_facecam"
 
         private val _recordingState = MutableStateFlow(RecordingStatus.IDLE)
         val recordingState = _recordingState.asStateFlow()
@@ -55,6 +58,9 @@ class ScreenRecordService : Service() {
 
         private val _isMicMuted = MutableStateFlow(false)
         val isMicMuted = _isMicMuted.asStateFlow()
+
+        private val _isFacecamActive = MutableStateFlow(false)
+        val isFacecamActive = _isFacecamActive.asStateFlow()
 
         private val _lastSavedFilePath = MutableStateFlow<String?>(null)
         val lastSavedFilePath = _lastSavedFilePath.asStateFlow()
@@ -71,6 +77,7 @@ class ScreenRecordService : Service() {
     private lateinit var captureEngine: ScreenCaptureEngine
     private lateinit var notificationHelper: RecordNotificationHelper
     private var floatingBubbleManager: FloatingBubbleManager? = null
+    private var facecamOverlayManager: FacecamOverlayManager? = null
 
     private var timerJob: Job? = null
     private val serviceScope = CoroutineScope(Dispatchers.Main)
@@ -86,6 +93,18 @@ class ScreenRecordService : Service() {
         super.onCreate()
         captureEngine = ScreenCaptureEngine(this)
         notificationHelper = RecordNotificationHelper(this)
+        observeSettingsChanges()
+    }
+
+    private fun observeSettingsChanges() {
+        serviceScope.launch {
+            SettingsRepository(this@ScreenRecordService).configFlow.collect { config ->
+                if (facecamOverlayManager?.isShowing == true) {
+                    facecamOverlayManager?.setShape(config.facecamShape)
+                    facecamOverlayManager?.setSize(config.facecamSize)
+                }
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -96,6 +115,7 @@ class ScreenRecordService : Service() {
             ACTION_RESUME -> handleResumeAction()
             ACTION_SCREENSHOT -> handleScreenshotAction()
             ACTION_TOGGLE_MIC -> handleToggleMicAction()
+            ACTION_TOGGLE_FACECAM -> handleToggleFacecamAction()
         }
         return START_NOT_STICKY
     }
@@ -108,12 +128,18 @@ class ScreenRecordService : Service() {
             @Suppress("DEPRECATION")
             intent.getParcelableExtra(EXTRA_RESULT_DATA)
         }
-        val width = intent.getIntExtra(EXTRA_RES_WIDTH, 1080)
-        val height = intent.getIntExtra(EXTRA_RES_HEIGHT, 1920)
-        val fps = intent.getIntExtra(EXTRA_FPS, 60)
-        val bitrate = intent.getIntExtra(EXTRA_BITRATE, 8_000_000)
-        val audioSource = intent.getStringExtra(EXTRA_AUDIO_SOURCE) ?: AudioSourceType.MIC.name
-        val showFloatingBubble = intent.getBooleanExtra(EXTRA_SHOW_FLOATING_BUBBLE, true)
+
+        // Cargar configuración guardada persistentemente como base y respaldo
+        val savedConfig = SettingsRepository(this).getConfig()
+        val defaultDims = savedConfig.resolution.getDimensions(isPortrait = true)
+
+        val width = intent.getIntExtra(EXTRA_RES_WIDTH, defaultDims.first)
+        val height = intent.getIntExtra(EXTRA_RES_HEIGHT, defaultDims.second)
+        val fps = intent.getIntExtra(EXTRA_FPS, savedConfig.fps.fps)
+        val bitrate = intent.getIntExtra(EXTRA_BITRATE, savedConfig.bitrate.bps)
+        val audioSource = intent.getStringExtra(EXTRA_AUDIO_SOURCE) ?: savedConfig.audioSource.name
+        val showFloatingBubble = intent.getBooleanExtra(EXTRA_SHOW_FLOATING_BUBBLE, savedConfig.showFloatingBubble)
+        val showFacecam = intent.getBooleanExtra(EXTRA_SHOW_FACECAM, savedConfig.showFacecam)
 
         if (resultCode == 0 || resultData == null) {
             Log.e(TAG, "Parámetros de proyección inválidos")
@@ -136,13 +162,15 @@ class ScreenRecordService : Service() {
         currentDensityDpi = metrics.densityDpi
         currentAudioEnabled = audioSource != AudioSourceType.NONE.name
 
-        // 1. Iniciar Foreground Service con tipo MEDIA_PROJECTION y MICROPHONE
+        // 1. Iniciar Foreground Service con tipo MEDIA_PROJECTION, MICROPHONE y CAMERA
         val initialNotification = notificationHelper.buildForegroundNotification(0, isPaused = false, isMicrophoneEnabled = currentAudioEnabled)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            val serviceType = if (currentAudioEnabled) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            } else {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            var serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            if (currentAudioEnabled) {
+                serviceType = serviceType or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            }
+            if (showFacecam) {
+                serviceType = serviceType or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
             }
             startForeground(
                 RecordNotificationHelper.NOTIFICATION_ID,
@@ -192,7 +220,14 @@ class ScreenRecordService : Service() {
             _errorMessage.value = null
             _isMicMuted.value = captureEngine.isMicrophoneMuted
 
-            // 4. Activar burbuja flotante opcional con submenú de herramientas y botón de voz
+            // 4. Activar Facecam si estaba solicitado
+            if (showFacecam) {
+                launchFacecam(savedConfig)
+            } else {
+                _isFacecamActive.value = false
+            }
+
+            // 5. Activar burbuja flotante opcional con submenú de herramientas, Facecam y botón de voz
             if (showFloatingBubble) {
                 floatingBubbleManager?.dismiss()
                 floatingBubbleManager = FloatingBubbleManager(
@@ -201,16 +236,59 @@ class ScreenRecordService : Service() {
                     onResumeClicked = { handleResumeAction() },
                     onStopClicked = { handleStopAction() },
                     onMicToggleClicked = { handleToggleMicAction() },
-                    onScreenshotRequested = { handleScreenshotAction() }
+                    onScreenshotRequested = { handleScreenshotAction() },
+                    onFacecamToggleClicked = { handleToggleFacecamAction() }
                 ).apply {
                     show()
                     updateMicStatus(captureEngine.isMicrophoneMuted)
+                    updateFacecamStatus(_isFacecamActive.value)
                 }
             }
 
             startChronometerTimer()
         } else {
             cleanupAndStop()
+        }
+    }
+
+    private fun launchFacecam(config: com.example.model.RecordingConfig) {
+        facecamOverlayManager?.dismiss()
+        facecamOverlayManager = FacecamOverlayManager(
+            context = this,
+            shape = config.facecamShape,
+            size = config.facecamSize,
+            isFrontCamera = config.isFrontCamera,
+            onCloseClicked = {
+                _isFacecamActive.value = false
+                floatingBubbleManager?.updateFacecamStatus(false)
+                SettingsRepository(this).toggleFacecam(false)
+            },
+            onShapeChanged = { newShape ->
+                SettingsRepository(this).updateFacecamShape(newShape)
+            },
+            onCameraFlipped = { isFront ->
+                SettingsRepository(this).setFacecamCamera(isFront)
+            }
+        ).apply {
+            show()
+        }
+        _isFacecamActive.value = facecamOverlayManager?.isShowing == true
+        floatingBubbleManager?.updateFacecamStatus(_isFacecamActive.value)
+    }
+
+    private fun handleToggleFacecamAction() {
+        if (facecamOverlayManager?.isShowing == true) {
+            facecamOverlayManager?.dismiss()
+            facecamOverlayManager = null
+            _isFacecamActive.value = false
+            floatingBubbleManager?.updateFacecamStatus(false)
+            SettingsRepository(this).toggleFacecam(false)
+            Log.i(TAG, "Facecam desactivada desde la burbuja flotante")
+        } else {
+            val config = SettingsRepository(this).getConfig()
+            launchFacecam(config)
+            SettingsRepository(this).toggleFacecam(true)
+            Log.i(TAG, "Facecam activada desde la burbuja flotante")
         }
     }
 
@@ -329,6 +407,9 @@ class ScreenRecordService : Service() {
         timerJob?.cancel()
         floatingBubbleManager?.dismiss()
         floatingBubbleManager = null
+        facecamOverlayManager?.dismiss()
+        facecamOverlayManager = null
+        _isFacecamActive.value = false
         captureEngine.release()
         _recordingState.value = RecordingStatus.IDLE
         stopForeground(STOP_FOREGROUND_REMOVE)
