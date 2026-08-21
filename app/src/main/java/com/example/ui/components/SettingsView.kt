@@ -19,12 +19,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AvTimer
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ControlCamera
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Storage
@@ -252,7 +252,7 @@ fun SettingsView(
                             ) {
                                 Text("Activar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
                             }
                         }
                     }

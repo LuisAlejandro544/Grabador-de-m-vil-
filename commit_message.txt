@@ -1,8 +1,7 @@
-refactor(modularization): desacoplar ScreenRecordService, HomeScreen y FloatingBubbleManager en módulos especializados
+fix(ci): corregir compilación Kotlin en GitHub Actions y remover dependencia de .env
 
-- Desacoplar `ScreenRecordService` extrayendo `ScreenCaptureEngine` (gestión de MediaProjection, VirtualDisplay y MediaRecorder), `RecordNotificationHelper` (canales y notificaciones persistentes con acciones de pausa/reanudación) y `RecordStorageHelper` (rutas de guardado y escaneo en MediaStore).
-- Modularizar `FloatingBubbleManager` dividiendo la lógica de arrastre en `BubbleTouchHandler` y la jerarquía visual con cronómetro y pulso animado en `BubbleOverlayView`.
-- Refactorizar `HomeScreen` en componentes limpios e independientes: `RecordTopBar`, `RecordBottomBar`, `RecordTab` y `GalleryTab`.
-- Añadir submenú interactivo "Herramientas" en el widget flotante con soporte para Captura de Pantalla rápida (`ScreenshotHelper`) y Lienzo de dibujo/pincel en tiempo real (`ScreenDrawingOverlay`) con selector de colores, grosores y borrado rápido sobre grabaciones activas.
-- Añadir pruebas unitarias Robolectric para validar el comportamiento del asistente de almacenamiento, captura de instantáneas y widget flotante.
-- Actualizar `STRUCTURE.md`, `README.md`, `ROADMAP.md` y `AI_CONTEXT.md` reflejando las nuevas herramientas y arquitectura modular del proyecto.
+- Eliminar el plugin Secrets Gradle y la necesidad de archivos `.env`/`.env.example`, permitiendo que la aplicación se compile de forma 100% autónoma y autosuficiente sin requerir claves de terceros.
+- Configurar `android-actions/setup-android` y la aceptación automática de licencias de Android SDK (`platforms;android-36` y `build-tools;36.0.0`) en el flujo de CI.
+- Desactivar `configuration-cache` en el entorno de CI (`--no-configuration-cache`) y ajustar las opciones JVM de Gradle para prevenir excepciones en `GradleKotlinCompilerWorkAction` y fallos en trabajadores del compilador Kotlin.
+- Sincronizar la generación del Gradle Wrapper con la versión 9.3.1 especificada en `gradle-wrapper.properties`.
+- Resolver advertencias y compatibilidad en `ScreenRecordService` (`getParcelableExtra` adaptado a API 33+) y `SettingsView` (`Icons.AutoMirrored.Filled.OpenInNew`).

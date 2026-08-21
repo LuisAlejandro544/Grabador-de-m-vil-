@@ -43,17 +43,21 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+          cache: 'gradle'
 
-      - name: 🐘 Configurar Gradle con Caché Inteligente
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-read-only: false
+      - name: 📱 Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 📜 Aceptar licencias de Android SDK e instalar componentes
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager --install "platforms;android-36" "build-tools;36.0.0" "platform-tools" || true
 
       - name: 🔑 Generar Keystore de Depuración (debug.keystore)
         run: |
-          echo "=== Generando / Configurando debug.keystore ==="
+          echo "=== Configurando debug.keystore ==="
           if [ -f "debug.keystore.base64" ]; then
-            echo "Decodificando debug.keystore desde archivo base64..."
+            echo "Decodificando debug.keystore desde base64..."
             base64 -d debug.keystore.base64 > debug.keystore || true
           fi
 
@@ -72,25 +76,24 @@ jobs:
 
           mkdir -p ~/.android
           cp debug.keystore ~/.android/debug.keystore
-          echo "debug.keystore configurado exitosamente."
-          ls -lh debug.keystore
+          echo "debug.keystore verificado y copiado a ~/.android/."
 
-      - name: ⚙️ Asegurar Gradle Wrapper
+      - name: ⚙️ Configurar Gradle Wrapper
         run: |
-          if [ ! -f "gradlew" ]; then
-            echo "Generando gradle wrapper..."
-            gradle wrapper
-          fi
+          echo "Generando gradle wrapper sincronizado con versión 9.3.1..."
+          gradle wrapper --gradle-version 9.3.1 --distribution-type bin || gradle wrapper || true
           chmod +x gradlew
 
       - name: 🔨 Compilar APK Debug
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.configuration-cache=false -Dkotlin.compiler.execution.strategy=in-process"
         run: |
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon --no-configuration-cache --stacktrace
 
-      - name: 📦 Verificar y listar APK generado
+      - name: 📦 Listar APK generado
         run: |
-          echo "=== APKs generados ==="
-          ls -lh app/build/outputs/apk/debug/
+          echo "=== APKs generados con éxito ==="
+          ls -la app/build/outputs/apk/debug/
 
       - name: 🚀 Subir APK como Artefacto descargable
         uses: actions/upload-artifact@v4

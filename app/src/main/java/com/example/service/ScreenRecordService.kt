@@ -94,7 +94,12 @@ class ScreenRecordService : Service() {
 
     private fun handleStartAction(intent: Intent) {
         val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, 0)
-        val resultData = intent.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
+        val resultData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(EXTRA_RESULT_DATA)
+        }
         val width = intent.getIntExtra(EXTRA_RES_WIDTH, 1080)
         val height = intent.getIntExtra(EXTRA_RES_HEIGHT, 1920)
         val fps = intent.getIntExtra(EXTRA_FPS, 60)
