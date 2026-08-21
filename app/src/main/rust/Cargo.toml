@@ -1,0 +1,23 @@
+[package]
+name = "obs_rust_network"
+version = "0.1.0"
+edition = "2021"
+description = "Rust Real-time Streaming & RTMP/SRT Packet Engine for OBS Mobile"
+
+[lib]
+name = "obs_rust_network"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# JNI bindings for Android Kotlin
+jni = { version = "0.21", default-features = false }
+# Safe logging into Android logcat
+android_logger = "0.13"
+log = "0.4"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Grabador de Pantalla</string>
+    <string name="notification_channel_name">Servicio de Grabación</string>
+    <string name="notification_channel_desc">Notificación para controlar la grabación de pantalla</string>
+</resources>

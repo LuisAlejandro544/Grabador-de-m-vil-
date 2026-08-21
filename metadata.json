@@ -1,0 +1,6 @@
+{
+  "name": "Grabador de Pantalla",
+  "description": "Aplicación para grabar pantalla y partidas de videojuegos con controles rápidos y galería integrada.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

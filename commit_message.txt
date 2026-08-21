@@ -1,0 +1,11 @@
+feat(audio & core): agregar modo de grabación de audio interno de juegos, bases nativas C++/Rust y documentación técnica
+
+- Agregar modo de fuente de audio INTERNAL_GAME para capturar exclusivamente los sonidos del juego sin micrófono ni voz.
+- Implementar ajuste de frecuencia de muestreo y tasa de bits de audio (48 kHz, 192 kbps) en ScreenRecordService.
+- Establecer estructura nativa C++ con CMake (libobs_core) e interfaces para composición de escenas con OpenGL ES 3.0.
+- Establecer estructura nativa Rust con Cargo (obs_rust_network) para transmisión RTMP/SRT con seguridad de memoria.
+- Añadir adaptadores puente JNI en Kotlin (NativeOBSBridge, NativeRustNetwork) con soporte seguro ante UnsatisfiedLinkError.
+- Actualizar SettingsView y RecordControlCard con indicadores dinámicos del estado del audio y módulos nativos.
+- Crear archivos de documentación arquitectónica: README.md, ROADMAP.md, STRUCTURE.md, AI_CONTEXT.md y AGENTS.md.
+- Añadir flujo de trabajo de GitHub Actions para sincronizar mensajes de commit mediante commit_message.txt.
+
