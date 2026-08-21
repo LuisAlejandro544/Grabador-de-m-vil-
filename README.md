@@ -11,12 +11,18 @@
   - **Solo Audio del Juego (Interno):** Graba música y efectos del juego sin capturar tu voz ni ruidos del entorno.
   - **Micrófono:** Captura tu voz y comentarios en vivo para tutoriales y gameplays comentados.
   - **Mudo:** Graba únicamente el video para optimizar espacio de almacenamiento.
-- **⚡ Control en Segundo Plano:** Servicio persistente con notificación interactiva para Pausar, Reanudar y Detener la grabación mientras juegas a pantalla completa.
+- **⚡ Control en Segundo Plano & Burbuja Flotante:** Servicio persistente con notificación interactiva y widget flotante superpuesto en pantalla (`WindowManager`) con cronómetro en vivo, pausa, reanudación y parada directa sin salir del juego.
 - **🕹️ Lanzador de Juegos Rápido:** Detección de juegos y aplicaciones instaladas; permite iniciar la grabación y abrir el juego simultáneamente.
 - **🎬 Galería y Reproductor Integrado:** Gestión de archivos grabados (MP4 H.264 / AAC), reproducción instantánea, renombrado y compartir.
-- **⚙️ Cimientos Nativos C++ & Rust:**
-  - **C++ (NDK / GLES3):** Motor de composición de escenas y capas de video en tiempo real.
-  - **Rust (cdylib / JNI):** Motor de red seguro para transmisión RTMP/SRT con bitrate adaptativo.
+- **⚙️ Motor Gráfico Nativo C++ (OpenGL ES 3.0 / EGL):**
+  - Composición de escenas multicapa con ordenamiento de profundidad (*z-order*).
+  - Máscara circular con suavizado (*antialiasing*) para Facecam de la cámara frontal.
+  - Filtro de eliminación de fondo verde (*Chroma Key*) acelerado por GPU vía fragment shaders.
+  - Monitoreo en tiempo real de FPS de renderizado y tiempo por fotograma (ms).
+- **⚙️ Motor FFmpeg Puro Nativo (C/C++ NDK / libav*):**
+  - Cimientos nativos directos de `libavcodec`, `libavformat`, `libavfilter` y `libswscale` para edición precisa al fotograma, recorte sin recodificar, extracción de audio y compresión sin dependencias obsoletas ni descontinuadas.
+- **⚙️ Motor de Red Nativo Rust (Cargo / JNI):**
+  - Arquitectura de red segura y concurrente para transmisión RTMP/SRT con bitrate adaptativo.
 
 ---
 
@@ -28,6 +34,7 @@
 | **Arquitectura** | MVVM + Coroutines + StateFlow | Estado unidireccional y reactividad desacoplada |
 | **Captura de Pantalla** | Android `MediaProjection` + `MediaRecorder` | Captura acelerada por hardware de pantalla y audio |
 | **Motor Gráfico** | C++ (OpenGL ES 3.0 / EGL) | Composición de capas: pantalla, facecam, overlays |
+| **Motor de Edición** | FFmpeg Puro C/C++ (`libav*`) | Recorte de video, transcodificación, filtros y compresión |
 | **Motor de Red** | Rust (Cargo / JNI) | Protocolos de streaming de baja latencia (RTMP, SRT) |
 | **Testing** | Robolectric + Roborazzi | Pruebas unitarias en JVM y pruebas de regresión visual |
 

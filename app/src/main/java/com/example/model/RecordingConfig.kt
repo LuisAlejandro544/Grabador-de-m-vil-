@@ -37,7 +37,8 @@ data class RecordingConfig(
     val bitrate: VideoBitrate = VideoBitrate.BITRATE_8M,
     val audioSource: AudioSourceType = AudioSourceType.MIC,
     val countdownSeconds: Int = 3,
-    val isGameMode: Boolean = true
+    val isGameMode: Boolean = true,
+    val showFloatingBubble: Boolean = true
 )
 
 enum class RecordingStatus {

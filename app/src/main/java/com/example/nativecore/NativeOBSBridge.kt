@@ -4,11 +4,20 @@ import android.util.Log
 
 /**
  * Native C++ OBS Engine Bridge.
- * Interfaces with `libobs_core.so` (OpenGL ES 3.0 Scene Compositor and Hardware Pipeline).
+ * Interfaces with `libobs_core.so` (OpenGL ES 3.0 Scene Compositor and EGL Pipeline).
  */
 object NativeOBSBridge {
     private const val TAG = "NativeOBSBridge"
     private var isLibraryLoaded = false
+
+    const val SHAPE_RECTANGULAR = 0
+    const val SHAPE_CIRCULAR_FACECAM = 1
+
+    const val SOURCE_SCREEN = 0
+    const val SOURCE_CAMERA = 1
+    const val SOURCE_IMAGE = 2
+    const val SOURCE_TEXT = 3
+    const val SOURCE_BROWSER = 4
 
     init {
         try {
@@ -31,7 +40,7 @@ object NativeOBSBridge {
                 "C++ Engine Standby (JNI Ready)"
             }
         } else {
-            "C++ Engine Preparado (Estructura NDK GLES3 / CMake activa)"
+            "C++ Engine Preparado (Estructura NDK GLES3 / EGL activa)"
         }
     }
 
@@ -71,6 +80,104 @@ object NativeOBSBridge {
         }
     }
 
+    fun updateSourceTransform(
+        sourceId: Int,
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        opacity: Float = 1.0f,
+        isVisible: Boolean = true
+    ): Boolean {
+        return if (isLibraryLoaded) {
+            try {
+                nativeUpdateSourceTransform(sourceId, x, y, width, height, opacity, isVisible)
+            } catch (e: Throwable) {
+                false
+            }
+        } else {
+            true
+        }
+    }
+
+    fun setSourceShape(sourceId: Int, shape: Int): Boolean {
+        return if (isLibraryLoaded) {
+            try {
+                nativeSetSourceShape(sourceId, shape)
+            } catch (e: Throwable) {
+                false
+            }
+        } else {
+            true
+        }
+    }
+
+    fun setSourceChromaKey(
+        sourceId: Int,
+        enabled: Boolean,
+        r: Float = 0.0f,
+        g: Float = 1.0f,
+        b: Float = 0.0f,
+        similarity: Float = 0.40f,
+        smoothness: Float = 0.10f
+    ): Boolean {
+        return if (isLibraryLoaded) {
+            try {
+                nativeSetSourceChromaKey(sourceId, enabled, r, g, b, similarity, smoothness)
+            } catch (e: Throwable) {
+                false
+            }
+        } else {
+            true
+        }
+    }
+
+    fun setSourceZOrder(sourceId: Int, zOrder: Int): Boolean {
+        return if (isLibraryLoaded) {
+            try {
+                nativeSetSourceZOrder(sourceId, zOrder)
+            } catch (e: Throwable) {
+                false
+            }
+        } else {
+            true
+        }
+    }
+
+    fun renderFrame(timestampNs: Long = System.nanoTime()) {
+        if (isLibraryLoaded) {
+            try {
+                nativeRenderFrame(timestampNs)
+            } catch (e: Throwable) {
+                // Ignore
+            }
+        }
+    }
+
+    fun getRenderFps(): Float {
+        return if (isLibraryLoaded) {
+            try {
+                nativeGetRenderFps()
+            } catch (e: Throwable) {
+                60.0f
+            }
+        } else {
+            60.0f
+        }
+    }
+
+    fun getFrameTimeMs(): Float {
+        return if (isLibraryLoaded) {
+            try {
+                nativeGetFrameTimeMs()
+            } catch (e: Throwable) {
+                16.6f
+            }
+        } else {
+            16.6f
+        }
+    }
+
     fun getSourceCount(): Int {
         return if (isLibraryLoaded) {
             try {
@@ -99,5 +206,29 @@ object NativeOBSBridge {
     private external fun nativeReleaseCompositor()
     private external fun nativeAddSource(name: String, sourceType: Int, x: Float, y: Float, width: Float, height: Float): Int
     private external fun nativeRemoveSource(sourceId: Int): Boolean
+    private external fun nativeUpdateSourceTransform(
+        sourceId: Int,
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        opacity: Float,
+        isVisible: Boolean
+    ): Boolean
+    private external fun nativeSetSourceShape(sourceId: Int, shape: Int): Boolean
+    private external fun nativeSetSourceChromaKey(
+        sourceId: Int,
+        enabled: Boolean,
+        r: Float,
+        g: Float,
+        b: Float,
+        similarity: Float,
+        smoothness: Float
+    ): Boolean
+    private external fun nativeSetSourceZOrder(sourceId: Int, zOrder: Int): Boolean
+    private external fun nativeRenderFrame(timestampNs: Long)
+    private external fun nativeGetRenderFps(): Float
+    private external fun nativeGetFrameTimeMs(): Float
     private external fun nativeGetSourceCount(): Int
 }
+

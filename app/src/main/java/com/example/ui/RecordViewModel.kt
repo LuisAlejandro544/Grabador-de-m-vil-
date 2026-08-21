@@ -153,6 +153,10 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         _config.value = _config.value.copy(countdownSeconds = seconds)
     }
 
+    fun toggleFloatingBubble(enabled: Boolean) {
+        _config.value = _config.value.copy(showFloatingBubble = enabled)
+    }
+
     fun toggleGameMode(enabled: Boolean) {
         if (enabled) {
             _config.value = _config.value.copy(
@@ -216,6 +220,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             putExtra(ScreenRecordService.EXTRA_FPS, config.fps.fps)
             putExtra(ScreenRecordService.EXTRA_BITRATE, config.bitrate.bps)
             putExtra(ScreenRecordService.EXTRA_AUDIO_SOURCE, config.audioSource.name)
+            putExtra(ScreenRecordService.EXTRA_SHOW_FLOATING_BUBBLE, config.showFloatingBubble)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

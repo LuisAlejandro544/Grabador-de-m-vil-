@@ -39,7 +39,8 @@ data class RecordingConfig(
     val bitrate: VideoBitrate = VideoBitrate.BITRATE_8M,
     val audioSource: AudioSourceType = AudioSourceType.INTERNAL_GAME,
     val countdownSeconds: Int = 3,
-    val isGameMode: Boolean = true
+    val isGameMode: Boolean = true,
+    val showFloatingBubble: Boolean = true
 )
 
 data class RecordedVideo(
@@ -51,3 +52,21 @@ data class RecordedVideo(
     val dateModified: Long
 )
 ```
+
+---
+
+## 🎨 Pipeline Gráfico C++ (OpenGL ES 3.0 & EGL)
+
+- **Shaders GLSL:** Renderizado acelerado por hardware de capas ordenadas por `zOrder`.
+- **Facecam Circular:** Máscara de fragmento con `smoothstep` para bordes antialiasing suaves.
+- **Chroma Key GPU:** Supresión de color verde con parámetros dinámicos de similitud y suavizado sin impacto en la CPU.
+- **EGL Offscreen Surface:** Permite renderizar y componer frames a 60 FPS directamente hacia los buffers de video.
+
+---
+
+## 🎬 Motor de Edición FFmpeg Puro Nativo (C/C++ libav*)
+
+- **Sin Wrappers Descontinuados:** Implementación directa sobre librerías C nativas de FFmpeg (`libavcodec`, `libavformat`, `libavfilter`, `libswscale`).
+- **Recorte Stream Copy:** Permite recortar videos de forma instantánea al no recodificar los fotogramas (`fast copy`).
+- **Seguridad en NDK:** Encapsulado en `ffmpeg_engine.hpp` / `ffmpeg_engine.cpp` y exportado vía JNI en `NativeFFmpegBridge.kt`.
+

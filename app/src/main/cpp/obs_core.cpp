@@ -2,8 +2,10 @@
 #include <string>
 #include <memory>
 #include "obs_compositor.hpp"
+#include "ffmpeg_engine.hpp"
 
 static std::unique_ptr<obs::SceneCompositor> gCompositor = nullptr;
+static std::unique_ptr<obs::ffmpeg::FFmpegEngine> gFFmpegEngine = nullptr;
 
 extern "C" {
 
@@ -51,8 +53,10 @@ Java_com_example_nativecore_NativeOBSBridge_nativeAddSource(
         gCompositor = std::make_unique<obs::SceneCompositor>();
     }
     const char* nativeName = env->GetStringUTFChars(name, nullptr);
-    std::string nameStr(nativeName);
-    env->ReleaseStringUTFChars(name, nativeName);
+    std::string nameStr(nativeName ? nativeName : "Source");
+    if (nativeName) {
+        env->ReleaseStringUTFChars(name, nativeName);
+    }
 
     return gCompositor->addSource(
         nameStr,
@@ -71,10 +75,176 @@ Java_com_example_nativecore_NativeOBSBridge_nativeRemoveSource(
     return static_cast<jboolean>(gCompositor->removeSource(sourceId));
 }
 
+JNIEXPORT jboolean JNICALL
+Java_com_example_nativecore_NativeOBSBridge_nativeUpdateSourceTransform(
+    JNIEnv* /* env */,
+    jobject /* this */,
+    jint sourceId,
+    jfloat x,
+    jfloat y,
+    jfloat width,
+    jfloat height,
+    jfloat opacity,
+    jboolean isVisible
+) {
+    if (!gCompositor) return JNI_FALSE;
+    return static_cast<jboolean>(gCompositor->updateSourceTransform(sourceId, x, y, width, height, opacity, isVisible));
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_example_nativecore_NativeOBSBridge_nativeSetSourceShape(
+    JNIEnv* /* env */,
+    jobject /* this */,
+    jint sourceId,
+    jint shape
+) {
+    if (!gCompositor) return JNI_FALSE;
+    return static_cast<jboolean>(gCompositor->setSourceShape(sourceId, static_cast<obs::LayerShape>(shape)));
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_example_nativecore_NativeOBSBridge_nativeSetSourceChromaKey(
+    JNIEnv* /* env */,
+    jobject /* this */,
+    jint sourceId,
+    jboolean enabled,
+    jfloat r,
+    jfloat g,
+    jfloat b,
+    jfloat similarity,
+    jfloat smoothness
+) {
+    if (!gCompositor) return JNI_FALSE;
+    return static_cast<jboolean>(gCompositor->setSourceChromaKey(sourceId, enabled, r, g, b, similarity, smoothness));
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_example_nativecore_NativeOBSBridge_nativeSetSourceZOrder(
+    JNIEnv* /* env */,
+    jobject /* this */,
+    jint sourceId,
+    jint zOrder
+) {
+    if (!gCompositor) return JNI_FALSE;
+    return static_cast<jboolean>(gCompositor->setSourceZOrder(sourceId, zOrder));
+}
+
+JNIEXPORT void JNICALL
+Java_com_example_nativecore_NativeOBSBridge_nativeRenderFrame(
+    JNIEnv* /* env */,
+    jobject /* this */,
+    jlong timestampNs
+) {
+    if (gCompositor) {
+        gCompositor->renderFrame(timestampNs);
+    }
+}
+
+JNIEXPORT jfloat JNICALL
+Java_com_example_nativecore_NativeOBSBridge_nativeGetRenderFps(JNIEnv* /* env */, jobject /* this */) {
+    if (!gCompositor) return 60.0f;
+    return gCompositor->getPerformanceStats().renderFps;
+}
+
+JNIEXPORT jfloat JNICALL
+Java_com_example_nativecore_NativeOBSBridge_nativeGetFrameTimeMs(JNIEnv* /* env */, jobject /* this */) {
+    if (!gCompositor) return 16.6f;
+    return gCompositor->getPerformanceStats().frameTimeMs;
+}
+
 JNIEXPORT jint JNICALL
 Java_com_example_nativecore_NativeOBSBridge_nativeGetSourceCount(JNIEnv* /* env */, jobject /* this */) {
     if (!gCompositor) return 0;
     return gCompositor->getSourceCount();
 }
 
+// -----------------------------------------------------------------------------
+// Native FFmpeg Engine JNI Exports
+// -----------------------------------------------------------------------------
+
+JNIEXPORT jstring JNICALL
+Java_com_example_nativecore_NativeFFmpegBridge_nativeGetFFmpegVersion(JNIEnv* env, jobject /* this */) {
+    if (!gFFmpegEngine) {
+        gFFmpegEngine = std::make_unique<obs::ffmpeg::FFmpegEngine>();
+        gFFmpegEngine->initialize();
+    }
+    return env->NewStringUTF(gFFmpegEngine->getVersion().c_str());
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_example_nativecore_NativeFFmpegBridge_nativeGetFFmpegConfig(JNIEnv* env, jobject /* this */) {
+    if (!gFFmpegEngine) {
+        gFFmpegEngine = std::make_unique<obs::ffmpeg::FFmpegEngine>();
+        gFFmpegEngine->initialize();
+    }
+    return env->NewStringUTF(gFFmpegEngine->getConfiguration().c_str());
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_example_nativecore_NativeFFmpegBridge_nativeInitFFmpeg(JNIEnv* /* env */, jobject /* this */) {
+    if (!gFFmpegEngine) {
+        gFFmpegEngine = std::make_unique<obs::ffmpeg::FFmpegEngine>();
+    }
+    return static_cast<jboolean>(gFFmpegEngine->initialize());
+}
+
+JNIEXPORT void JNICALL
+Java_com_example_nativecore_NativeFFmpegBridge_nativeReleaseFFmpeg(JNIEnv* /* env */, jobject /* this */) {
+    if (gFFmpegEngine) {
+        gFFmpegEngine->release();
+    }
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_example_nativecore_NativeFFmpegBridge_nativeTrimVideo(
+    JNIEnv* env,
+    jobject /* this */,
+    jstring inputPath,
+    jstring outputPath,
+    jlong startMs,
+    jlong endMs,
+    jboolean accurateCut
+) {
+    if (!gFFmpegEngine) {
+        gFFmpegEngine = std::make_unique<obs::ffmpeg::FFmpegEngine>();
+        gFFmpegEngine->initialize();
+    }
+    const char* inP = env->GetStringUTFChars(inputPath, nullptr);
+    const char* outP = env->GetStringUTFChars(outputPath, nullptr);
+    std::string inStr(inP ? inP : "");
+    std::string outStr(outP ? outP : "");
+    if (inP) env->ReleaseStringUTFChars(inputPath, inP);
+    if (outP) env->ReleaseStringUTFChars(outputPath, outP);
+
+    obs::ffmpeg::TrimOptions opts{};
+    opts.startMs = startMs;
+    opts.endMs = endMs;
+    opts.accurateCut = accurateCut;
+
+    return static_cast<jboolean>(gFFmpegEngine->trimVideo(inStr, outStr, opts, nullptr));
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_example_nativecore_NativeFFmpegBridge_nativeExtractAudio(
+    JNIEnv* env,
+    jobject /* this */,
+    jstring inputPath,
+    jstring outputPath,
+    jint codecType
+) {
+    if (!gFFmpegEngine) {
+        gFFmpegEngine = std::make_unique<obs::ffmpeg::FFmpegEngine>();
+        gFFmpegEngine->initialize();
+    }
+    const char* inP = env->GetStringUTFChars(inputPath, nullptr);
+    const char* outP = env->GetStringUTFChars(outputPath, nullptr);
+    std::string inStr(inP ? inP : "");
+    std::string outStr(outP ? outP : "");
+    if (inP) env->ReleaseStringUTFChars(inputPath, inP);
+    if (outP) env->ReleaseStringUTFChars(outputPath, outP);
+
+    return static_cast<jboolean>(gFFmpegEngine->extractAudio(inStr, outStr, static_cast<obs::ffmpeg::CodecType>(codecType), nullptr));
+}
+
 } // extern "C"
+

@@ -57,6 +57,7 @@ class ScreenRecordService : Service() {
         const val EXTRA_FPS = "extra_fps"
         const val EXTRA_BITRATE = "extra_bitrate"
         const val EXTRA_AUDIO_SOURCE = "extra_audio_source"
+        const val EXTRA_SHOW_FLOATING_BUBBLE = "extra_show_floating_bubble"
 
         private val _recordingState = MutableStateFlow(RecordingStatus.IDLE)
         val recordingState = _recordingState.asStateFlow()
@@ -84,6 +85,7 @@ class ScreenRecordService : Service() {
     private var currentOutputFile: File? = null
     private var timerJob: Job? = null
     private val serviceScope = CoroutineScope(Dispatchers.Main)
+    private var floatingBubbleManager: FloatingBubbleManager? = null
 
     private var isPaused = false
 
@@ -106,10 +108,11 @@ class ScreenRecordService : Service() {
                 val fps = intent.getIntExtra(EXTRA_FPS, 60)
                 val bitrate = intent.getIntExtra(EXTRA_BITRATE, 8_000_000)
                 val audioSource = intent.getStringExtra(EXTRA_AUDIO_SOURCE) ?: AudioSourceType.MIC.name
+                val showFloatingBubble = intent.getBooleanExtra(EXTRA_SHOW_FLOATING_BUBBLE, true)
 
                 if (resultCode != 0 && resultData != null) {
                     startForegroundWithNotification("Iniciando grabación...")
-                    startRecording(resultCode, resultData, width, height, fps, bitrate, audioSource)
+                    startRecording(resultCode, resultData, width, height, fps, bitrate, audioSource, showFloatingBubble)
                 } else {
                     Log.e(TAG, "Missing resultCode or resultData")
                     stopSelf()
@@ -148,7 +151,8 @@ class ScreenRecordService : Service() {
         height: Int,
         fps: Int,
         bitrate: Int,
-        audioSource: String
+        audioSource: String,
+        showFloatingBubble: Boolean = true
     ) {
         try {
             _errorMessage.value = null
@@ -246,6 +250,19 @@ class ScreenRecordService : Service() {
             )
 
             mediaRecorder?.start()
+
+            // Setup Floating Bubble Overlay if requested
+            if (showFloatingBubble) {
+                floatingBubbleManager?.dismiss()
+                floatingBubbleManager = FloatingBubbleManager(
+                    context = this,
+                    onPauseClicked = { pauseRecording() },
+                    onResumeClicked = { resumeRecording() },
+                    onStopClicked = { stopRecording() }
+                )
+                floatingBubbleManager?.show()
+            }
+
             startTimer()
             updateNotification("Grabando pantalla (00:00)")
 
@@ -265,6 +282,7 @@ class ScreenRecordService : Service() {
                 mediaRecorder?.pause()
                 isPaused = true
                 _recordingState.value = RecordingStatus.PAUSED
+                floatingBubbleManager?.updateStatus(true)
                 updateNotification("Grabación en pausa (${formatDuration(_elapsedSeconds.value)})")
             } catch (e: Exception) {
                 Log.e(TAG, "Pause failed: ${e.message}")
@@ -278,6 +296,7 @@ class ScreenRecordService : Service() {
                 mediaRecorder?.resume()
                 isPaused = false
                 _recordingState.value = RecordingStatus.RECORDING
+                floatingBubbleManager?.updateStatus(false)
                 updateNotification("Grabando pantalla (${formatDuration(_elapsedSeconds.value)})")
             } catch (e: Exception) {
                 Log.e(TAG, "Resume failed: ${e.message}")
@@ -288,6 +307,9 @@ class ScreenRecordService : Service() {
     private fun stopRecording() {
         _recordingState.value = RecordingStatus.SAVING
         timerJob?.cancel()
+
+        floatingBubbleManager?.dismiss()
+        floatingBubbleManager = null
 
         try {
             mediaRecorder?.apply {
@@ -347,6 +369,7 @@ class ScreenRecordService : Service() {
                 if (!isPaused && _recordingState.value == RecordingStatus.RECORDING) {
                     _elapsedSeconds.value += 1
                     val formatted = formatDuration(_elapsedSeconds.value)
+                    floatingBubbleManager?.updateTime(_elapsedSeconds.value)
                     updateNotification("Grabando pantalla ($formatted)")
                 }
             }
@@ -361,6 +384,8 @@ class ScreenRecordService : Service() {
 
     private fun cleanup() {
         timerJob?.cancel()
+        floatingBubbleManager?.dismiss()
+        floatingBubbleManager = null
         try {
             mediaRecorder?.release()
         } catch (e: Exception) {

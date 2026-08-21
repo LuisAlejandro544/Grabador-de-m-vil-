@@ -13,11 +13,13 @@ obs-mobile/
 │   └── src/
 │       ├── main/
 │       │   ├── AndroidManifest.xml          # Permisos, servicios en primer plano y componentes
-│       │   ├── cpp/                         # Motor C++ nativo (Composición Gráfica)
-│       │   │   ├── CMakeLists.txt           # Configuración de CMake para NDK
-│       │   │   ├── obs_compositor.hpp       # Definición de capas y transformaciones de escena
-│       │   │   ├── obs_compositor.cpp       # Implementación del motor de mezcla
-│       │   │   └── obs_core.cpp             # JNI export bridge para Kotlin
+│       │   ├── cpp/                         # Motor C++ nativo (Composición Gráfica OpenGL ES 3.0 & FFmpeg Puro)
+│       │   │   ├── CMakeLists.txt           # Configuración de CMake para NDK (GLESv3, EGL, Log, Android)
+│       │   │   ├── obs_compositor.hpp       # Definición de capas, máscara Facecam, Chroma Key y EGL
+│       │   │   ├── obs_compositor.cpp       # Implementación de shaders GLSL, pipeline EGL y renderizado
+│       │   │   ├── ffmpeg_engine.hpp        # Interfaz de procesamiento FFmpeg puro (libav*)
+│       │   │   ├── ffmpeg_engine.cpp        # Implementación de pipeline de recorte, audio y transcodificación
+│       │   │   └── obs_core.cpp             # JNI export bridge completo para Kotlin (OBS & FFmpeg)
 │       │   ├── rust/                        # Motor Rust nativo (Streaming & Red)
 │       │   │   ├── Cargo.toml               # Configuración Cargo (cdylib, JNI, logging)
 │       │   │   └── src/
@@ -25,15 +27,17 @@ obs-mobile/
 │       │   ├── java/com/example/
 │       │   │   ├── MainActivity.kt          # Entrada principal (Edge-to-edge Compose)
 │       │   │   ├── model/
-│       │   │   │   ├── RecordingConfig.kt   # Modelos de configuración (FPS, Bitrate, Audio)
+│       │   │   │   ├── RecordingConfig.kt   # Modelos de configuración (FPS, Bitrate, Audio, Burbuja)
 │       │   │   │   └── RecordedVideo.kt     # Entidad de video grabado con helpers de formato
 │       │   │   ├── nativecore/
-│       │   │   │   ├── NativeOBSBridge.kt   # Puente JNI seguro hacia C++ (GLES3)
+│       │   │   │   ├── NativeOBSBridge.kt   # Puente JNI seguro hacia C++ (GLES3 / EGL / Transformaciones)
+│       │   │   │   ├── NativeFFmpegBridge.kt# Puente JNI seguro hacia FFmpeg Puro (libav* NDK)
 │       │   │   │   └── NativeRustNetwork.kt # Puente JNI seguro hacia Rust (RTMP/SRT)
 │       │   │   ├── data/
 │       │   │   │   └── InstalledAppItem.kt  # Modelo y detector de apps/juegos instalados
 │       │   │   ├── service/
-│       │   │   │   └── ScreenRecordService.kt # Foreground Service (MediaProjection & MediaRecorder)
+│       │   │   │   ├── ScreenRecordService.kt # Foreground Service (MediaProjection & MediaRecorder)
+│       │   │   │   └── FloatingBubbleManager.kt # Widget flotante interactivo con WindowManager
 │       │   │   └── ui/
 │       │   │       ├── RecordViewModel.kt   # Gestión de estado (StateFlow) y lógica UI
 │       │   │       ├── HomeScreen.kt        # Pantalla principal con pestañas y navegación
@@ -42,7 +46,7 @@ obs-mobile/
 │       │   │       │   ├── GameLauncherCard.kt  # Pestaña de acceso rápido a juegos
 │       │   │       │   ├── VideoItemCard.kt     # Elemento de lista en galería de videos
 │       │   │       │   ├── VideoPlayerDialog.kt # Reproductor de video nativo
-│       │   │       │   └── SettingsView.kt      # Ajustes de calidad, audio y estado nativo
+│       │   │       │   └── SettingsView.kt      # Ajustes de calidad, audio, burbuja y estado nativo
 │       │   │       └── theme/
 │       │   │           ├── Color.kt             # Paleta de colores M3
 │       │   │           ├── Theme.kt             # Configuración de tema claro/oscuro

@@ -1,11 +1,12 @@
-feat(audio & core): agregar modo de grabación de audio interno de juegos, bases nativas C++/Rust y documentación técnica
+feat(native-core & ffmpeg): cimientos de FFmpeg puro nativo (libav*), compositor gráfico multicapa C++ y widget flotante
 
-- Agregar modo de fuente de audio INTERNAL_GAME para capturar exclusivamente los sonidos del juego sin micrófono ni voz.
-- Implementar ajuste de frecuencia de muestreo y tasa de bits de audio (48 kHz, 192 kbps) en ScreenRecordService.
-- Establecer estructura nativa C++ con CMake (libobs_core) e interfaces para composición de escenas con OpenGL ES 3.0.
-- Establecer estructura nativa Rust con Cargo (obs_rust_network) para transmisión RTMP/SRT con seguridad de memoria.
-- Añadir adaptadores puente JNI en Kotlin (NativeOBSBridge, NativeRustNetwork) con soporte seguro ante UnsatisfiedLinkError.
-- Actualizar SettingsView y RecordControlCard con indicadores dinámicos del estado del audio y módulos nativos.
-- Crear archivos de documentación arquitectónica: README.md, ROADMAP.md, STRUCTURE.md, AI_CONTEXT.md y AGENTS.md.
-- Añadir flujo de trabajo de GitHub Actions para sincronizar mensajes de commit mediante commit_message.txt.
+- Añadir estructura base de FFmpeg puro nativo en C/C++ (`ffmpeg_engine.hpp` / `ffmpeg_engine.cpp`) sin dependencias descontinuadas (FFmpegKit).
+- Definir interfaces de procesamiento multimedia para recorte de video (stream copy / frame accurate), extracción de audio (AAC/MP3), marcas de agua y compresión.
+- Implementar puente JNI y adaptador en Kotlin (`NativeFFmpegBridge.kt`) con fallback seguro contra `UnsatisfiedLinkError`.
+- Integrar información y versión del motor FFmpeg puro en `SettingsView.kt`.
+- Implementar motor gráfico de composición multicapa en C++ (`obs_compositor.cpp` / `obs_compositor.hpp`) con shaders GLSL de vértice y fragmento (máscara circular Facecam y Chroma Key GPU).
+- Configurar inicialización de contexto EGL, buffers VBO/VAO y ordenamiento de profundidad de capas (*z-order*).
+- Implementar `FloatingBubbleManager` con `WindowManager` para widget flotante con cronómetro en vivo y controles interactivos sobre juegos.
+- Actualizar documentación arquitectónica (`README.md`, `ROADMAP.md`, `STRUCTURE.md` y `AI_CONTEXT.md`).
+
 

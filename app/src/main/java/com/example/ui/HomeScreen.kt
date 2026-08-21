@@ -508,7 +508,8 @@ fun HomeScreen(
                         onUpdateBitrate = { viewModel.updateBitrate(it) },
                         onUpdateAudioSource = { viewModel.updateAudioSource(it) },
                         onUpdateCountdown = { viewModel.updateCountdown(it) },
-                        onToggleGameMode = { viewModel.toggleGameMode(it) }
+                        onToggleGameMode = { viewModel.toggleGameMode(it) },
+                        onToggleFloatingBubble = { viewModel.toggleFloatingBubble(it) }
                     )
                 }
             }

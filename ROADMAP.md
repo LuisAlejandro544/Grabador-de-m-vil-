@@ -13,23 +13,29 @@ Este documento detalla las fases de evolución del proyecto para transformar la 
 
 ---
 
-## 📍 Fase 2: Control de Audio y Perfiles (Completada ✅)
+## 📍 Fase 2: Control de Audio, Perfiles y Widget Flotante (Completada ✅)
 - [x] Selector de fuente de audio:
   - **Solo Audio del Juego (Interno):** Captura exclusiva del sonido de aplicaciones sin voz externa.
   - **Micrófono:** Captura de voz y ambiente.
   - **Mudo:** Video puro.
 - [x] Perfil "Modo Juego" con activación rápida de 60 FPS y 12 Mbps.
 - [x] Temporizador de cuenta atrás previo al inicio de grabación.
+- [x] **Widget Flotante Arrastrable (Burbuja en Pantalla):** Control en vivo con cronómetro, pausa, reanudación y parada sobre cualquier juego vía `WindowManager`.
 
 ---
 
-## 📍 Fase 3: Composición de Escenas en C++ (Próxima 🔜)
-- [ ] **Facecam Flotante / Cámara Frontal:** Renderizar la cámara delantera en una ventana circular o rectangular sobre el juego.
-- [ ] **Motor Gráfico C++ con OpenGL ES 3.0:**
-  - Mezcla de texturas en tiempo real (`SurfaceTexture` + shaders GLSL).
-  - Soporte de múltiples capas (*z-order*): Fondo, Juego, Facecam, Marco/PNG, Texto.
+## 📍 Fase 3: Composición de Escenas en C++ (En Progreso 🚀)
+- [x] **Motor Gráfico C++ con OpenGL ES 3.0 & EGL:**
+  - Contexto EGL nativo y renderizado acelerado por GPU a 60 FPS.
+  - Soporte de múltiples capas (*z-order*): Juego, Facecam, Overlays, Texto.
+  - Shaders GLSL de vértice y fragmento con mezcla alfa y soporte para recortes de forma.
+  - **Máscara Circular para Facecam:** Recorte circular con suavizado antialiasing (`smoothstep`) para la cámara frontal.
+  - **Filtro Chroma Key en GPU:** Eliminación de fondo verde en tiempo real con tolerancia y suavizado configurable.
+  - Métricas de rendimiento en tiempo real (FPS de renderizado del motor y tiempo de frame en ms).
+- [ ] **Enlace de Captura CameraX / Facecam a Textura OES Nativa:**
+  - Envío del flujo de la cámara frontal al compositor C++ en tiempo real.
 - [ ] **Editor Visual de Escenas en Compose:**
-  - Arrastrar, redimensionar y posicionar la cámara y elementos en un lienzo previo antes de grabar.
+  - Arrastrar, redimensionar y posicionar la cámara y elementos en un lienzo interactivo previo antes de grabar.
 
 ---
 
@@ -43,7 +49,20 @@ Este documento detalla las fases de evolución del proyecto para transformar la 
 
 ---
 
-## 📍 Fase 5: Overlays y Widgets Interactivos
+## 📍 Fase 5: Motor de Edición y Post-Producción con FFmpeg Puro Nativo (C/C++)
+- [x] **Cimientos y Arquitectura de FFmpeg Nativo (`libav*`):**
+  - Estructura C++ (`ffmpeg_engine.hpp` / `ffmpeg_engine.cpp`) sin librerías descontinuadas ni wrappers externos.
+  - Puente JNI `NativeFFmpegBridge` con métodos de recorte, extracción de audio y compresión.
+- [ ] **Recorte Rápido de Video (*Stream Copy & Frame Accurate*):**
+  - Recorte instantáneo sin pérdida ni renderizado para clips rápidos.
+- [ ] **Extracción y Procesamiento de Audio:**
+  - Separación de pistas de voz/juego y exportación directa a MP3/AAC.
+- [ ] **Conversión para Redes (Shorts / TikTok / Reels):**
+  - Adaptación inteligente de formato 16:9 a 9:16 con desenfoque de fondo.
+
+---
+
+## 📍 Fase 6: Overlays y Widgets Interactivos
 - [ ] **Widgets de Chat en Tiempo Real:** Overlay transparente para leer mensajes del chat de Twitch/YouTube sobre la pantalla del juego.
 - [ ] **Alertas de Eventos:** Donaciones, seguidores y suscripciones mediante WebViews ligeras o texturas transparentes.
 - [ ] **Buffer de Repetición (Replay Buffer):** Guardar los últimos 30-60 segundos de jugadas destacadas con un botón flotante.
