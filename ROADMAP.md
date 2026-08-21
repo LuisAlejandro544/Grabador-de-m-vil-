@@ -13,7 +13,7 @@ Este documento detalla las fases de evolución del proyecto para transformar la 
 
 ---
 
-## 📍 Fase 2: Control de Audio, Perfiles y Widget Flotante (Completada ✅)
+## 📍 Fase 2: Control de Audio, Perfiles y Widget Flotante con Herramientas (Completada ✅)
 - [x] Selector de fuente de audio:
   - **Solo Audio del Juego (Interno):** Captura exclusiva del sonido de aplicaciones sin voz externa.
   - **Micrófono:** Captura de voz y ambiente.
@@ -21,6 +21,9 @@ Este documento detalla las fases de evolución del proyecto para transformar la 
 - [x] Perfil "Modo Juego" con activación rápida de 60 FPS y 12 Mbps.
 - [x] Temporizador de cuenta atrás previo al inicio de grabación.
 - [x] **Widget Flotante Arrastrable (Burbuja en Pantalla):** Control en vivo con cronómetro, pausa, reanudación y parada sobre cualquier juego vía `WindowManager`.
+- [x] **Menú de Herramientas en Vivo:**
+  - **Captura de Pantalla Instantánea:** Guardado directo en `Pictures/Screenshots` y registro en `MediaStore`.
+  - **Pincel / Lapicero en Pantalla:** Modo de dibujo interactivo con selector de colores, grosores y borrado rápido sobre la grabación activa.
 
 ---
 

@@ -8,6 +8,10 @@ Este archivo describe la organización de directorios, módulos y capas del proy
 
 ```
 obs-mobile/
+├── .github/
+│   └── workflows/
+│       ├── build-apk.yml                    # Compilación automatizada de APK Debug con caché y keystore
+│       └── override-commit.yml              # Sincronización del mensaje del commit desde commit_message.txt
 ├── app/
 │   ├── build.gradle.kts                     # Configuración de compilación Android & dependencias
 │   └── src/
@@ -34,23 +38,36 @@ obs-mobile/
 │       │   │   │   ├── NativeFFmpegBridge.kt# Puente JNI seguro hacia FFmpeg Puro (libav* NDK)
 │       │   │   │   └── NativeRustNetwork.kt # Puente JNI seguro hacia Rust (RTMP/SRT)
 │       │   │   ├── data/
-│       │   │   │   └── InstalledAppItem.kt  # Modelo y detector de apps/juegos instalados
+│       │   │   │   ├── InstalledGamesHelper.kt # Detector de juegos instalados en el dispositivo
+│       │   │   │   └── RecordingsRepository.kt # Acceso a videos grabados en MediaStore
 │       │   │   ├── service/
-│       │   │   │   ├── ScreenRecordService.kt # Foreground Service (MediaProjection & MediaRecorder)
-│       │   │   │   └── FloatingBubbleManager.kt # Widget flotante interactivo con WindowManager
+│       │   │   │   ├── ScreenRecordService.kt     # Coordinador ligero de Foreground Service
+│       │   │   │   ├── ScreenCaptureEngine.kt     # Motor modular de captura (MediaProjection, VirtualDisplay y MediaRecorder)
+│       │   │   │   ├── RecordNotificationHelper.kt# Gestión modular de canales y notificaciones persistentes con acciones
+│       │   │   │   ├── RecordStorageHelper.kt     # Rutas seguras de archivos MP4 e indexación en MediaStore
+│       │   │   │   ├── ScreenshotHelper.kt        # Captura instantánea de pantalla y extracción de fotogramas
+│       │   │   │   ├── ScreenDrawingOverlay.kt    # Lienzo interactivo y pincel de dibujo en tiempo real sobre la pantalla
+│       │   │   │   ├── FloatingBubbleManager.kt   # Coordinador del ciclo de vida del widget flotante y herramientas
+│       │   │   │   ├── BubbleOverlayView.kt       # Jerarquía visual del widget, cronómetro en vivo, pulsos y menú de herramientas
+│       │   │   │   └── BubbleTouchHandler.kt      # Detección y cálculo de arrastre táctil y toques
 │       │   │   └── ui/
-│       │   │       ├── RecordViewModel.kt   # Gestión de estado (StateFlow) y lógica UI
-│       │   │       ├── HomeScreen.kt        # Pantalla principal con pestañas y navegación
+│       │   │       ├── RecordViewModel.kt         # Gestión de estado (StateFlow) y lógica UI
+│       │   │       ├── HomeScreen.kt              # Pantalla principal desacoplada (Orquestador)
+│       │   │       ├── tabs/
+│       │   │       │   ├── RecordTab.kt           # Pestaña principal de grabación, pulso y accesos directos
+│       │   │       │   └── GalleryTab.kt          # Pestaña de galería de grabaciones y lista reactiva
 │       │   │       ├── components/
-│       │   │       │   ├── RecordControlCard.kt # Tarjeta central de grabación y pulso
-│       │   │       │   ├── GameLauncherCard.kt  # Pestaña de acceso rápido a juegos
-│       │   │       │   ├── VideoItemCard.kt     # Elemento de lista en galería de videos
-│       │   │       │   ├── VideoPlayerDialog.kt # Reproductor de video nativo
-│       │   │       │   └── SettingsView.kt      # Ajustes de calidad, audio, burbuja y estado nativo
+│       │   │       │   ├── RecordTopBar.kt        # Barra superior con badge de estado en tiempo real
+│       │   │       │   ├── RecordBottomBar.kt     # Barra inferior de navegación entre pestañas
+│       │   │       │   ├── RecordControlCard.kt   # Tarjeta central de grabación y pulso
+│       │   │       │   ├── GameLauncherCard.kt    # Pestaña y tarjetas de acceso rápido a juegos
+│       │   │       │   ├── VideoItemCard.kt       # Elemento individual de video en galería
+│       │   │       │   ├── VideoPlayerDialog.kt   # Reproductor de video nativo integrado
+│       │   │       │   └── SettingsView.kt        # Ajustes de calidad, audio, burbuja y estado nativo
 │       │   │       └── theme/
-│       │   │           ├── Color.kt             # Paleta de colores M3
-│       │   │           ├── Theme.kt             # Configuración de tema claro/oscuro
-│       │   │           └── Type.kt              # Tipografía Material 3
+│       │   │           ├── Color.kt               # Paleta de colores M3
+│       │   │           ├── Theme.kt               # Configuración de tema claro/oscuro
+│       │   │           └── Type.kt                # Tipografía Material 3
 │       │   └── res/
 │       │       ├── values/
 │       │       │   └── strings.xml          # Recursos de texto localizados
@@ -62,7 +79,8 @@ obs-mobile/
 ├── ROADMAP.md                               # Plan de evolución a OBS Studio
 ├── STRUCTURE.md                             # Este archivo (Estructura técnica)
 ├── AI_CONTEXT.md                            # Contexto para asistentes de inteligencia artificial
-└── AGENTS.md                                # Flujo de trabajo y normas para agentes
+├── AGENTS.md                                # Flujo de trabajo y normas para agentes
+└── commit_message.txt                       # Registro descriptivo en español del último commit
 ```
 
 ---
@@ -70,20 +88,25 @@ obs-mobile/
 ## 🧩 Responsabilidad por Capas
 
 1. **Capa de Presentación (`ui/`):**
-   - Construida 100% con **Jetpack Compose**.
-   - No contiene lógica de bajo nivel; delega todas las acciones en `RecordViewModel`.
+   - Construida 100% con **Jetpack Compose (Material Design 3)**.
+   - Completamente modularizada: `HomeScreen.kt` actúa como orquestador liviano delegando en `RecordTab`, `GalleryTab`, `RecordTopBar` y `RecordBottomBar`.
    - Implementa `testTag` en todos los componentes interactivos.
 
 2. **Capa de Negocio y Estado (`RecordViewModel.kt`):**
-   - Expone un único flujo reactivo inmutable `uiState: StateFlow<UiState>`.
-   - Controla el temporizador de cuenta atrás y la comunicación con el servicio de fondo.
+   - Expone un flujo reactivo inmutable `uiState: StateFlow<UiState>`.
+   - Coordina temporizadores de cuenta atrás y la comunicación con el servicio de grabación.
 
-3. **Capa de Captura de Sistema (`service/ScreenRecordService.kt`):**
-   - Ejecuta en un proceso con notificación `FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION`.
-   - Coordina `MediaProjection`, `VirtualDisplay` y `MediaRecorder`.
+3. **Capa de Servicio y Captura (`service/`):**
+   - **`ScreenRecordService`:** Foreground Service liviano con tipo `MEDIA_PROJECTION`.
+   - **`ScreenCaptureEngine`:** Encapsula de forma exclusiva `MediaProjection`, `VirtualDisplay` y `MediaRecorder`.
+   - **`RecordNotificationHelper`:** Construye notificaciones interactivas con botones de acción (Pausar/Reanudar/Detener).
+   - **`RecordStorageHelper`:** Gestiona el sistema de archivos y sincronización con `MediaStore`.
+   - **`ScreenshotHelper`:** Genera instantáneas en alta calidad (.png) y las indexa automáticamente en la galería de imágenes.
+   - **`ScreenDrawingOverlay`:** Monta un lienzo transparente acelerado por hardware en `WindowManager` para dibujar trazos, anotaciones o marcas con selección de colores y grosores durante grabaciones o gameplays.
+   - **`FloatingBubbleManager` & `BubbleOverlayView` & `BubbleTouchHandler`:** Widget flotante desacoplado con menú de herramientas expandible (*Captura*, *Pincel*), arrastre suave y cronómetro en vivo sobre cualquier juego o aplicación.
 
 4. **Capa Nativa C++ (`cpp/`):**
-   - Diseñada para procesar texturas gráficas en tiempo real vía OpenGL ES sin saturar el recolector de basura de la JVM.
+   - Diseñada para procesar texturas gráficas en tiempo real vía OpenGL ES 3.0 (máscaras de cámara y Chroma Key) y motor FFmpeg puro (libav*) para manipulación de video.
 
 5. **Capa Nativa Rust (`rust/`):**
    - Diseñada para empaquetado de red a alta velocidad, control de congestión y streaming sin riesgo de punteros nulos o *data races*.

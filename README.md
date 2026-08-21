@@ -1,6 +1,6 @@
 # OBS Mobile & Game Recorder
 
-> **OBS Mobile** es una plataforma de grabación de pantalla de alto rendimiento y transmisión en vivo para Android, diseñada para capturar partidas de videojuegos a 60 FPS con audio interno exclusivo, overlays visuales y cimientos nativos en **C++ (OpenGL ES 3.0)** y **Rust (RTMP/SRT)**.
+> **OBS Mobile** es una plataforma de grabación de pantalla de alto rendimiento y transmisión en vivo para Android, diseñada para capturar partidas de videojuegos a 60 FPS con audio interno exclusivo, overlays visuales, herramientas en vivo (captura de pantalla y pincel/anotaciones en tiempo real) y cimientos nativos en **C++ (OpenGL ES 3.0)** y **Rust (RTMP/SRT)**.
 
 ---
 
@@ -11,7 +11,11 @@
   - **Solo Audio del Juego (Interno):** Graba música y efectos del juego sin capturar tu voz ni ruidos del entorno.
   - **Micrófono:** Captura tu voz y comentarios en vivo para tutoriales y gameplays comentados.
   - **Mudo:** Graba únicamente el video para optimizar espacio de almacenamiento.
-- **⚡ Control en Segundo Plano & Burbuja Flotante:** Servicio persistente con notificación interactiva y widget flotante superpuesto en pantalla (`WindowManager`) con cronómetro en vivo, pausa, reanudación y parada directa sin salir del juego.
+- **⚡ Control en Segundo Plano & Burbuja Flotante con Herramientas:** 
+  - Servicio persistente con notificación interactiva y widget flotante superpuesto en pantalla (`WindowManager`) con cronómetro en vivo, pausa, reanudación y parada directa sin salir del juego.
+  - **🛠️ Menú de Herramientas en Vivo:**
+    - 📸 **Captura Rápida (Screenshot):** Captura instantáneas en alta calidad durante la grabación y las guarda en la galería de imágenes del dispositivo.
+    - ✏️ **Pincel / Lapicero en Pantalla:** Lienzo transparente acelerado por hardware para dibujar marcas, flechas y notas sobre cualquier juego en tiempo real con selector de colores, grosores, deshacer y limpiar trazos.
 - **🕹️ Lanzador de Juegos Rápido:** Detección de juegos y aplicaciones instaladas; permite iniciar la grabación y abrir el juego simultáneamente.
 - **🎬 Galería y Reproductor Integrado:** Gestión de archivos grabados (MP4 H.264 / AAC), reproducción instantánea, renombrado y compartir.
 - **⚙️ Motor Gráfico Nativo C++ (OpenGL ES 3.0 / EGL):**
@@ -33,6 +37,7 @@
 | **Frontend / UI** | Kotlin + Jetpack Compose (Material 3) | Interfaz moderna, reactiva y adaptativa para móviles |
 | **Arquitectura** | MVVM + Coroutines + StateFlow | Estado unidireccional y reactividad desacoplada |
 | **Captura de Pantalla** | Android `MediaProjection` + `MediaRecorder` | Captura acelerada por hardware de pantalla y audio |
+| **Herramientas en Vivo** | `WindowManager` + Hardware Canvas Overlay | Pincel táctil en pantalla y capturas de pantalla instantáneas |
 | **Motor Gráfico** | C++ (OpenGL ES 3.0 / EGL) | Composición de capas: pantalla, facecam, overlays |
 | **Motor de Edición** | FFmpeg Puro C/C++ (`libav*`) | Recorte de video, transcodificación, filtros y compresión |
 | **Motor de Red** | Rust (Cargo / JNI) | Protocolos de streaming de baja latencia (RTMP, SRT) |
@@ -71,4 +76,5 @@ gradle :app:verifyRoborazziDebug
 - **Contenedor:** MP4
 - **Códec de Video:** H.264 / AVC (Codificación por Hardware)
 - **Códec de Audio:** AAC (48 kHz, hasta 192 Kbps)
-- **Ubicación:** `Android/data/com.example/files/Movies/ScreenRecordings/` (accesible para compartir y reproducir).
+- **Ubicación de Videos:** `Movies/ScreenRecorder/` (accesible para compartir y reproducir).
+- **Ubicación de Capturas:** `Pictures/Screenshots/` (indexado en MediaStore).

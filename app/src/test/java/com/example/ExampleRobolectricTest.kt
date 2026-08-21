@@ -28,6 +28,30 @@ class ExampleRobolectricTest {
   }
 
   @Test
+  fun `record storage helper prepares output file`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val file = com.example.service.RecordStorageHelper.prepareOutputFile(context)
+    assertTrue(file.name.startsWith("OBS_REC_"))
+    assertTrue(file.name.endsWith(".mp4"))
+  }
+
+  @Test
+  fun `screenshot helper saves bitmap to gallery directory`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val bitmap = android.graphics.Bitmap.createBitmap(100, 100, android.graphics.Bitmap.Config.ARGB_8888)
+    var saved = false
+    com.example.service.ScreenshotHelper.saveBitmapToGallery(
+      context = context,
+      bitmap = bitmap,
+      onSuccess = { file ->
+        saved = file.exists() && file.name.startsWith("OBS_SHOT_")
+      },
+      onError = {}
+    )
+    assertTrue(saved)
+  }
+
+  @Test
   fun `ffmpeg pure bridge is available and returns version`() {
     val version = com.example.nativecore.NativeFFmpegBridge.getFFmpegVersion()
     assertTrue(version.isNotEmpty())

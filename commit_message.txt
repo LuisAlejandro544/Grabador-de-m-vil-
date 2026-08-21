@@ -1,12 +1,8 @@
-feat(native-core & ffmpeg): cimientos de FFmpeg puro nativo (libav*), compositor gráfico multicapa C++ y widget flotante
+refactor(modularization): desacoplar ScreenRecordService, HomeScreen y FloatingBubbleManager en módulos especializados
 
-- Añadir estructura base de FFmpeg puro nativo en C/C++ (`ffmpeg_engine.hpp` / `ffmpeg_engine.cpp`) sin dependencias descontinuadas (FFmpegKit).
-- Definir interfaces de procesamiento multimedia para recorte de video (stream copy / frame accurate), extracción de audio (AAC/MP3), marcas de agua y compresión.
-- Implementar puente JNI y adaptador en Kotlin (`NativeFFmpegBridge.kt`) con fallback seguro contra `UnsatisfiedLinkError`.
-- Integrar información y versión del motor FFmpeg puro en `SettingsView.kt`.
-- Implementar motor gráfico de composición multicapa en C++ (`obs_compositor.cpp` / `obs_compositor.hpp`) con shaders GLSL de vértice y fragmento (máscara circular Facecam y Chroma Key GPU).
-- Configurar inicialización de contexto EGL, buffers VBO/VAO y ordenamiento de profundidad de capas (*z-order*).
-- Implementar `FloatingBubbleManager` con `WindowManager` para widget flotante con cronómetro en vivo y controles interactivos sobre juegos.
-- Actualizar documentación arquitectónica (`README.md`, `ROADMAP.md`, `STRUCTURE.md` y `AI_CONTEXT.md`).
-
-
+- Desacoplar `ScreenRecordService` extrayendo `ScreenCaptureEngine` (gestión de MediaProjection, VirtualDisplay y MediaRecorder), `RecordNotificationHelper` (canales y notificaciones persistentes con acciones de pausa/reanudación) y `RecordStorageHelper` (rutas de guardado y escaneo en MediaStore).
+- Modularizar `FloatingBubbleManager` dividiendo la lógica de arrastre en `BubbleTouchHandler` y la jerarquía visual con cronómetro y pulso animado en `BubbleOverlayView`.
+- Refactorizar `HomeScreen` en componentes limpios e independientes: `RecordTopBar`, `RecordBottomBar`, `RecordTab` y `GalleryTab`.
+- Añadir submenú interactivo "Herramientas" en el widget flotante con soporte para Captura de Pantalla rápida (`ScreenshotHelper`) y Lienzo de dibujo/pincel en tiempo real (`ScreenDrawingOverlay`) con selector de colores, grosores y borrado rápido sobre grabaciones activas.
+- Añadir pruebas unitarias Robolectric para validar el comportamiento del asistente de almacenamiento, captura de instantáneas y widget flotante.
+- Actualizar `STRUCTURE.md`, `README.md`, `ROADMAP.md` y `AI_CONTEXT.md` reflejando las nuevas herramientas y arquitectura modular del proyecto.

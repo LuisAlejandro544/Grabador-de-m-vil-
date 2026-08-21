@@ -5,7 +5,7 @@ Este documento provee el contexto de dominio y las restricciones técnicas funda
 ---
 
 ## 🎯 Propósito del Proyecto
-Construir una suite de grabación de pantalla y streaming en vivo para Android equivalente a **OBS Studio**, optimizada específicamente para teléfonos móviles, sesiones de videojuegos a 60 FPS y consumo térmico eficiente.
+Construir una suite de grabación de pantalla y streaming en vivo para Android equivalente a **OBS Studio**, optimizada específicamente para teléfonos móviles, sesiones de videojuegos a 60 FPS, herramientas de anotación en tiempo real y consumo térmico eficiente.
 
 ---
 
@@ -14,7 +14,7 @@ Construir una suite de grabación de pantalla y streaming en vivo para Android e
 1. **Hardware Compartido (SoC) & Térmica:**
    - En Android, la CPU y la GPU comparten energía y disipación pasiva.
    - **PROHIBIDO:** Usar bucles intensivos de CPU para procesar píxeles en Kotlin o Python.
-   - **OBLIGATORIO:** Usar `MediaRecorder` o `MediaCodec` con buffers de hardware (`Surface`) y shaders en C++/OpenGL ES.
+   - **OBLIGATORIO:** Usar `MediaRecorder` o `MediaCodec` con buffers de hardware (`Surface`), overlays transparentes nativos en `WindowManager` y shaders en C++/OpenGL ES.
 
 2. **Prohibición de Propiedades Restringidas (`persist.sys.*`):**
    - Nunca utilizar comandos `setprop persist.sys.*` ni hacks de sistema no estándar. La aplicación debe operar mediante APIs públicas de Android estándar para compatibilidad en tiendas y tiendas de terceros como Uptodown.
@@ -24,7 +24,11 @@ Construir una suite de grabación de pantalla y streaming en vivo para Android e
    - **`AudioSourceType.MIC`:** Captura mediante micrófono con soporte de audio estéreo y supresión de eco si está disponible.
    - **`AudioSourceType.NONE`:** Modo silencioso sin pista de audio.
 
-4. **Integración Nativa Segura (C++ y Rust):**
+4. **Herramientas en Vivo (Overlay Draw & Screenshot):**
+   - **`ScreenDrawingOverlay`:** Dibuja directamente sobre una ventana transparente acelerada por GPU (`Canvas`/`Path`), siendo capturada de inmediato por el stream de `MediaProjection` sin requerir recodificación en C++.
+   - **`ScreenshotHelper`:** Extracción de fotogramas e instantáneas guardadas en `Pictures/Screenshots` con indexación en `MediaStore`.
+
+5. **Integración Nativa Segura (C++ y Rust):**
    - Toda llamada a librerías nativas debe estar envuelta con protección contra `UnsatisfiedLinkError` en sus respectivos puentes (`NativeOBSBridge.kt`, `NativeRustNetwork.kt`).
    - Esto asegura que el frontend en Compose funcione fluidamente incluso en entornos donde las bibliotecas nativas se compilan por separado.
 
@@ -69,4 +73,3 @@ data class RecordedVideo(
 - **Sin Wrappers Descontinuados:** Implementación directa sobre librerías C nativas de FFmpeg (`libavcodec`, `libavformat`, `libavfilter`, `libswscale`).
 - **Recorte Stream Copy:** Permite recortar videos de forma instantánea al no recodificar los fotogramas (`fast copy`).
 - **Seguridad en NDK:** Encapsulado en `ffmpeg_engine.hpp` / `ffmpeg_engine.cpp` y exportado vía JNI en `NativeFFmpegBridge.kt`.
-
