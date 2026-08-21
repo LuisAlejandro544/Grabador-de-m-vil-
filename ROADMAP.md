@@ -14,13 +14,15 @@ Este documento detalla las fases de evolución del proyecto para transformar la 
 ---
 
 ## 📍 Fase 2: Control de Audio, Perfiles y Widget Flotante con Herramientas (Completada ✅)
-- [x] Selector de fuente de audio:
+- [x] Selector, mezcla y procesamiento de audio pro:
+  - **Motor DSP en C++ Nativo:** Puerta de ruido (Noise Gate), Audio Ducking automático inteligente (-9 dB) y Soft Limiter / Saturation shaper anti-clipping.
+  - **Juego + Micrófono Conmutables (Dinámico):** Mezcla dual PCM en tiempo real con conmutador en vivo (`Voz ON` / `Solo Juego`) sin reiniciar la grabación.
   - **Solo Audio del Juego (Interno):** Captura exclusiva del sonido de aplicaciones sin voz externa.
-  - **Micrófono:** Captura de voz y ambiente.
+  - **Micrófono:** Captura de voz y ambiente con filtrado DSP en caliente.
   - **Mudo:** Video puro.
 - [x] Perfil "Modo Juego" con activación rápida de 60 FPS y 12 Mbps.
 - [x] Temporizador de cuenta atrás previo al inicio de grabación.
-- [x] **Widget Flotante Arrastrable (Burbuja en Pantalla):** Control en vivo con cronómetro, pausa, reanudación y parada sobre cualquier juego vía `WindowManager`.
+- [x] **Widget Flotante Arrastrable (Burbuja en Pantalla):** Control en vivo con cronómetro, conmutador de voz/juego, pausa, reanudación y parada sobre cualquier juego vía `WindowManager`.
 - [x] **Menú de Herramientas en Vivo:**
   - **Captura de Pantalla Instantánea:** Guardado directo en `Pictures/Screenshots` y registro en `MediaStore`.
   - **Pincel / Lapicero en Pantalla:** Modo de dibujo interactivo con selector de colores, grosores y borrado rápido sobre la grabación activa.

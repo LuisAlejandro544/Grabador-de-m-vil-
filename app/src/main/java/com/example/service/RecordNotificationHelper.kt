@@ -117,11 +117,29 @@ class RecordNotificationHelper(private val context: Context) {
             null
         }
 
+        // Acción Dinámica Silenciar / Activar Voz (Micrófono)
+        val toggleMicIntent = Intent(context, ScreenRecordService::class.java).apply {
+            action = ScreenRecordService.ACTION_TOGGLE_MIC
+        }
+        val toggleMicPendingIntent = PendingIntent.getService(
+            context,
+            4,
+            toggleMicIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val micActionTitle = if (isMicrophoneEnabled) "Silenciar Voz" else "Activar Voz"
+        val micActionIcon = if (isMicrophoneEnabled) android.R.drawable.ic_btn_speak_now else android.R.drawable.ic_lock_silent_mode
+        val toggleMicAction = NotificationCompat.Action.Builder(
+            micActionIcon,
+            micActionTitle,
+            toggleMicPendingIntent
+        ).build()
+
         val title = if (isPaused) "🔴 Grabación en Pausa ($timeFormatted)" else "🔴 Grabando Pantalla ($timeFormatted)"
         val contentText = if (isMicrophoneEnabled) {
-            "Audio: Juego + Micrófono | Toca para abrir OBS Mobile"
+            "Audio: Juego + Voz (Mic Activo) | Toca para abrir"
         } else {
-            "Audio: Solo Video | Toca para abrir OBS Mobile"
+            "Audio: Solo Audio del Juego (Voz Silenciada) | Toca para abrir"
         }
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -138,6 +156,7 @@ class RecordNotificationHelper(private val context: Context) {
         if (pauseResumeAction != null) {
             builder.addAction(pauseResumeAction)
         }
+        builder.addAction(toggleMicAction)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)

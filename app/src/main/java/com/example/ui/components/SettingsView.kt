@@ -319,6 +319,7 @@ fun SettingsView(
         ) {
             AudioSourceType.values().forEach { source ->
                 val description = when (source) {
+                    AudioSourceType.INTERNAL_AND_MIC -> "Graba el sonido del juego y tu voz simultáneamente. ¡Puedes silenciar o activar tu voz en tiempo real desde la burbuja flotante!"
                     AudioSourceType.INTERNAL_GAME -> "Graba exclusivamente los efectos y música del juego sin registrar tu voz ni ruidos del ambiente"
                     AudioSourceType.MIC -> "Captura tus comentarios, voz en vivo y audio exterior mediante el micrófono"
                     AudioSourceType.NONE -> "Graba únicamente el video sin ninguna pista de audio (ahorro de espacio)"
@@ -406,6 +407,26 @@ fun SettingsView(
                         )
                         Text(
                             text = com.example.nativecore.NativeRustNetwork.getEngineVersion(),
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Audio DSP Pro C++ (Noise Gate & Ducking):",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (com.example.nativecore.NativeAudioDSPBridge.isNativeReady()) "C++ DSP Activo (48 kHz Estéreo / Soft Limiter)" else "C++ DSP Preparado (Mezcla PCM Activa)",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.primary
                         )

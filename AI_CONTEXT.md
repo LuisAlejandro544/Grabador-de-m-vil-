@@ -19,17 +19,18 @@ Construir una suite de grabación de pantalla y streaming en vivo para Android e
 2. **Prohibición de Propiedades Restringidas (`persist.sys.*`):**
    - Nunca utilizar comandos `setprop persist.sys.*` ni hacks de sistema no estándar. La aplicación debe operar mediante APIs públicas de Android estándar para compatibilidad en tiendas y tiendas de terceros como Uptodown.
 
-3. **Arquitectura de Audio:**
+3. **Arquitectura de Audio y Mezcla Dinámica con DSP C++:**
+   - **`AudioSourceType.INTERNAL_AND_MIC`:** Modo por defecto con mezcla dual PCM procesada mediante motor C++ DSP (`obs::dsp::AudioDspEngine`). Captura `AudioPlaybackCapture` (juego) y `AudioRecord` (micrófono), aplicando **Noise Gate** para silenciar ruidos de ambiente, **Audio Ducking** (-9 dB en el juego cuando hablas) y **Soft Limiter** sin distorsión digital, permitiendo conmutar la voz en vivo (`Voz ON` / `Solo Juego`) sin reiniciar codificadores.
    - **`AudioSourceType.INTERNAL_GAME`:** Captura exclusiva del sonido generado por las aplicaciones y juegos.
-   - **`AudioSourceType.MIC`:** Captura mediante micrófono con soporte de audio estéreo y supresión de eco si está disponible.
+   - **`AudioSourceType.MIC`:** Captura mediante micrófono con filtrado de ruido en C++ DSP.
    - **`AudioSourceType.NONE`:** Modo silencioso sin pista de audio.
 
 4. **Herramientas en Vivo (Overlay Draw & Screenshot):**
    - **`ScreenDrawingOverlay`:** Dibuja directamente sobre una ventana transparente acelerada por GPU (`Canvas`/`Path`), siendo capturada de inmediato por el stream de `MediaProjection` sin requerir recodificación en C++.
    - **`ScreenshotHelper`:** Extracción de fotogramas e instantáneas guardadas en `Pictures/Screenshots` con indexación en `MediaStore`.
 
-5. **Integración Nativa Segura (C++ y Rust):**
-   - Toda llamada a librerías nativas debe estar envuelta con protección contra `UnsatisfiedLinkError` en sus respectivos puentes (`NativeOBSBridge.kt`, `NativeRustNetwork.kt`).
+5. **Integración Nativa Segura (C++, DSP y Rust):**
+   - Toda llamada a librerías nativas debe estar envuelta con protección contra `UnsatisfiedLinkError` en sus respectivos puentes (`NativeOBSBridge.kt`, `NativeAudioDSPBridge.kt`, `NativeFFmpegBridge.kt`, `NativeRustNetwork.kt`).
    - Esto asegura que el frontend en Compose funcione fluidamente incluso en entornos donde las bibliotecas nativas se compilan por separado.
 
 ---
@@ -41,7 +42,7 @@ data class RecordingConfig(
     val resolution: VideoResolution = VideoResolution.RES_1080P,
     val fps: VideoFps = VideoFps.FPS_60,
     val bitrate: VideoBitrate = VideoBitrate.BITRATE_8M,
-    val audioSource: AudioSourceType = AudioSourceType.INTERNAL_GAME,
+    val audioSource: AudioSourceType = AudioSourceType.INTERNAL_AND_MIC,
     val countdownSeconds: Int = 3,
     val isGameMode: Boolean = true,
     val showFloatingBubble: Boolean = true

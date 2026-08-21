@@ -3,9 +3,11 @@
 #include <memory>
 #include "obs_compositor.hpp"
 #include "ffmpeg_engine.hpp"
+#include "audio_dsp_engine.hpp"
 
 static std::unique_ptr<obs::SceneCompositor> gCompositor = nullptr;
 static std::unique_ptr<obs::ffmpeg::FFmpegEngine> gFFmpegEngine = nullptr;
+static std::unique_ptr<obs::dsp::AudioDspEngine> gAudioDspEngine = nullptr;
 
 extern "C" {
 
@@ -244,6 +246,121 @@ Java_com_example_nativecore_NativeFFmpegBridge_nativeExtractAudio(
     if (outP) env->ReleaseStringUTFChars(outputPath, outP);
 
     return static_cast<jboolean>(gFFmpegEngine->extractAudio(inStr, outStr, static_cast<obs::ffmpeg::CodecType>(codecType), nullptr));
+}
+
+// -----------------------------------------------------------------------------
+// Native Audio DSP Engine JNI Exports (Noise Gate, Ducking, Soft Limiter)
+// -----------------------------------------------------------------------------
+
+JNIEXPORT jboolean JNICALL
+Java_com_example_nativecore_NativeAudioDSPBridge_nativeInitAudioDsp(
+    JNIEnv* /* env */,
+    jobject /* this */,
+    jint sampleRate,
+    jint channels
+) {
+    if (!gAudioDspEngine) {
+        gAudioDspEngine = std::make_unique<obs::dsp::AudioDspEngine>();
+    }
+    gAudioDspEngine->initialize(sampleRate, channels);
+    return JNI_TRUE;
+}
+
+JNIEXPORT void JNICALL
+Java_com_example_nativecore_NativeAudioDSPBridge_nativeConfigureAudioDsp(
+    JNIEnv* /* env */,
+    jobject /* this */,
+    jfloat noiseGateThresholdDb,
+    jfloat duckingAttenuation,
+    jfloat micGain,
+    jfloat gameGain,
+    jboolean noiseGateEnabled,
+    jboolean duckingEnabled,
+    jboolean peakLimiterEnabled
+) {
+    if (!gAudioDspEngine) {
+        gAudioDspEngine = std::make_unique<obs::dsp::AudioDspEngine>();
+    }
+    obs::dsp::AudioDspConfig config = gAudioDspEngine->getConfig();
+    config.noiseGateThresholdDb = noiseGateThresholdDb;
+    config.duckingAttenuation = duckingAttenuation;
+    config.micGain = micGain;
+    config.gameGain = gameGain;
+    config.noiseGateEnabled = noiseGateEnabled;
+    config.duckingEnabled = duckingEnabled;
+    config.peakLimiterEnabled = peakLimiterEnabled;
+    gAudioDspEngine->setConfig(config);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_example_nativecore_NativeAudioDSPBridge_nativeProcessAndMixAudio(
+    JNIEnv* env,
+    jobject /* this */,
+    jbyteArray internalAudio,
+    jbyteArray micAudio,
+    jbyteArray outputMix,
+    jint byteCount,
+    jboolean isMicMuted
+) {
+    if (!gAudioDspEngine || byteCount <= 0 || !outputMix) {
+        return 0;
+    }
+
+    jbyte* pInternal = nullptr;
+    if (internalAudio) {
+        pInternal = env->GetByteArrayElements(internalAudio, nullptr);
+    }
+
+    jbyte* pMic = nullptr;
+    if (micAudio) {
+        pMic = env->GetByteArrayElements(micAudio, nullptr);
+    }
+
+    jbyte* pOut = env->GetByteArrayElements(outputMix, nullptr);
+
+    int sampleCount = byteCount / sizeof(int16_t);
+    int writtenBytes = gAudioDspEngine->processAndMix(
+        reinterpret_cast<const int16_t*>(pInternal),
+        reinterpret_cast<const int16_t*>(pMic),
+        reinterpret_cast<int16_t*>(pOut),
+        sampleCount,
+        isMicMuted
+    );
+
+    if (pInternal) {
+        env->ReleaseByteArrayElements(internalAudio, pInternal, JNI_ABORT);
+    }
+    if (pMic) {
+        env->ReleaseByteArrayElements(micAudio, pMic, JNI_ABORT);
+    }
+    if (pOut) {
+        env->ReleaseByteArrayElements(outputMix, pOut, 0);
+    }
+
+    return writtenBytes;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_example_nativecore_NativeAudioDSPBridge_nativeIsVoiceDetected(JNIEnv* /* env */, jobject /* this */) {
+    if (!gAudioDspEngine) return JNI_FALSE;
+    return static_cast<jboolean>(gAudioDspEngine->isVoiceDetected());
+}
+
+JNIEXPORT jfloat JNICALL
+Java_com_example_nativecore_NativeAudioDSPBridge_nativeGetVoiceEnvelope(JNIEnv* /* env */, jobject /* this */) {
+    if (!gAudioDspEngine) return 0.0f;
+    return gAudioDspEngine->getVoiceActivityLevel();
+}
+
+JNIEXPORT jfloat JNICALL
+Java_com_example_nativecore_NativeAudioDSPBridge_nativeGetDuckingGain(JNIEnv* /* env */, jobject /* this */) {
+    if (!gAudioDspEngine) return 1.0f;
+    return gAudioDspEngine->getDuckingLevel();
+}
+
+JNIEXPORT void JNICALL
+Java_com_example_nativecore_NativeAudioDSPBridge_nativeReleaseAudioDsp(JNIEnv* /* env */, jobject /* this */) {
+    gAudioDspEngine.reset();
 }
 
 } // extern "C"

@@ -26,8 +26,9 @@ enum class VideoBitrate(val label: String, val bps: Int) {
 }
 
 enum class AudioSourceType(val label: String) {
+    INTERNAL_AND_MIC("Juego + Micrófono (Voz Dinámica)"),
     INTERNAL_GAME("Solo Audio del Juego (Interno)"),
-    MIC("Micrófono (Voz y Ambiente)"),
+    MIC("Solo Micrófono (Voz y Ambiente)"),
     NONE("Sin Audio (Mudo)")
 }
 
@@ -35,7 +36,7 @@ data class RecordingConfig(
     val resolution: VideoResolution = VideoResolution.RES_1080P,
     val fps: VideoFps = VideoFps.FPS_60,
     val bitrate: VideoBitrate = VideoBitrate.BITRATE_8M,
-    val audioSource: AudioSourceType = AudioSourceType.MIC,
+    val audioSource: AudioSourceType = AudioSourceType.INTERNAL_AND_MIC,
     val countdownSeconds: Int = 3,
     val isGameMode: Boolean = true,
     val showFloatingBubble: Boolean = true

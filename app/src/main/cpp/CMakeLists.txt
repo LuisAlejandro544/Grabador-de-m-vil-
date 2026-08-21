@@ -9,6 +9,7 @@ add_library(
     obs_core.cpp
     obs_compositor.cpp
     ffmpeg_engine.cpp
+    audio_dsp_engine.cpp
 )
 
 # Search for system libraries in Android NDK

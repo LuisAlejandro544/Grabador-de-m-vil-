@@ -7,12 +7,14 @@
 ## 🚀 Características Principales
 
 - **🎮 Modo Optimizado para Juegos:** Configuración instantánea a 1080p Full HD, 60 FPS y 12 Mbps con un solo toque.
-- **🔊 Captura de Audio Versátil:**
+- **🔊 Captura, Mezcla y Procesamiento de Audio Pro en C++ (DSP):**
+  - **🎛️ Motor Nativo de Audio DSP (C++):** Procesamiento de señales a 48 kHz estéreo con **Noise Gate** (puerta de ruido para atenuar respiración y ventiladores), **Audio Ducking Automático** (atenúa el juego -9 dB cuando hablas para dar prioridad a tu voz) y **Soft Limiter / Saturation Shaper** para prevenir distorsión y saturación digital al mezclar.
+  - **🎙️ Conmutador Dinámico de Voz en Vivo (Exclusivo):** Graba el audio del juego y conmuta con un toque desde la burbuja flotante o la notificación si deseas grabar tu voz (`Voz ON`) o dejar únicamente el sonido limpio del juego (`Solo Juego`), mezclando audio PCM en tiempo real sin cortar el video ni reiniciar codificadores.
   - **Solo Audio del Juego (Interno):** Graba música y efectos del juego sin capturar tu voz ni ruidos del entorno.
-  - **Micrófono:** Captura tu voz y comentarios en vivo para tutoriales y gameplays comentados.
+  - **Micrófono:** Captura tu voz y comentarios en vivo para tutoriales y gameplays comentados con reducción de ruido en caliente.
   - **Mudo:** Graba únicamente el video para optimizar espacio de almacenamiento.
 - **⚡ Control en Segundo Plano & Burbuja Flotante con Herramientas:** 
-  - Servicio persistente con notificación interactiva y widget flotante superpuesto en pantalla (`WindowManager`) con cronómetro en vivo, pausa, reanudación y parada directa sin salir del juego.
+  - Servicio persistente con notificación interactiva y widget flotante superpuesto en pantalla (`WindowManager`) con cronómetro en vivo, botón de conmutación rápida de voz/juego, pausa, reanudación y parada directa sin salir del juego.
   - **🛠️ Menú de Herramientas en Vivo:**
     - 📸 **Captura Rápida (Screenshot):** Captura instantáneas en alta calidad durante la grabación y las guarda en la galería de imágenes del dispositivo.
     - ✏️ **Pincel / Lapicero en Pantalla:** Lienzo transparente acelerado por hardware para dibujar marcas, flechas y notas sobre cualquier juego en tiempo real con selector de colores, grosores, deshacer y limpiar trazos.
@@ -39,6 +41,7 @@
 | **Captura de Pantalla** | Android `MediaProjection` + `MediaRecorder` | Captura acelerada por hardware de pantalla y audio |
 | **Herramientas en Vivo** | `WindowManager` + Hardware Canvas Overlay | Pincel táctil en pantalla y capturas de pantalla instantáneas |
 | **Motor Gráfico** | C++ (OpenGL ES 3.0 / EGL) | Composición de capas: pantalla, facecam, overlays |
+| **Audio DSP Pro** | C++ Nativo (NDK DSP / Oboe) | Puerta de ruido (Noise Gate), Audio Ducking y Soft Limiter |
 | **Motor de Edición** | FFmpeg Puro C/C++ (`libav*`) | Recorte de video, transcodificación, filtros y compresión |
 | **Motor de Red** | Rust (Cargo / JNI) | Protocolos de streaming de baja latencia (RTMP, SRT) |
 | **Testing** | Robolectric + Roborazzi | Pruebas unitarias en JVM y pruebas de regresión visual |

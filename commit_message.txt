@@ -1,9 +1,13 @@
-fix(service): corregir cierres en Android 14, sincronización de burbuja y escaneo real de juegos y apps instaladas
+feat(audio): procesamiento de audio pro en vivo en C++ (DSP) con noise gate, ducking inteligente y selector dinamico
 
-- Declarar permiso `FOREGROUND_SERVICE_MICROPHONE` y configurar el servicio como `mediaProjection|microphone` en el AndroidManifest.
-- Añadir flags combinados de Foreground Service (`FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or FOREGROUND_SERVICE_TYPE_MICROPHONE`) en `ScreenRecordService` para cumplir con las políticas de privacidad y acceso al micrófono en segundo plano de Android 14 (API 34+).
-- Iniciar el `ScreenRecordService` de forma sincrónica e inmediata al conceder los permisos para evitar la excepción `ForegroundServiceStartNotAllowedException` al abrir juegos o cambiar de aplicación.
-- Proteger la captura de pantalla durante grabaciones activas en `ScreenCaptureEngine` y `ScreenRecordService`, evitando crear un segundo `VirtualDisplay` sobre el mismo token de `MediaProjection` (restringido en Android 14).
-- Conectar el callback de detención del sistema (`MediaProjection.Callback.onStop`) con `handleStopAction` y `cleanupAndStop` en `ScreenRecordService`, asegurando que la burbuja flotante y las notificaciones se cierren y liberen de inmediato en lugar de quedarse congeladas en rojo.
-- Añadir permiso `QUERY_ALL_PACKAGES` y bloque `<queries>` en `AndroidManifest.xml` para sortear las restricciones de Package Visibility en Android 11 a 14.
-- Optimizar `InstalledGamesHelper` integrando `queryIntentActivities` y `getInstalledApplications` en paralelo con `Dispatchers.IO`, garantizando la detección del 100% de apps y juegos instalados localmente y desde APKs de terceros (Uptodown, TapTap, etc.).
+- Integrar motor nativo de procesamiento digital de señales (DSP) en C++ (`audio_dsp_engine.hpp`, `audio_dsp_engine.cpp`) en la librería `obs_core` con soporte multihilo de alta eficiencia a 48 kHz estéreo.
+- Implementar Puerta de Ruido (Noise Gate) en C++ con filtro envelope follower (Attack 5ms, Release 70ms) para atenuar de forma limpia respiraciones, ruidos de ambiente y ventiladores cuando el usuario no habla.
+- Desarrollar Ducking Inteligente de Audio en C++: atenúa suavemente el volumen del juego (-9 dB / 35%) al detectar voz en el micrófono y recupera el 100% de forma musical cuando el usuario guarda silencio.
+- Añadir Soft Limiter / Saturation Shaper con curva polinomial no lineal en C++ para evitar clipping y distorsión digital al mezclar los canales del juego y del micrófono.
+- Conectar puente JNI de alto rendimiento `NativeAudioDSPBridge` en Kotlin directamente con el pipeline de mezcla en caliente de `ScreenCaptureEngine`.
+- Implementar pipeline de mezcla dual de audio PCM (16-bit estéreo a 48 kHz) en `ScreenCaptureEngine` combinando `AudioPlaybackCapture` (audio interno del juego) y `AudioRecord` (micrófono del usuario).
+- Añadir conmutador dinámico de micrófono en tiempo real (`setMicrophoneMuted` / `toggleMicrophoneMuted`) mediante `AtomicBoolean`, permitiendo al usuario activar o silenciar su voz en vivo durante la grabación sin reiniciar `MediaCodec` ni cortar el archivo de video.
+- Integrar botón interactivo de micrófono (`Voz ON` / `Solo Juego`) en la barra principal de `BubbleOverlayView` y `FloatingBubbleManager` con feedback visual, colores diferenciados y respuesta táctil.
+- Añadir acción rápida de conmutación de voz en la notificación en primer plano (`RecordNotificationHelper`) mediante el intent `ACTION_TOGGLE_MIC` en `ScreenRecordService`.
+- Incorporar nueva opción `INTERNAL_AND_MIC` ("Juego + Micrófono conmutables") en `AudioSourceType`, `RecordingConfig`, `RecordControlCard` y `SettingsView`.
+- Añadir pruebas unitarias en `ExampleRobolectricTest` para validar la configuración de audio y valores por defecto del conmutador dinámico y del puente C++ DSP.

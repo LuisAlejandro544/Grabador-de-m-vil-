@@ -17,13 +17,15 @@ obs-mobile/
 │   └── src/
 │       ├── main/
 │       │   ├── AndroidManifest.xml          # Permisos, servicios en primer plano y componentes
-│       │   ├── cpp/                         # Motor C++ nativo (Composición Gráfica OpenGL ES 3.0 & FFmpeg Puro)
+│       │   ├── cpp/                         # Motor C++ nativo (Composición Gráfica OpenGL ES 3.0, DSP Audio & FFmpeg Puro)
 │       │   │   ├── CMakeLists.txt           # Configuración de CMake para NDK (GLESv3, EGL, Log, Android)
 │       │   │   ├── obs_compositor.hpp       # Definición de capas, máscara Facecam, Chroma Key y EGL
 │       │   │   ├── obs_compositor.cpp       # Implementación de shaders GLSL, pipeline EGL y renderizado
+│       │   │   ├── audio_dsp_engine.hpp     # Interfaz del procesador digital de señales de audio (Noise Gate, Ducking, Limiter)
+│       │   │   ├── audio_dsp_engine.cpp     # Implementación del motor DSP en tiempo real (48 kHz Estéreo)
 │       │   │   ├── ffmpeg_engine.hpp        # Interfaz de procesamiento FFmpeg puro (libav*)
 │       │   │   ├── ffmpeg_engine.cpp        # Implementación de pipeline de recorte, audio y transcodificación
-│       │   │   └── obs_core.cpp             # JNI export bridge completo para Kotlin (OBS & FFmpeg)
+│       │   │   └── obs_core.cpp             # JNI export bridge completo para Kotlin (OBS, DSP & FFmpeg)
 │       │   ├── rust/                        # Motor Rust nativo (Streaming & Red)
 │       │   │   ├── Cargo.toml               # Configuración Cargo (cdylib, JNI, logging)
 │       │   │   └── src/
@@ -35,20 +37,21 @@ obs-mobile/
 │       │   │   │   └── RecordedVideo.kt     # Entidad de video grabado con helpers de formato
 │       │   │   ├── nativecore/
 │       │   │   │   ├── NativeOBSBridge.kt   # Puente JNI seguro hacia C++ (GLES3 / EGL / Transformaciones)
+│       │   │   │   ├── NativeAudioDSPBridge.kt # Puente JNI seguro hacia C++ Audio DSP (Noise Gate, Ducking, Limiter)
 │       │   │   │   ├── NativeFFmpegBridge.kt# Puente JNI seguro hacia FFmpeg Puro (libav* NDK)
 │       │   │   │   └── NativeRustNetwork.kt # Puente JNI seguro hacia Rust (RTMP/SRT)
 │       │   │   ├── data/
 │       │   │   │   ├── InstalledGamesHelper.kt # Detector de juegos instalados en el dispositivo
 │       │   │   │   └── RecordingsRepository.kt # Acceso a videos grabados en MediaStore
 │       │   │   ├── service/
-│       │   │   │   ├── ScreenRecordService.kt     # Coordinador ligero de Foreground Service
-│       │   │   │   ├── ScreenCaptureEngine.kt     # Motor modular de captura (MediaProjection, VirtualDisplay y MediaRecorder)
-│       │   │   │   ├── RecordNotificationHelper.kt# Gestión modular de canales y notificaciones persistentes con acciones
+│       │   │   │   ├── ScreenRecordService.kt     # Coordinador ligero de Foreground Service y conmutación de audio
+│       │   │   │   ├── ScreenCaptureEngine.kt     # Motor modular de captura (MediaProjection, MediaRecorder y mezclador PCM dual de audio)
+│       │   │   │   ├── RecordNotificationHelper.kt# Gestión modular de notificaciones persistentes con acciones (Pausa, Stop, Toggle Voz)
 │       │   │   │   ├── RecordStorageHelper.kt     # Rutas seguras de archivos MP4 e indexación en MediaStore
 │       │   │   │   ├── ScreenshotHelper.kt        # Captura instantánea de pantalla y extracción de fotogramas
 │       │   │   │   ├── ScreenDrawingOverlay.kt    # Lienzo interactivo y pincel de dibujo en tiempo real sobre la pantalla
 │       │   │   │   ├── FloatingBubbleManager.kt   # Coordinador del ciclo de vida del widget flotante y herramientas
-│       │   │   │   ├── BubbleOverlayView.kt       # Jerarquía visual del widget, cronómetro en vivo, pulsos y menú de herramientas
+│       │   │   │   ├── BubbleOverlayView.kt       # Jerarquía visual del widget, selector dinámico de voz en vivo, cronómetro y menú
 │       │   │   │   └── BubbleTouchHandler.kt      # Detección y cálculo de arrastre táctil y toques
 │       │   │   └── ui/
 │       │   │       ├── RecordViewModel.kt         # Gestión de estado (StateFlow) y lógica UI
@@ -97,16 +100,18 @@ obs-mobile/
    - Coordina temporizadores de cuenta atrás y la comunicación con el servicio de grabación.
 
 3. **Capa de Servicio y Captura (`service/`):**
-   - **`ScreenRecordService`:** Foreground Service liviano con tipo `MEDIA_PROJECTION`.
-   - **`ScreenCaptureEngine`:** Encapsula de forma exclusiva `MediaProjection`, `VirtualDisplay` y `MediaRecorder`.
-   - **`RecordNotificationHelper`:** Construye notificaciones interactivas con botones de acción (Pausar/Reanudar/Detener).
+   - **`ScreenRecordService`:** Foreground Service liviano con tipo `MEDIA_PROJECTION` y `MICROPHONE`.
+   - **`ScreenCaptureEngine`:** Encapsula `MediaProjection`, `VirtualDisplay`, codificadores de hardware `MediaCodec` y enlace directo con el procesador nativo de audio C++ DSP (`AudioDspEngine`) para mezcla en caliente a 48 kHz.
+   - **`RecordNotificationHelper`:** Construye notificaciones interactivas con botones de acción (Pausar/Reanudar/Detener/Conmutar Voz).
    - **`RecordStorageHelper`:** Gestiona el sistema de archivos y sincronización con `MediaStore`.
    - **`ScreenshotHelper`:** Genera instantáneas en alta calidad (.png) y las indexa automáticamente en la galería de imágenes.
    - **`ScreenDrawingOverlay`:** Monta un lienzo transparente acelerado por hardware en `WindowManager` para dibujar trazos, anotaciones o marcas con selección de colores y grosores durante grabaciones o gameplays.
-   - **`FloatingBubbleManager` & `BubbleOverlayView` & `BubbleTouchHandler`:** Widget flotante desacoplado con menú de herramientas expandible (*Captura*, *Pincel*), arrastre suave y cronómetro en vivo sobre cualquier juego o aplicación.
+   - **`FloatingBubbleManager` & `BubbleOverlayView` & `BubbleTouchHandler`:** Widget flotante desacoplado con selector de voz en vivo (`Voz ON` / `Solo Juego`), menú de herramientas expandible (*Captura*, *Pincel*), arrastre suave y cronómetro en vivo sobre cualquier juego o aplicación.
 
 4. **Capa Nativa C++ (`cpp/`):**
-   - Diseñada para procesar texturas gráficas en tiempo real vía OpenGL ES 3.0 (máscaras de cámara y Chroma Key) y motor FFmpeg puro (libav*) para manipulación de video.
+   - **`obs_compositor`:** Diseñada para procesar texturas gráficas en tiempo real vía OpenGL ES 3.0 (máscaras de cámara y Chroma Key).
+   - **`audio_dsp_engine`:** Procesamiento digital de señales en vivo (Noise Gate / Puerta de ruido, Ducking inteligente del juego al hablar y Soft Limiter / Saturation Shaper contra distorsión digital).
+   - **`ffmpeg_engine`:** Motor FFmpeg puro (libav*) para recorte instantáneo, extracción de pistas y transcodificación de video.
 
 5. **Capa Nativa Rust (`rust/`):**
    - Diseñada para empaquetado de red a alta velocidad, control de congestión y streaming sin riesgo de punteros nulos o *data races*.

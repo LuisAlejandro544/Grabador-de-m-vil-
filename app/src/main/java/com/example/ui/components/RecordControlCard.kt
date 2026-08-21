@@ -359,6 +359,7 @@ fun RecordControlCard(
                 Text("•", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val (icon, label) = when (config.audioSource) {
+                        AudioSourceType.INTERNAL_AND_MIC -> Pair(Icons.Default.Mic, "Juego + Voz")
                         AudioSourceType.INTERNAL_GAME -> Pair(Icons.Default.SportsEsports, "Audio Juego")
                         AudioSourceType.MIC -> Pair(Icons.Default.Mic, "Micrófono")
                         AudioSourceType.NONE -> Pair(Icons.Default.MicOff, "Mudo")

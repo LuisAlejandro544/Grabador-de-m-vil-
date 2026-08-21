@@ -21,6 +21,7 @@ class FloatingBubbleManager(
     private val onPauseClicked: () -> Unit,
     private val onResumeClicked: () -> Unit,
     private val onStopClicked: () -> Unit,
+    private val onMicToggleClicked: (() -> Unit)? = null,
     private val onScreenshotRequested: (() -> Unit)? = null
 ) {
 
@@ -82,6 +83,9 @@ class FloatingBubbleManager(
                 onPauseClicked = onPauseClicked,
                 onResumeClicked = onResumeClicked,
                 onStopClicked = onStopClicked,
+                onMicToggleClicked = {
+                    onMicToggleClicked?.invoke()
+                },
                 onScreenshotClicked = {
                     onScreenshotRequested?.invoke()
                 },
@@ -137,6 +141,14 @@ class FloatingBubbleManager(
     fun updateStatus(paused: Boolean) {
         if (!isShowingInternal) return
         bubbleOverlayView?.updateStatus(paused)
+    }
+
+    /**
+     * Actualiza el estado visual del micrófono (Voz ON vs Solo Juego).
+     */
+    fun updateMicStatus(muted: Boolean) {
+        if (!isShowingInternal) return
+        bubbleOverlayView?.updateMicStatus(muted)
     }
 
     /**

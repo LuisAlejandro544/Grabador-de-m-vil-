@@ -52,10 +52,44 @@ class ExampleRobolectricTest {
   }
 
   @Test
+  fun `audio source defaults to internal and mic for dynamic switching`() {
+    val config = RecordingConfig()
+    assertEquals(com.example.model.AudioSourceType.INTERNAL_AND_MIC, config.audioSource)
+  }
+
+  @Test
   fun `ffmpeg pure bridge is available and returns version`() {
     val version = com.example.nativecore.NativeFFmpegBridge.getFFmpegVersion()
     assertTrue(version.isNotEmpty())
     assertTrue(com.example.nativecore.NativeFFmpegBridge.initFFmpeg())
+  }
+
+  @Test
+  fun `audio dsp bridge initializes and handles mixing fallback gracefully`() {
+    val sampleRate = 48000
+    val channels = 2
+    com.example.nativecore.NativeAudioDSPBridge.initAudioDsp(sampleRate, channels)
+    com.example.nativecore.NativeAudioDSPBridge.configureAudioDsp(
+      noiseGateThresholdDb = -40f,
+      duckingAttenuation = 0.35f,
+      micGain = 1.25f,
+      gameGain = 1.0f,
+      noiseGateEnabled = true,
+      duckingEnabled = true,
+      peakLimiterEnabled = true
+    )
+    val inputInternal = ByteArray(512)
+    val inputMic = ByteArray(512)
+    val outputMix = ByteArray(512)
+    val processed = com.example.nativecore.NativeAudioDSPBridge.processAndMixAudio(
+      internalAudio = inputInternal,
+      micAudio = inputMic,
+      outputMix = outputMix,
+      byteCount = 512,
+      isMicMuted = false
+    )
+    assertTrue(processed >= 0)
+    com.example.nativecore.NativeAudioDSPBridge.releaseAudioDsp()
   }
 }
 

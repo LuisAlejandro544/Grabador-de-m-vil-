@@ -36,6 +36,7 @@ class ScreenRecordService : Service() {
         const val ACTION_PAUSE = "com.example.service.PAUSE"
         const val ACTION_RESUME = "com.example.service.RESUME"
         const val ACTION_SCREENSHOT = "com.example.service.SCREENSHOT"
+        const val ACTION_TOGGLE_MIC = "com.example.service.TOGGLE_MIC"
 
         const val EXTRA_RESULT_CODE = "extra_result_code"
         const val EXTRA_RESULT_DATA = "extra_result_data"
@@ -51,6 +52,9 @@ class ScreenRecordService : Service() {
 
         private val _elapsedSeconds = MutableStateFlow(0)
         val elapsedSeconds = _elapsedSeconds.asStateFlow()
+
+        private val _isMicMuted = MutableStateFlow(false)
+        val isMicMuted = _isMicMuted.asStateFlow()
 
         private val _lastSavedFilePath = MutableStateFlow<String?>(null)
         val lastSavedFilePath = _lastSavedFilePath.asStateFlow()
@@ -91,6 +95,7 @@ class ScreenRecordService : Service() {
             ACTION_PAUSE -> handlePauseAction()
             ACTION_RESUME -> handleResumeAction()
             ACTION_SCREENSHOT -> handleScreenshotAction()
+            ACTION_TOGGLE_MIC -> handleToggleMicAction()
         }
         return START_NOT_STICKY
     }
@@ -185,8 +190,9 @@ class ScreenRecordService : Service() {
             _recordingState.value = RecordingStatus.RECORDING
             _elapsedSeconds.value = 0
             _errorMessage.value = null
+            _isMicMuted.value = captureEngine.isMicrophoneMuted
 
-            // 4. Activar burbuja flotante opcional con submenú de herramientas
+            // 4. Activar burbuja flotante opcional con submenú de herramientas y botón de voz
             if (showFloatingBubble) {
                 floatingBubbleManager?.dismiss()
                 floatingBubbleManager = FloatingBubbleManager(
@@ -194,8 +200,12 @@ class ScreenRecordService : Service() {
                     onPauseClicked = { handlePauseAction() },
                     onResumeClicked = { handleResumeAction() },
                     onStopClicked = { handleStopAction() },
+                    onMicToggleClicked = { handleToggleMicAction() },
                     onScreenshotRequested = { handleScreenshotAction() }
-                ).apply { show() }
+                ).apply {
+                    show()
+                    updateMicStatus(captureEngine.isMicrophoneMuted)
+                }
             }
 
             startChronometerTimer()
@@ -204,11 +214,27 @@ class ScreenRecordService : Service() {
         }
     }
 
+    private fun handleToggleMicAction() {
+        val newMuted = captureEngine.toggleMicrophoneMuted()
+        _isMicMuted.value = newMuted
+        floatingBubbleManager?.updateMicStatus(newMuted)
+        notificationHelper.updateNotification(
+            _elapsedSeconds.value.toLong(),
+            isPaused = captureEngine.isPaused,
+            isMicrophoneEnabled = !newMuted
+        )
+        Log.i(TAG, "Conmutador de micrófono ejecutado: ${if (newMuted) "Silenciado (Solo Juego)" else "Activo (Juego + Voz)"}")
+    }
+
     private fun handlePauseAction() {
         if (captureEngine.pauseCapture()) {
             _recordingState.value = RecordingStatus.PAUSED
             floatingBubbleManager?.updateStatus(true)
-            notificationHelper.updateNotification(_elapsedSeconds.value.toLong(), isPaused = true, isMicrophoneEnabled = currentAudioEnabled)
+            notificationHelper.updateNotification(
+                _elapsedSeconds.value.toLong(),
+                isPaused = true,
+                isMicrophoneEnabled = !captureEngine.isMicrophoneMuted
+            )
         }
     }
 
@@ -216,7 +242,11 @@ class ScreenRecordService : Service() {
         if (captureEngine.resumeCapture()) {
             _recordingState.value = RecordingStatus.RECORDING
             floatingBubbleManager?.updateStatus(false)
-            notificationHelper.updateNotification(_elapsedSeconds.value.toLong(), isPaused = false, isMicrophoneEnabled = currentAudioEnabled)
+            notificationHelper.updateNotification(
+                _elapsedSeconds.value.toLong(),
+                isPaused = false,
+                isMicrophoneEnabled = !captureEngine.isMicrophoneMuted
+            )
         }
     }
 
@@ -289,7 +319,7 @@ class ScreenRecordService : Service() {
                     _elapsedSeconds.value += 1
                     val currentSec = _elapsedSeconds.value
                     floatingBubbleManager?.updateTime(currentSec)
-                    notificationHelper.updateNotification(currentSec.toLong(), isPaused = false, isMicrophoneEnabled = currentAudioEnabled)
+                    notificationHelper.updateNotification(currentSec.toLong(), isPaused = false, isMicrophoneEnabled = !captureEngine.isMicrophoneMuted)
                 }
             }
         }

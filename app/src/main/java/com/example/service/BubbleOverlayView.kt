@@ -26,6 +26,7 @@ class BubbleOverlayView(
     private val onPauseClicked: () -> Unit,
     private val onResumeClicked: () -> Unit,
     private val onStopClicked: () -> Unit,
+    private val onMicToggleClicked: () -> Unit,
     private val onScreenshotClicked: () -> Unit,
     private val onDrawToolClicked: () -> Unit
 ) {
@@ -38,6 +39,10 @@ class BubbleOverlayView(
         private const val COLOR_BTN_BG = 0x33FFFFFF.toInt()
         private const val COLOR_STOP_BG = 0x55EF4444.toInt()
         private const val COLOR_TOOLS_BG = 0x336366F1.toInt()
+        private const val COLOR_MIC_ON_BG = 0x4410B981.toInt()
+        private const val COLOR_MIC_ON_TEXT = 0xFF34D399.toInt()
+        private const val COLOR_MIC_OFF_BG = 0x3364748B.toInt()
+        private const val COLOR_MIC_OFF_TEXT = 0xFF94A3B8.toInt()
     }
 
     val rootView: LinearLayout
@@ -47,12 +52,17 @@ class BubbleOverlayView(
     private val toolsSubmenuLayout: LinearLayout
     private val iconPauseResume: ImageView
     private val tvPauseResumeLabel: TextView
+    private val btnMicToggle: LinearLayout
+    private val iconMicToggle: ImageView
+    private val tvMicToggleLabel: TextView
     private val btnToggleExpand: ImageView
     private var dotPulseAnimator: ObjectAnimator? = null
 
     var isExpanded: Boolean = true
         private set
     var isPaused: Boolean = false
+        private set
+    var isMicMuted: Boolean = false
         private set
     var isToolsMenuOpen: Boolean = false
         private set
@@ -140,6 +150,43 @@ class BubbleOverlayView(
             if (isPaused) onResumeClicked() else onPauseClicked()
         }
         actionControlsLayout.addView(btnPauseResume)
+
+        // Botón Selector Dinámico de Voz / Audio del Juego (Micrófono en vivo)
+        btnMicToggle = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = createCardDrawable(COLOR_MIC_ON_BG, dpToPx(14))
+            setPadding(dpToPx(8), dpToPx(4), dpToPx(8), dpToPx(4))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                marginEnd = dpToPx(6)
+            }
+        }
+
+        iconMicToggle = ImageView(context).apply {
+            setImageResource(android.R.drawable.ic_btn_speak_now)
+            layoutParams = LinearLayout.LayoutParams(dpToPx(15), dpToPx(15)).apply {
+                marginEnd = dpToPx(4)
+            }
+            setColorFilter(COLOR_MIC_ON_TEXT)
+        }
+        btnMicToggle.addView(iconMicToggle)
+
+        tvMicToggleLabel = TextView(context).apply {
+            text = "Voz ON"
+            setTextColor(COLOR_MIC_ON_TEXT)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        btnMicToggle.addView(tvMicToggleLabel)
+
+        btnMicToggle.setOnClickListener {
+            vibrateQuick()
+            onMicToggleClicked()
+        }
+        actionControlsLayout.addView(btnMicToggle)
 
         // Botón Herramientas (Captura & Lapicero)
         val btnTools = LinearLayout(context).apply {
@@ -364,6 +411,25 @@ class BubbleOverlayView(
                 } else {
                     startPulse()
                 }
+            }
+        }
+    }
+
+    fun updateMicStatus(muted: Boolean) {
+        this.isMicMuted = muted
+        rootView.post {
+            if (muted) {
+                // Solo audio del juego grabado (micrófono silenciado)
+                btnMicToggle.background = createCardDrawable(COLOR_MIC_OFF_BG, dpToPx(14))
+                iconMicToggle.setColorFilter(COLOR_MIC_OFF_TEXT)
+                tvMicToggleLabel.text = "Solo Juego"
+                tvMicToggleLabel.setTextColor(COLOR_MIC_OFF_TEXT)
+            } else {
+                // Juego + Voz del usuario (micrófono activo)
+                btnMicToggle.background = createCardDrawable(COLOR_MIC_ON_BG, dpToPx(14))
+                iconMicToggle.setColorFilter(COLOR_MIC_ON_TEXT)
+                tvMicToggleLabel.text = "Voz ON"
+                tvMicToggleLabel.setTextColor(COLOR_MIC_ON_TEXT)
             }
         }
     }
