@@ -1,11 +1,9 @@
-feat(core): integrar captura de audio interno con AudioRecord/MediaCodec/MediaMuxer y capturas con ImageReader
+fix(service): corregir cierres en Android 14, sincronización de burbuja y escaneo real de juegos y apps instaladas
 
-- Implementar motor de audio interno para juegos utilizando `AudioPlaybackCaptureConfiguration` y `AudioRecord` (Android 10+), permitiendo grabar exclusivamente el sonido interno del juego sin interferencias de micrófono.
-- Migrar el pipeline de codificación de medios a `MediaCodec` (H.264 AVC para video y AAC para audio) y `MediaMuxer` para un multiplexado fluido, robusto y sin corrupción de metadatos.
-- Implementar captura de pantalla instantánea en tiempo real mediante `ImageReader` sobre la superficie de `MediaProjection`, eliminando la dependencia de decodificar el archivo de video en curso y evitando bloqueos de E/S.
-- Optimizar la gestión asíncrona de buffers PCM y frames de video con hilos dedicados de baja latencia y sincronización segura de pistas.
-- Solucionar discrepancia de directorios de almacenamiento en `RecordingsRepository`, unificando la lectura de la carpeta pública `Movies/ScreenRecorder`, almacenamiento de la app y consultas directas a `MediaStore.Video.Media`.
-- Agregar observador de ciclo de vida (`ON_RESUME`) en `HomeScreen` para recargar y sincronizar automáticamente las grabaciones al volver a la app tras jugar.
-- Implementar detección precisa y filtrado inteligente de juegos en `InstalledGamesHelper` (descartando aplicaciones y utilidades del sistema y reconociendo categorías oficiales de Android, flags y firmas de editores de videojuegos).
-- Delegar el escaneo y carga de juegos a corrutinas en hilos secundarios dedicados (`Dispatchers.IO`) para evitar bloqueos en el hilo principal de la UI.
-- Añadir pantalla y estado de carga (`isLoadingGames`) en el Lanzador de Juegos con indicador visual, selector de filtros ("🎮 Juegos" vs "📱 Todas las Apps") y botón de recarga manual.
+- Declarar permiso `FOREGROUND_SERVICE_MICROPHONE` y configurar el servicio como `mediaProjection|microphone` en el AndroidManifest.
+- Añadir flags combinados de Foreground Service (`FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or FOREGROUND_SERVICE_TYPE_MICROPHONE`) en `ScreenRecordService` para cumplir con las políticas de privacidad y acceso al micrófono en segundo plano de Android 14 (API 34+).
+- Iniciar el `ScreenRecordService` de forma sincrónica e inmediata al conceder los permisos para evitar la excepción `ForegroundServiceStartNotAllowedException` al abrir juegos o cambiar de aplicación.
+- Proteger la captura de pantalla durante grabaciones activas en `ScreenCaptureEngine` y `ScreenRecordService`, evitando crear un segundo `VirtualDisplay` sobre el mismo token de `MediaProjection` (restringido en Android 14).
+- Conectar el callback de detención del sistema (`MediaProjection.Callback.onStop`) con `handleStopAction` y `cleanupAndStop` en `ScreenRecordService`, asegurando que la burbuja flotante y las notificaciones se cierren y liberen de inmediato en lugar de quedarse congeladas en rojo.
+- Añadir permiso `QUERY_ALL_PACKAGES` y bloque `<queries>` en `AndroidManifest.xml` para sortear las restricciones de Package Visibility en Android 11 a 14.
+- Optimizar `InstalledGamesHelper` integrando `queryIntentActivities` y `getInstalledApplications` en paralelo con `Dispatchers.IO`, garantizando la detección del 100% de apps y juegos instalados localmente y desde APKs de terceros (Uptodown, TapTap, etc.).

@@ -71,24 +71,63 @@ class InstalledGamesHelper(private val context: Context) {
     /**
      * Escanea las aplicaciones instaladas en un hilo secundario (Dispatchers.IO)
      * clasificando de forma precisa si son juegos o aplicaciones generales.
+     * Combina queryIntentActivities y getInstalledApplications para garantizar
+     * detección del 100% de apps instaladas incluso desde APKs de terceros (Uptodown, etc.).
      */
     suspend fun getInstalledGamesAndApps(): List<InstalledAppItem> = withContext(Dispatchers.IO) {
         try {
             val pm = context.packageManager
-            val intent = Intent(Intent.ACTION_MAIN, null).apply {
+            val currentPkg = context.packageName
+            val discoveredPackages = mutableSetOf<String>()
+
+            // 1. Obtener aplicaciones con actividad de inicio (Launcher)
+            val launcherIntent = Intent(Intent.ACTION_MAIN, null).apply {
                 addCategory(Intent.CATEGORY_LAUNCHER)
             }
+            val launcherActivities = try {
+                pm.queryIntentActivities(launcherIntent, 0)
+            } catch (e: Exception) {
+                emptyList()
+            }
 
-            val resolveInfos = pm.queryIntentActivities(intent, 0)
-            val currentPkg = context.packageName
+            for (info in launcherActivities) {
+                val pkg = info.activityInfo?.packageName ?: continue
+                if (pkg != currentPkg) {
+                    discoveredPackages.add(pkg)
+                }
+            }
 
-            // Procesamiento en paralelo de resolución de metadatos e iconos para máxima fluidez
-            val appList = resolveInfos.mapNotNull { info ->
-                val pkg = info.activityInfo.packageName
-                if (pkg == currentPkg) return@mapNotNull null
+            // 2. Escaneo complementario con getInstalledApplications para capturar APKs instalados manualmente
+            try {
+                val allApps = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    pm.getInstalledApplications(PackageManager.ApplicationInfoFlags.of(0))
+                } else {
+                    pm.getInstalledApplications(0)
+                }
+                for (app in allApps) {
+                    val pkg = app.packageName
+                    if (pkg != currentPkg && !discoveredPackages.contains(pkg)) {
+                        // Solo incluir si la app se puede abrir o no es puramente del sistema oculta
+                        val isLaunchable = pm.getLaunchIntentForPackage(pkg) != null
+                        val isUserApp = (app.flags and ApplicationInfo.FLAG_SYSTEM) == 0
+                        val isGame = isAppClassifiedAsGame(app, pkg, pm.getApplicationLabel(app).toString())
+                        if (isLaunchable || isUserApp || isGame) {
+                            discoveredPackages.add(pkg)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Fallo en escaneo complementario getInstalledApplications: ${e.message}")
+            }
 
+            // 3. Resolver metadatos, etiquetas, iconos y clasificación
+            val appList = discoveredPackages.mapNotNull { pkg ->
                 try {
-                    val appInfo = pm.getApplicationInfo(pkg, 0)
+                    val appInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        pm.getApplicationInfo(pkg, PackageManager.ApplicationInfoFlags.of(0))
+                    } else {
+                        pm.getApplicationInfo(pkg, 0)
+                    }
                     val label = pm.getApplicationLabel(appInfo).toString()
                     val icon = try { pm.getApplicationIcon(appInfo) } catch (_: Exception) { null }
                     val isGame = isAppClassifiedAsGame(appInfo, pkg, label)

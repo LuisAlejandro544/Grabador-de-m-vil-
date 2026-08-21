@@ -16,6 +16,8 @@ import android.media.MediaRecorder
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.Surface
@@ -87,7 +89,8 @@ class ScreenCaptureEngine(private val context: Context) {
         bitrate: Int,
         audioSource: String,
         outputFile: File,
-        onError: (String) -> Unit
+        onError: (String) -> Unit,
+        onSystemStop: (() -> Unit)? = null
     ): Boolean {
         try {
             this.currentOutputFile = outputFile
@@ -103,14 +106,12 @@ class ScreenCaptureEngine(private val context: Context) {
                 return false
             }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                mediaProjection?.registerCallback(object : MediaProjection.Callback() {
-                    override fun onStop() {
-                        Log.w(TAG, "MediaProjection detenido por el sistema o por el usuario")
-                        stopCapture()
-                    }
-                }, null)
-            }
+            mediaProjection?.registerCallback(object : MediaProjection.Callback() {
+                override fun onStop() {
+                    Log.w(TAG, "MediaProjection detenido por el sistema o por el usuario")
+                    onSystemStop?.invoke() ?: stopCapture()
+                }
+            }, Handler(Looper.getMainLooper()))
 
             // 2. Inicializar MediaMuxer
             mediaMuxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
@@ -440,6 +441,24 @@ class ScreenCaptureEngine(private val context: Context) {
         onSuccess: (File) -> Unit,
         onError: (String) -> Unit
     ) {
+        // Si la grabación está activa en Android 14+, no podemos crear un segundo VirtualDisplay en la misma proyección
+        if (isRecordingInternal.get()) {
+            val videoFile = currentOutputFile
+            if (videoFile != null && videoFile.exists() && videoFile.length() > 0L) {
+                ScreenshotHelper.captureFrameFromVideo(
+                    context = context,
+                    videoFile = videoFile,
+                    onSuccess = onSuccess,
+                    onError = {
+                        onError("Fotograma en procesamiento: $it")
+                    }
+                )
+            } else {
+                onError("Grabación en curso: fotograma no disponible aún")
+            }
+            return
+        }
+
         val proj = mediaProjection
         if (proj == null) {
             onError("No hay una proyección de pantalla activa para tomar la captura")

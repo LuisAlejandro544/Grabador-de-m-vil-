@@ -131,9 +131,20 @@ class ScreenRecordService : Service() {
         currentDensityDpi = metrics.densityDpi
         currentAudioEnabled = audioSource != AudioSourceType.NONE.name
 
-        // 1. Iniciar Foreground Service con tipo MEDIA_PROJECTION
+        // 1. Iniciar Foreground Service con tipo MEDIA_PROJECTION y MICROPHONE
         val initialNotification = notificationHelper.buildForegroundNotification(0, isPaused = false, isMicrophoneEnabled = currentAudioEnabled)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val serviceType = if (currentAudioEnabled) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            } else {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            }
+            startForeground(
+                RecordNotificationHelper.NOTIFICATION_ID,
+                initialNotification,
+                serviceType
+            )
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
                 RecordNotificationHelper.NOTIFICATION_ID,
                 initialNotification,
@@ -159,9 +170,14 @@ class ScreenRecordService : Service() {
             audioSource = audioSource,
             outputFile = outputFile,
             onError = { errorMsg ->
+                Log.e(TAG, "Error en captura: $errorMsg")
                 _errorMessage.value = errorMsg
                 _recordingState.value = RecordingStatus.ERROR
                 cleanupAndStop()
+            },
+            onSystemStop = {
+                Log.w(TAG, "MediaProjection detenido por el sistema")
+                handleStopAction()
             }
         )
 

@@ -190,6 +190,10 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         val countdown = config.countdownSeconds
         pendingLaunchGamePackage = targetGamePackage
 
+        // Iniciar el Foreground Service de inmediato mientras la Activity está en primer plano
+        // para garantizar compatibilidad total con Android 14 y evitar ForegroundServiceStartNotAllowedException
+        triggerStartService(resultCode, resultData)
+
         if (countdown > 0) {
             countdownJob?.cancel()
             _isCountingDown.value = true
@@ -200,10 +204,10 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
                     delay(1000)
                 }
                 _isCountingDown.value = false
-                triggerStartService(resultCode, resultData)
+                launchPendingGame()
             }
         } else {
-            triggerStartService(resultCode, resultData)
+            launchPendingGame()
         }
     }
 
@@ -212,6 +216,14 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         _isCountingDown.value = false
         _countdownNumber.value = 0
         pendingLaunchGamePackage = null
+        stopRecording()
+    }
+
+    private fun launchPendingGame() {
+        pendingLaunchGamePackage?.let { pkg ->
+            gamesHelper.launchApp(pkg)
+            pendingLaunchGamePackage = null
+        }
     }
 
     private fun triggerStartService(resultCode: Int, resultData: Intent) {
@@ -235,12 +247,6 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             context.startForegroundService(serviceIntent)
         } else {
             context.startService(serviceIntent)
-        }
-
-        // If a game was selected, launch it automatically
-        pendingLaunchGamePackage?.let { pkg ->
-            gamesHelper.launchApp(pkg)
-            pendingLaunchGamePackage = null
         }
     }
 
