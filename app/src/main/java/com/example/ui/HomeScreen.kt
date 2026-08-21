@@ -16,6 +16,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,6 +25,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.model.RecordingStatus
 import com.example.ui.components.GameLauncherScreen
@@ -49,6 +53,20 @@ fun HomeScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle(initialValue = UiState())
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Refrescar lista de videos automáticamente al volver a la app (ej. tras parar grabación desde un juego)
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadVideos()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     var pendingGameLaunchPackage by remember { mutableStateOf<String?>(null) }
 
@@ -166,9 +184,11 @@ fun HomeScreen(
 
                 2 -> GameLauncherScreen(
                     games = uiState.installedGames,
+                    isLoading = uiState.isLoadingGames,
                     isRecording = uiState.status == RecordingStatus.RECORDING,
                     onStartRecordingWithGame = { pkg -> requestStartRecording(pkg) },
-                    onLaunchGameDirectly = { pkg -> viewModel.launchGame(pkg) }
+                    onLaunchGameDirectly = { pkg -> viewModel.launchGame(pkg) },
+                    onRefreshGames = { viewModel.loadInstalledGames() }
                 )
 
                 3 -> SettingsView(

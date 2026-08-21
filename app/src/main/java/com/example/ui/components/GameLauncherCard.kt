@@ -1,5 +1,8 @@
 package com.example.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,9 +19,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Videocam
@@ -26,8 +32,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -42,6 +53,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,18 +63,35 @@ import com.example.data.InstalledAppItem
 @Composable
 fun GameLauncherScreen(
     games: List<InstalledAppItem>,
+    isLoading: Boolean,
     isRecording: Boolean,
     onStartRecordingWithGame: (String) -> Unit,
     onLaunchGameDirectly: (String) -> Unit,
+    onRefreshGames: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    // 0: Solo Juegos, 1: Todas las Apps
+    var selectedFilterIndex by remember { mutableStateOf(0) }
 
-    val filteredGames = remember(games, searchQuery) {
-        if (searchQuery.isBlank()) {
-            games
+    val actualGamesCount = remember(games) { games.count { it.isGame } }
+
+    val currentList = remember(games, selectedFilterIndex) {
+        if (selectedFilterIndex == 0) {
+            games.filter { it.isGame }
         } else {
-            games.filter { it.appName.contains(searchQuery, ignoreCase = true) }
+            games
+        }
+    }
+
+    val filteredGames = remember(currentList, searchQuery) {
+        if (searchQuery.isBlank()) {
+            currentList
+        } else {
+            currentList.filter {
+                it.appName.contains(searchQuery, ignoreCase = true) ||
+                        it.packageName.contains(searchQuery, ignoreCase = true)
+            }
         }
     }
 
@@ -82,7 +111,7 @@ fun GameLauncherScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
@@ -100,29 +129,87 @@ fun GameLauncherScreen(
                     }
                 }
                 Spacer(modifier = Modifier.width(12.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Acceso Rápido a Juegos",
+                        text = "Lanzador de Juegos",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Selecciona un juego para iniciar la grabación y abrirlo automáticamente",
+                        text = "Inicia la grabación y abre tu juego favorito al instante",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(
+                    onClick = onRefreshGames,
+                    modifier = Modifier.testTag("refresh_games_btn")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Recargar juegos",
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Filter Chips (Solo Juegos vs Todas las Apps)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FilterChip(
+                selected = selectedFilterIndex == 0,
+                onClick = { selectedFilterIndex = 0 },
+                label = {
+                    Text(
+                        text = "🎮 Juegos (${actualGamesCount})",
+                        fontSize = 13.sp,
+                        fontWeight = if (selectedFilterIndex == 0) FontWeight.Bold else FontWeight.Normal
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                modifier = Modifier.testTag("filter_games_only_chip")
+            )
+
+            FilterChip(
+                selected = selectedFilterIndex == 1,
+                onClick = { selectedFilterIndex = 1 },
+                label = {
+                    Text(
+                        text = "📱 Todas las Apps (${games.size})",
+                        fontSize = 13.sp,
+                        fontWeight = if (selectedFilterIndex == 1) FontWeight.Bold else FontWeight.Normal
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ),
+                modifier = Modifier.testTag("filter_all_apps_chip")
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
 
         // Search Bar
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Buscar juego o app...", fontSize = 14.sp) },
+            placeholder = {
+                Text(
+                    text = if (selectedFilterIndex == 0) "Buscar en tus juegos..." else "Buscar aplicación...",
+                    fontSize = 14.sp
+                )
+            },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Default.Search,
@@ -139,18 +226,124 @@ fun GameLauncherScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        if (filteredGames.isEmpty()) {
+        // Content Area: Loading vs Empty vs List
+        if (isLoading) {
+            // Pantalla de Carga
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .testTag("loading_games_indicator"),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(24.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(48.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 4.dp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Escaneando juegos instalados...",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Buscando en hilo secundario para no ralentizar la pantalla",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        } else if (filteredGames.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = if (searchQuery.isBlank()) "No se encontraron juegos instalados" else "No hay resultados para \"$searchQuery\"",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth(0.92f)
+                        .padding(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surface,
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = if (selectedFilterIndex == 0) Icons.Default.SportsEsports else Icons.Default.Apps,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(30.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = if (searchQuery.isNotBlank()) {
+                                "Sin resultados para \"$searchQuery\""
+                            } else if (selectedFilterIndex == 0) {
+                                "No se detectaron juegos instalados"
+                            } else {
+                                "No se encontraron aplicaciones"
+                            },
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = if (selectedFilterIndex == 0 && searchQuery.isBlank()) {
+                                "Si instalaste un juego desde un APK de terceros o tienda externa, puedes seleccionarlo en \"Todas las Apps\"."
+                            } else {
+                                "Verifica el texto de búsqueda o pulsa recargar."
+                            },
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        if (selectedFilterIndex == 0) {
+                            Button(
+                                onClick = { selectedFilterIndex = 1 },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Text("Ver todas las aplicaciones", fontSize = 13.sp)
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = onRefreshGames,
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("Escanear de nuevo", fontSize = 13.sp)
+                            }
+                        }
+                    }
+                }
             }
         } else {
             LazyColumn(
@@ -272,6 +465,23 @@ private fun GameListItem(
             }
 
             Spacer(modifier = Modifier.width(8.dp))
+
+            // Botón Lanzar directo (Jugar sin grabar si lo desea)
+            IconButton(
+                onClick = onPlayOnly,
+                modifier = Modifier
+                    .size(36.dp)
+                    .testTag("play_game_direct_btn_${appItem.packageName}")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = "Abrir juego",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(4.dp))
 
             // Action Button: Grabar y Abrir
             Button(

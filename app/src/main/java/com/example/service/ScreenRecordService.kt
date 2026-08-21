@@ -72,6 +72,9 @@ class ScreenRecordService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.Main)
     private var currentAudioEnabled = true
     private var currentActiveFile: File? = null
+    private var currentRecWidth = 1080
+    private var currentRecHeight = 1920
+    private var currentDensityDpi = 480
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -123,6 +126,9 @@ class ScreenRecordService : Service() {
         val recWidth = if (isPortrait) minOf(width, height) else maxOf(width, height)
         val recHeight = if (isPortrait) maxOf(width, height) else minOf(width, height)
 
+        currentRecWidth = recWidth
+        currentRecHeight = recHeight
+        currentDensityDpi = metrics.densityDpi
         currentAudioEnabled = audioSource != AudioSourceType.NONE.name
 
         // 1. Iniciar Foreground Service con tipo MEDIA_PROJECTION
@@ -199,17 +205,40 @@ class ScreenRecordService : Service() {
     }
 
     private fun handleScreenshotAction() {
-        currentActiveFile?.let { videoFile ->
-            ScreenshotHelper.captureFrameFromVideo(
+        if (captureEngine.activeProjection != null) {
+            captureEngine.takeScreenshot(
                 context = this,
-                videoFile = videoFile,
+                width = currentRecWidth,
+                height = currentRecHeight,
+                densityDpi = currentDensityDpi,
                 onSuccess = { shotFile ->
-                    Log.i(TAG, "Screenshot tomado con éxito: ${shotFile.absolutePath}")
+                    Log.i(TAG, "Screenshot tomado exitosamente con ImageReader: ${shotFile.absolutePath}")
                 },
                 onError = { err ->
-                    Log.w(TAG, "Screenshot no capturado: $err")
+                    Log.w(TAG, "Fallo al capturar con ImageReader, intentando fallback: $err")
+                    currentActiveFile?.let { videoFile ->
+                        ScreenshotHelper.captureFrameFromVideo(
+                            context = this,
+                            videoFile = videoFile,
+                            onSuccess = { f -> Log.i(TAG, "Screenshot fallback OK: ${f.absolutePath}") },
+                            onError = { e -> Log.e(TAG, "Screenshot fallback falló: $e") }
+                        )
+                    }
                 }
             )
+        } else {
+            currentActiveFile?.let { videoFile ->
+                ScreenshotHelper.captureFrameFromVideo(
+                    context = this,
+                    videoFile = videoFile,
+                    onSuccess = { shotFile ->
+                        Log.i(TAG, "Screenshot tomado desde video: ${shotFile.absolutePath}")
+                    },
+                    onError = { err ->
+                        Log.w(TAG, "Screenshot no capturado: $err")
+                    }
+                )
+            }
         }
     }
 

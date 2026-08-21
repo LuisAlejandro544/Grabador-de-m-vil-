@@ -4,44 +4,78 @@ import android.content.Context
 import android.content.Intent
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioPlaybackCaptureConfiguration
+import android.media.AudioRecord
+import android.media.MediaCodec
+import android.media.MediaCodecInfo
+import android.media.MediaFormat
+import android.media.MediaMuxer
 import android.media.MediaRecorder
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
+import android.os.SystemClock
 import android.util.Log
+import android.view.Surface
 import com.example.model.AudioSourceType
 import java.io.File
+import java.nio.ByteBuffer
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Motor modular de captura de pantalla y codificación de video por hardware.
- * Encapsula la gestión de MediaProjection, VirtualDisplay y MediaRecorder.
+ * Motor modular de captura de pantalla y codificación en tiempo real por hardware.
+ * Utiliza [MediaCodec] + [MediaMuxer] y [AudioRecord] con soporte para captura de audio interno del juego
+ * mediante [AudioPlaybackCaptureConfiguration] en Android 10+ y capturas instantáneas con [ScreenshotHelper].
  */
 class ScreenCaptureEngine(private val context: Context) {
 
     companion object {
         private const val TAG = "ScreenCaptureEngine"
         private const val VIRTUAL_DISPLAY_NAME = "OBSMobile_VirtualDisplay"
+        private const val AUDIO_SAMPLE_RATE = 44100
+        private const val AUDIO_BIT_RATE = 192000
+        private const val TIMEOUT_USEC = 10000L
     }
 
     private var mediaProjectionManager: MediaProjectionManager? = null
     private var mediaProjection: MediaProjection? = null
     private var virtualDisplay: VirtualDisplay? = null
-    private var mediaRecorder: MediaRecorder? = null
+
+    // Codificación de Video por Hardware
+    private var videoEncoder: MediaCodec? = null
+    private var inputSurface: Surface? = null
+    private var videoThread: Thread? = null
+
+    // Captura y Codificación de Audio
+    private var audioRecord: AudioRecord? = null
+    private var audioEncoder: MediaCodec? = null
+    private var audioThread: Thread? = null
+
+    // Muxer del contenedor MP4
+    private var mediaMuxer: MediaMuxer? = null
+    private val muxerLock = Object()
+    private var videoTrackIndex = -1
+    private var audioTrackIndex = -1
+    private var muxerStarted = false
+    private var hasAudio = false
 
     private var currentOutputFile: File? = null
-    private var isRecordingInternal = false
-    private var isPausedInternal = false
+    private val isRecordingInternal = AtomicBoolean(false)
+    private val isPausedInternal = AtomicBoolean(false)
 
-    val isRecording: Boolean get() = isRecordingInternal
-    val isPaused: Boolean get() = isPausedInternal
+    val isRecording: Boolean get() = isRecordingInternal.get()
+    val isPaused: Boolean get() = isPausedInternal.get()
     val outputFile: File? get() = currentOutputFile
+    val activeProjection: MediaProjection? get() = mediaProjection
 
     init {
         mediaProjectionManager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as? MediaProjectionManager
     }
 
     /**
-     * Inicializa y arranca la sesión de grabación de pantalla con los parámetros de resolución, tasa de cuadros y tasa de bits provistos.
+     * Inicializa y arranca la sesión de grabación de pantalla y audio (interno de juego o micrófono).
      */
     fun startCapture(
         resultCode: Int,
@@ -57,6 +91,10 @@ class ScreenCaptureEngine(private val context: Context) {
     ): Boolean {
         try {
             this.currentOutputFile = outputFile
+            this.hasAudio = audioSource != AudioSourceType.NONE.name
+            this.videoTrackIndex = -1
+            this.audioTrackIndex = -1
+            this.muxerStarted = false
 
             // 1. Inicializar MediaProjection
             mediaProjection = mediaProjectionManager?.getMediaProjection(resultCode, resultData)
@@ -65,7 +103,6 @@ class ScreenCaptureEngine(private val context: Context) {
                 return false
             }
 
-            // Registrar callback para detectar terminación por el sistema
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 mediaProjection?.registerCallback(object : MediaProjection.Callback() {
                     override fun onStop() {
@@ -75,111 +112,378 @@ class ScreenCaptureEngine(private val context: Context) {
                 }, null)
             }
 
-            // 2. Inicializar y configurar MediaRecorder
-            mediaRecorder = createAndConfigureMediaRecorder(
-                width = width,
-                height = height,
-                fps = fps,
-                bitrate = bitrate,
-                audioSource = audioSource,
-                outputFile = outputFile
-            )
-            mediaRecorder?.prepare()
+            // 2. Inicializar MediaMuxer
+            mediaMuxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
 
-            // 3. Crear VirtualDisplay enlazado a la superficie del codificador
-            val surface = mediaRecorder?.surface
-            if (surface == null) {
-                onError("No se pudo obtener la superficie de codificación de MediaRecorder")
-                release()
-                return false
+            // 3. Configurar codificador de video por hardware (H.264)
+            val videoFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
+                setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
+                setInteger(MediaFormat.KEY_BIT_RATE, bitrate)
+                setInteger(MediaFormat.KEY_FRAME_RATE, fps)
+                setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1) // Keyframe cada 1 segundo
             }
 
+            val vEncoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+            vEncoder.configure(videoFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+            inputSurface = vEncoder.createInputSurface()
+            vEncoder.start()
+            videoEncoder = vEncoder
+
+            // 4. Configurar AudioRecord y codificador AAC si el audio está activado
+            if (hasAudio) {
+                setupAudioPipeline(audioSource)
+            }
+
+            // 5. Crear VirtualDisplay sobre la superficie del encoder
             virtualDisplay = mediaProjection?.createVirtualDisplay(
                 VIRTUAL_DISPLAY_NAME,
                 width,
                 height,
                 densityDpi,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                surface,
+                inputSurface,
                 null,
                 null
             )
 
-            // 4. Iniciar grabación
-            mediaRecorder?.start()
-            isRecordingInternal = true
-            isPausedInternal = false
+            isRecordingInternal.set(true)
+            isPausedInternal.set(false)
 
-            Log.i(TAG, "Grabación iniciada exitosamente: ${width}x${height} @ $fps FPS, Bitrate=$bitrate")
+            // 6. Lanzar hilos de procesamiento asíncrono no bloqueantes
+            startVideoWorker()
+            if (hasAudio && audioEncoder != null && audioRecord != null) {
+                startAudioWorker()
+            }
+
+            Log.i(TAG, "Grabación iniciada exitosamente: ${width}x${height} @ $fps FPS (Audio: $audioSource)")
             return true
 
         } catch (e: Exception) {
             Log.e(TAG, "Excepción crítica iniciando ScreenCaptureEngine: ${e.message}", e)
             release()
-            onError(e.message ?: "Error desconocido al inicializar el codificador de video")
+            onError(e.message ?: "Error desconocido al inicializar el codificador")
             return false
         }
     }
 
     /**
-     * Pausa la grabación si está soportado en la versión de Android (API 24+).
+     * Configura AudioRecord para audio interno (AudioPlaybackCaptureConfiguration) o micrófono.
+     */
+    private fun setupAudioPipeline(audioSource: String) {
+        val isInternalOnly = audioSource == AudioSourceType.INTERNAL_GAME.name
+        val channelConfig = AudioFormat.CHANNEL_IN_STEREO
+        val audioEncoding = AudioFormat.ENCODING_PCM_16BIT
+        val channelCount = 2
+
+        val minBufferSize = AudioRecord.getMinBufferSize(AUDIO_SAMPLE_RATE, channelConfig, audioEncoding)
+            .coerceAtLeast(8192)
+
+        var record: AudioRecord? = null
+
+        if (isInternalOnly && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && mediaProjection != null) {
+            try {
+                val playbackConfig = AudioPlaybackCaptureConfiguration.Builder(mediaProjection!!)
+                    .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                    .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                    .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
+                    .build()
+
+                record = AudioRecord.Builder()
+                    .setAudioPlaybackCaptureConfig(playbackConfig)
+                    .setAudioFormat(
+                        AudioFormat.Builder()
+                            .setEncoding(audioEncoding)
+                            .setSampleRate(AUDIO_SAMPLE_RATE)
+                            .setChannelMask(channelConfig)
+                            .build()
+                    )
+                    .setBufferSizeInBytes(minBufferSize * 2)
+                    .build()
+
+                Log.i(TAG, "AudioRecord configurado exitosamente con AudioPlaybackCapture para Audio Interno del Juego")
+            } catch (e: Exception) {
+                Log.w(TAG, "Fallo al inicializar AudioPlaybackCapture, fallback a MIC: ${e.message}")
+            }
+        }
+
+        // Fallback o modo micrófono normal
+        if (record == null || record.state != AudioRecord.STATE_INITIALIZED) {
+            try {
+                record = AudioRecord(
+                    MediaRecorder.AudioSource.MIC,
+                    AUDIO_SAMPLE_RATE,
+                    channelConfig,
+                    audioEncoding,
+                    minBufferSize * 2
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "No se pudo inicializar AudioRecord para MIC: ${e.message}")
+            }
+        }
+
+        if (record != null && record.state == AudioRecord.STATE_INITIALIZED) {
+            audioRecord = record
+
+            // Configurar encoder AAC
+            val aFormat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, AUDIO_SAMPLE_RATE, channelCount).apply {
+                setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
+                setInteger(MediaFormat.KEY_BIT_RATE, AUDIO_BIT_RATE)
+                setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16384)
+            }
+
+            val aEncoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC)
+            aEncoder.configure(aFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+            aEncoder.start()
+            audioEncoder = aEncoder
+        } else {
+            Log.w(TAG, "AudioRecord no inicializado, continuando sin pista de audio")
+            hasAudio = false
+        }
+    }
+
+    /**
+     * Hilo de drenado y muxing del codificador de video H.264.
+     */
+    private fun startVideoWorker() {
+        videoThread = Thread({
+            val encoder = videoEncoder ?: return@Thread
+            val bufferInfo = MediaCodec.BufferInfo()
+
+            while (isRecordingInternal.get()) {
+                if (isPausedInternal.get()) {
+                    SystemClock.sleep(20)
+                    continue
+                }
+
+                try {
+                    val outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, TIMEOUT_USEC)
+                    when (outputBufferIndex) {
+                        MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                            synchronized(muxerLock) {
+                                if (videoTrackIndex == -1) {
+                                    val newFormat = encoder.outputFormat
+                                    videoTrackIndex = mediaMuxer?.addTrack(newFormat) ?: -1
+                                    Log.d(TAG, "Pista de video agregada a MediaMuxer (index: $videoTrackIndex)")
+                                    checkAndStartMuxer()
+                                }
+                            }
+                        }
+                        MediaCodec.INFO_TRY_AGAIN_LATER -> {
+                            // Sin datos aún, continuar ciclo
+                        }
+                        else -> {
+                            if (outputBufferIndex >= 0) {
+                                val outputBuffer = encoder.getOutputBuffer(outputBufferIndex)
+                                if (outputBuffer != null && bufferInfo.size > 0 && (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0) {
+                                    synchronized(muxerLock) {
+                                        if (!muxerStarted) {
+                                            try {
+                                                muxerLock.wait(100)
+                                            } catch (_: InterruptedException) {}
+                                        }
+                                        if (muxerStarted && videoTrackIndex != -1 && !isPausedInternal.get()) {
+                                            outputBuffer.position(bufferInfo.offset)
+                                            outputBuffer.limit(bufferInfo.offset + bufferInfo.size)
+                                            mediaMuxer?.writeSampleData(videoTrackIndex, outputBuffer, bufferInfo)
+                                        }
+                                    }
+                                }
+                                encoder.releaseOutputBuffer(outputBufferIndex, false)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error en bucle de video: ${e.message}")
+                    break
+                }
+            }
+        }, "OBS_VideoWorker").apply { start() }
+    }
+
+    /**
+     * Hilo de lectura PCM y codificación AAC para audio interno/micrófono.
+     */
+    private fun startAudioWorker() {
+        audioThread = Thread({
+            val record = audioRecord ?: return@Thread
+            val encoder = audioEncoder ?: return@Thread
+            val bufferInfo = MediaCodec.BufferInfo()
+            val byteBuffer = ByteBuffer.allocateDirect(4096)
+
+            try {
+                record.startRecording()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error al iniciar grabación de AudioRecord: ${e.message}")
+                return@Thread
+            }
+
+            var presentationTimeUs = 0L
+
+            while (isRecordingInternal.get()) {
+                if (isPausedInternal.get()) {
+                    SystemClock.sleep(20)
+                    continue
+                }
+
+                try {
+                    // 1. Leer PCM desde AudioRecord
+                    byteBuffer.clear()
+                    val readBytes = record.read(byteBuffer, byteBuffer.capacity())
+                    if (readBytes > 0 && !isPausedInternal.get()) {
+                        val inputBufferIndex = encoder.dequeueInputBuffer(TIMEOUT_USEC)
+                        if (inputBufferIndex >= 0) {
+                            val inputBuffer = encoder.getInputBuffer(inputBufferIndex)
+                            inputBuffer?.clear()
+                            byteBuffer.position(0)
+                            byteBuffer.limit(readBytes)
+                            inputBuffer?.put(byteBuffer)
+
+                            val pts = System.nanoTime() / 1000
+                            encoder.queueInputBuffer(inputBufferIndex, 0, readBytes, pts, 0)
+                        }
+                    }
+
+                    // 2. Drenar encoder de audio
+                    while (true) {
+                        val outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 0)
+                        if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                            synchronized(muxerLock) {
+                                if (audioTrackIndex == -1) {
+                                    val newFormat = encoder.outputFormat
+                                    audioTrackIndex = mediaMuxer?.addTrack(newFormat) ?: -1
+                                    Log.d(TAG, "Pista de audio agregada a MediaMuxer (index: $audioTrackIndex)")
+                                    checkAndStartMuxer()
+                                }
+                            }
+                        } else if (outputBufferIndex >= 0) {
+                            val outputBuffer = encoder.getOutputBuffer(outputBufferIndex)
+                            if (outputBuffer != null && bufferInfo.size > 0 && (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0) {
+                                synchronized(muxerLock) {
+                                    if (!muxerStarted) {
+                                        try {
+                                            muxerLock.wait(100)
+                                        } catch (_: InterruptedException) {}
+                                    }
+                                    if (muxerStarted && audioTrackIndex != -1 && !isPausedInternal.get()) {
+                                        outputBuffer.position(bufferInfo.offset)
+                                        outputBuffer.limit(bufferInfo.offset + bufferInfo.size)
+                                        mediaMuxer?.writeSampleData(audioTrackIndex, outputBuffer, bufferInfo)
+                                    }
+                                }
+                            }
+                            encoder.releaseOutputBuffer(outputBufferIndex, false)
+                        } else {
+                            break
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error en bucle de audio: ${e.message}")
+                    break
+                }
+            }
+
+            try {
+                record.stop()
+            } catch (e: Exception) {
+                Log.w(TAG, "Error deteniendo AudioRecord: ${e.message}")
+            }
+        }, "OBS_AudioWorker").apply { start() }
+    }
+
+    private fun checkAndStartMuxer() {
+        synchronized(muxerLock) {
+            if (muxerStarted) return
+            val videoReady = videoTrackIndex != -1
+            val audioReady = !hasAudio || audioTrackIndex != -1
+
+            if (videoReady && audioReady) {
+                try {
+                    mediaMuxer?.start()
+                    muxerStarted = true
+                    Log.i(TAG, "MediaMuxer iniciado con éxito (Video: $videoTrackIndex, Audio: $audioTrackIndex)")
+                    muxerLock.notifyAll()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Fallo al iniciar MediaMuxer: ${e.message}", e)
+                }
+            }
+        }
+    }
+
+    /**
+     * Pausa la grabación.
      */
     fun pauseCapture(): Boolean {
-        if (!isRecordingInternal || isPausedInternal) return false
-        return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                mediaRecorder?.pause()
-                isPausedInternal = true
-                Log.d(TAG, "Grabación pausada")
-                true
-            } else {
-                Log.w(TAG, "La pausa de grabación no está soportada en versiones previas a Android 7.0")
-                false
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error al pausar grabación: ${e.message}", e)
-            false
-        }
+        if (!isRecordingInternal.get() || isPausedInternal.get()) return false
+        isPausedInternal.set(true)
+        Log.d(TAG, "Grabación pausada")
+        return true
     }
 
     /**
-     * Reanuda la grabación en pausa (API 24+).
+     * Reanuda la grabación.
      */
     fun resumeCapture(): Boolean {
-        if (!isRecordingInternal || !isPausedInternal) return false
-        return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                mediaRecorder?.resume()
-                isPausedInternal = false
-                Log.d(TAG, "Grabación reanudada")
-                true
-            } else {
-                false
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error al reanudar grabación: ${e.message}", e)
-            false
-        }
+        if (!isRecordingInternal.get() || !isPausedInternal.get()) return false
+        isPausedInternal.set(false)
+        Log.d(TAG, "Grabación reanudada")
+        return true
     }
 
     /**
-     * Detiene la captura y asegura el cierre correcto del archivo contenedor MP4.
+     * Toma una captura de pantalla instantánea usando ImageReader sobre la proyección activa.
+     */
+    fun takeScreenshot(
+        context: Context,
+        width: Int,
+        height: Int,
+        densityDpi: Int,
+        onSuccess: (File) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val proj = mediaProjection
+        if (proj == null) {
+            onError("No hay una proyección de pantalla activa para tomar la captura")
+            return
+        }
+
+        ScreenshotHelper.captureFromMediaProjection(
+            context = context,
+            mediaProjection = proj,
+            width = width,
+            height = height,
+            densityDpi = densityDpi,
+            onSuccess = onSuccess,
+            onError = onError
+        )
+    }
+
+    /**
+     * Detiene la captura y finaliza el archivo contenedor MP4 con el muxer de hardware.
      */
     fun stopCapture(): File? {
         val savedFile = currentOutputFile
         try {
-            if (isRecordingInternal) {
-                try {
-                    mediaRecorder?.stop()
-                } catch (e: RuntimeException) {
-                    Log.w(TAG, "MediaRecorder stop falló (posiblemente detenido inmediatamente): ${e.message}")
-                    if (savedFile != null && savedFile.length() == 0L) {
-                        savedFile.delete()
+            isRecordingInternal.set(false)
+            isPausedInternal.set(false)
+
+            // Esperar que los workers terminen limpiamente
+            try {
+                videoThread?.join(500)
+                audioThread?.join(500)
+            } catch (_: Exception) {}
+
+            synchronized(muxerLock) {
+                if (muxerStarted) {
+                    try {
+                        mediaMuxer?.stop()
+                    } catch (e: Exception) {
+                        Log.w(TAG, "MediaMuxer stop excepción: ${e.message}")
                     }
+                    muxerStarted = false
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error deteniendo MediaRecorder: ${e.message}", e)
+            Log.e(TAG, "Error deteniendo captura: ${e.message}", e)
         } finally {
             release()
         }
@@ -190,8 +494,8 @@ class ScreenCaptureEngine(private val context: Context) {
      * Libera de forma ordenada todos los recursos de hardware y proyecciones.
      */
     fun release() {
-        isRecordingInternal = false
-        isPausedInternal = false
+        isRecordingInternal.set(false)
+        isPausedInternal.set(false)
 
         try {
             virtualDisplay?.release()
@@ -201,12 +505,41 @@ class ScreenCaptureEngine(private val context: Context) {
         virtualDisplay = null
 
         try {
-            mediaRecorder?.reset()
-            mediaRecorder?.release()
+            videoEncoder?.stop()
+            videoEncoder?.release()
         } catch (e: Exception) {
-            Log.w(TAG, "Error liberando MediaRecorder: ${e.message}")
+            Log.w(TAG, "Error liberando videoEncoder: ${e.message}")
         }
-        mediaRecorder = null
+        videoEncoder = null
+
+        try {
+            inputSurface?.release()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error liberando inputSurface: ${e.message}")
+        }
+        inputSurface = null
+
+        try {
+            audioRecord?.release()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error liberando audioRecord: ${e.message}")
+        }
+        audioRecord = null
+
+        try {
+            audioEncoder?.stop()
+            audioEncoder?.release()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error liberando audioEncoder: ${e.message}")
+        }
+        audioEncoder = null
+
+        try {
+            mediaMuxer?.release()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error liberando MediaMuxer: ${e.message}")
+        }
+        mediaMuxer = null
 
         try {
             mediaProjection?.stop()
@@ -216,75 +549,5 @@ class ScreenCaptureEngine(private val context: Context) {
         mediaProjection = null
 
         Log.d(TAG, "Recursos de ScreenCaptureEngine liberados con éxito")
-    }
-
-    /**
-     * Configuración de MediaRecorder optimizada para bajo consumo de batería y 60 FPS fluidos.
-     */
-    private fun createAndConfigureMediaRecorder(
-        width: Int,
-        height: Int,
-        fps: Int,
-        bitrate: Int,
-        audioSource: String,
-        outputFile: File
-    ): MediaRecorder {
-        val recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            MediaRecorder(context)
-        } else {
-            @Suppress("DEPRECATION")
-            MediaRecorder()
-        }
-
-        val isAudioEnabled = audioSource != AudioSourceType.NONE.name
-        val isInternalOnly = audioSource == AudioSourceType.INTERNAL_GAME.name
-
-        if (isAudioEnabled) {
-            try {
-                if (isInternalOnly) {
-                    recorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT)
-                } else {
-                    recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "No se pudo asignar fuente de audio específica, fallback a MIC: ${e.message}")
-                try {
-                    recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
-                } catch (e2: Exception) {
-                    Log.w(TAG, "Audio no disponible, continuando mudo: ${e2.message}")
-                }
-            }
-        }
-
-        recorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
-        recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-        recorder.setOutputFile(outputFile.absolutePath)
-
-        recorder.setVideoSize(width, height)
-        recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-
-        if (isAudioEnabled) {
-            try {
-                recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                recorder.setAudioEncodingBitRate(192000)
-                recorder.setAudioSamplingRate(48000)
-                recorder.setAudioChannels(2)
-            } catch (e: Exception) {
-                Log.w(TAG, "Error configurando codificador de audio AAC: ${e.message}")
-            }
-        }
-
-        recorder.setVideoEncodingBitRate(bitrate)
-        recorder.setVideoFrameRate(fps)
-
-        recorder.setOnErrorListener { _, what, extra ->
-            Log.e(TAG, "MediaRecorder error callback: what=$what, extra=$extra")
-        }
-
-        recorder.setOnInfoListener { _, what, extra ->
-            Log.i(TAG, "MediaRecorder info callback: what=$what, extra=$extra")
-        }
-
-        return recorder
     }
 }

@@ -19,6 +19,7 @@ import com.example.model.VideoBitrate
 import com.example.model.VideoFps
 import com.example.model.VideoResolution
 import com.example.service.ScreenRecordService
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +37,7 @@ data class UiState(
     val isLoadingVideos: Boolean = false,
     val selectedVideoForPlay: RecordedVideo? = null,
     val installedGames: List<InstalledAppItem> = emptyList(),
+    val isLoadingGames: Boolean = false,
     val errorMessage: String? = null,
     val infoMessage: String? = null,
     val activeTab: Int = 0 // 0: Grabar, 1: Galería, 2: Ajustes, 3: Juegos
@@ -53,6 +55,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     private val _isLoadingVideos = MutableStateFlow(false)
     private val _selectedVideoForPlay = MutableStateFlow<RecordedVideo?>(null)
     private val _installedGames = MutableStateFlow<List<InstalledAppItem>>(emptyList())
+    private val _isLoadingGames = MutableStateFlow(false)
     private val _activeTab = MutableStateFlow(0)
     private val _infoMessage = MutableStateFlow<String?>(null)
 
@@ -66,13 +69,14 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         combine(_isCountingDown, _videos, _isLoadingVideos, _selectedVideoForPlay) { isCd, vids, loadingVids, selectedVid ->
             Quadruple(isCd, vids, loadingVids, selectedVid)
         },
-        combine(_installedGames, ScreenRecordService.errorMessage, _infoMessage, _activeTab) { games, err, info, tab ->
-            Quadruple(games, err, info, tab)
+        combine(_installedGames, _isLoadingGames, ScreenRecordService.errorMessage, combine(_infoMessage, _activeTab) { info, tab -> Pair(info, tab) }) { games, loadingGames, err, infoTab ->
+            Quadruple(games, loadingGames, err, infoTab)
         }
     ) { group1, group2, group3 ->
         val (config, serviceState, elapsed, countdown) = group1
         val (isCountingDown, videos, isLoadingVideos, selectedVideo) = group2
-        val (games, serviceError, infoMessage, activeTab) = group3
+        val (games, loadingGames, serviceError, infoTab) = group3
+        val (infoMessage, activeTab) = infoTab
 
         val effectiveStatus = if (isCountingDown) RecordingStatus.COUNTDOWN else serviceState
 
@@ -86,6 +90,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             isLoadingVideos = isLoadingVideos,
             selectedVideoForPlay = selectedVideo,
             installedGames = games,
+            isLoadingGames = loadingGames,
             errorMessage = serviceError,
             infoMessage = infoMessage,
             activeTab = activeTab
@@ -124,11 +129,14 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun loadInstalledGames() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
+            _isLoadingGames.value = true
             try {
                 _installedGames.value = gamesHelper.getInstalledGamesAndApps()
             } catch (e: Exception) {
                 // Ignore
+            } finally {
+                _isLoadingGames.value = false
             }
         }
     }

@@ -1,7 +1,11 @@
-fix(ci): corregir compilación Kotlin en GitHub Actions y remover dependencia de .env
+feat(core): integrar captura de audio interno con AudioRecord/MediaCodec/MediaMuxer y capturas con ImageReader
 
-- Eliminar el plugin Secrets Gradle y la necesidad de archivos `.env`/`.env.example`, permitiendo que la aplicación se compile de forma 100% autónoma y autosuficiente sin requerir claves de terceros.
-- Configurar `android-actions/setup-android` y la aceptación automática de licencias de Android SDK (`platforms;android-36` y `build-tools;36.0.0`) en el flujo de CI.
-- Desactivar `configuration-cache` en el entorno de CI (`--no-configuration-cache`) y ajustar las opciones JVM de Gradle para prevenir excepciones en `GradleKotlinCompilerWorkAction` y fallos en trabajadores del compilador Kotlin.
-- Sincronizar la generación del Gradle Wrapper con la versión 9.3.1 especificada en `gradle-wrapper.properties`.
-- Resolver advertencias y compatibilidad en `ScreenRecordService` (`getParcelableExtra` adaptado a API 33+) y `SettingsView` (`Icons.AutoMirrored.Filled.OpenInNew`).
+- Implementar motor de audio interno para juegos utilizando `AudioPlaybackCaptureConfiguration` y `AudioRecord` (Android 10+), permitiendo grabar exclusivamente el sonido interno del juego sin interferencias de micrófono.
+- Migrar el pipeline de codificación de medios a `MediaCodec` (H.264 AVC para video y AAC para audio) y `MediaMuxer` para un multiplexado fluido, robusto y sin corrupción de metadatos.
+- Implementar captura de pantalla instantánea en tiempo real mediante `ImageReader` sobre la superficie de `MediaProjection`, eliminando la dependencia de decodificar el archivo de video en curso y evitando bloqueos de E/S.
+- Optimizar la gestión asíncrona de buffers PCM y frames de video con hilos dedicados de baja latencia y sincronización segura de pistas.
+- Solucionar discrepancia de directorios de almacenamiento en `RecordingsRepository`, unificando la lectura de la carpeta pública `Movies/ScreenRecorder`, almacenamiento de la app y consultas directas a `MediaStore.Video.Media`.
+- Agregar observador de ciclo de vida (`ON_RESUME`) en `HomeScreen` para recargar y sincronizar automáticamente las grabaciones al volver a la app tras jugar.
+- Implementar detección precisa y filtrado inteligente de juegos en `InstalledGamesHelper` (descartando aplicaciones y utilidades del sistema y reconociendo categorías oficiales de Android, flags y firmas de editores de videojuegos).
+- Delegar el escaneo y carga de juegos a corrutinas en hilos secundarios dedicados (`Dispatchers.IO`) para evitar bloqueos en el hilo principal de la UI.
+- Añadir pantalla y estado de carga (`isLoadingGames`) en el Lanzador de Juegos con indicador visual, selector de filtros ("🎮 Juegos" vs "📱 Todas las Apps") y botón de recarga manual.
