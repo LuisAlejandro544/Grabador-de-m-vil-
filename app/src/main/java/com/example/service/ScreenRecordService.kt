@@ -25,7 +25,8 @@ import java.io.File
 /**
  * Servicio en primer plano desacoplado para la grabación de pantalla.
  * Orquesta [ScreenCaptureEngine], [RecordNotificationHelper], [RecordStorageHelper],
- * [FloatingBubbleManager], [ScreenshotHelper] y [ScreenDrawingOverlay] sin acoplamiento monolítico.
+ * [FloatingBubbleManager], [ScreenshotHelper], [ScreenDrawingOverlay], [FacecamOverlayManager]
+ * y [TouchVisualizerOverlay].
  */
 class ScreenRecordService : Service() {
 
@@ -39,6 +40,9 @@ class ScreenRecordService : Service() {
         const val ACTION_SCREENSHOT = "com.example.service.SCREENSHOT"
         const val ACTION_TOGGLE_MIC = "com.example.service.TOGGLE_MIC"
         const val ACTION_TOGGLE_FACECAM = "com.example.service.TOGGLE_FACECAM"
+        const val ACTION_TOGGLE_BEAUTY = "com.example.service.TOGGLE_BEAUTY"
+        const val ACTION_TOGGLE_RGB = "com.example.service.TOGGLE_RGB"
+        const val ACTION_TOGGLE_TOUCH = "com.example.service.TOGGLE_TOUCH"
 
         const val EXTRA_RESULT_CODE = "extra_result_code"
         const val EXTRA_RESULT_DATA = "extra_result_data"
@@ -62,6 +66,15 @@ class ScreenRecordService : Service() {
         private val _isFacecamActive = MutableStateFlow(false)
         val isFacecamActive = _isFacecamActive.asStateFlow()
 
+        private val _isBeautyActive = MutableStateFlow(false)
+        val isBeautyActive = _isBeautyActive.asStateFlow()
+
+        private val _isRgbActive = MutableStateFlow(false)
+        val isRgbActive = _isRgbActive.asStateFlow()
+
+        private val _isTouchActive = MutableStateFlow(false)
+        val isTouchActive = _isTouchActive.asStateFlow()
+
         private val _lastSavedFilePath = MutableStateFlow<String?>(null)
         val lastSavedFilePath = _lastSavedFilePath.asStateFlow()
 
@@ -78,6 +91,7 @@ class ScreenRecordService : Service() {
     private lateinit var notificationHelper: RecordNotificationHelper
     private var floatingBubbleManager: FloatingBubbleManager? = null
     private var facecamOverlayManager: FacecamOverlayManager? = null
+    private var touchVisualizerOverlay: TouchVisualizerOverlay? = null
 
     private var timerJob: Job? = null
     private val serviceScope = CoroutineScope(Dispatchers.Main)
@@ -102,7 +116,10 @@ class ScreenRecordService : Service() {
                 if (facecamOverlayManager?.isShowing == true) {
                     facecamOverlayManager?.setShape(config.facecamShape)
                     facecamOverlayManager?.setSize(config.facecamSize)
+                    facecamOverlayManager?.setBeautyFilter(config.beautyFilterEnabled)
+                    facecamOverlayManager?.setRgbBorder(config.facecamRgbBorder)
                 }
+                touchVisualizerOverlay?.updateColor(config.touchVisualizerColor)
             }
         }
     }
@@ -116,6 +133,9 @@ class ScreenRecordService : Service() {
             ACTION_SCREENSHOT -> handleScreenshotAction()
             ACTION_TOGGLE_MIC -> handleToggleMicAction()
             ACTION_TOGGLE_FACECAM -> handleToggleFacecamAction()
+            ACTION_TOGGLE_BEAUTY -> handleToggleBeautyAction()
+            ACTION_TOGGLE_RGB -> handleToggleRgbBorderAction()
+            ACTION_TOGGLE_TOUCH -> handleToggleTouchVisualizerAction()
         }
         return START_NOT_STICKY
     }
@@ -219,6 +239,9 @@ class ScreenRecordService : Service() {
             _elapsedSeconds.value = 0
             _errorMessage.value = null
             _isMicMuted.value = captureEngine.isMicrophoneMuted
+            _isBeautyActive.value = savedConfig.beautyFilterEnabled
+            _isRgbActive.value = savedConfig.facecamRgbBorder
+            _isTouchActive.value = savedConfig.showTouchVisualizer
 
             // 4. Activar Facecam si estaba solicitado
             if (showFacecam) {
@@ -227,7 +250,12 @@ class ScreenRecordService : Service() {
                 _isFacecamActive.value = false
             }
 
-            // 5. Activar burbuja flotante opcional con submenú de herramientas, Facecam y botón de voz
+            // 5. Activar Visualizador de Toques Táctiles si estaba configurado
+            if (savedConfig.showTouchVisualizer) {
+                launchTouchVisualizer(savedConfig)
+            }
+
+            // 6. Activar burbuja flotante opcional con submenú de herramientas
             if (showFloatingBubble) {
                 floatingBubbleManager?.dismiss()
                 floatingBubbleManager = FloatingBubbleManager(
@@ -237,11 +265,17 @@ class ScreenRecordService : Service() {
                     onStopClicked = { handleStopAction() },
                     onMicToggleClicked = { handleToggleMicAction() },
                     onScreenshotRequested = { handleScreenshotAction() },
-                    onFacecamToggleClicked = { handleToggleFacecamAction() }
+                    onFacecamToggleClicked = { handleToggleFacecamAction() },
+                    onBeautyToggleClicked = { handleToggleBeautyAction() },
+                    onRgbBorderToggleClicked = { handleToggleRgbBorderAction() },
+                    onTouchToggleClicked = { handleToggleTouchVisualizerAction() }
                 ).apply {
                     show()
                     updateMicStatus(captureEngine.isMicrophoneMuted)
                     updateFacecamStatus(_isFacecamActive.value)
+                    updateBeautyStatus(_isBeautyActive.value)
+                    updateRgbStatus(_isRgbActive.value)
+                    updateTouchStatus(_isTouchActive.value)
                 }
             }
 
@@ -258,6 +292,8 @@ class ScreenRecordService : Service() {
             shape = config.facecamShape,
             size = config.facecamSize,
             isFrontCamera = config.isFrontCamera,
+            beautyFilterEnabled = config.beautyFilterEnabled,
+            rgbBorderEnabled = config.facecamRgbBorder,
             onCloseClicked = {
                 _isFacecamActive.value = false
                 floatingBubbleManager?.updateFacecamStatus(false)
@@ -268,12 +304,34 @@ class ScreenRecordService : Service() {
             },
             onCameraFlipped = { isFront ->
                 SettingsRepository(this).setFacecamCamera(isFront)
+            },
+            onBeautyFilterToggled = { enabled ->
+                _isBeautyActive.value = enabled
+                floatingBubbleManager?.updateBeautyStatus(enabled)
+                SettingsRepository(this).toggleBeautyFilter(enabled)
+            },
+            onRgbBorderToggled = { enabled ->
+                _isRgbActive.value = enabled
+                floatingBubbleManager?.updateRgbStatus(enabled)
+                SettingsRepository(this).toggleFacecamRgbBorder(enabled)
             }
         ).apply {
             show()
         }
         _isFacecamActive.value = facecamOverlayManager?.isShowing == true
         floatingBubbleManager?.updateFacecamStatus(_isFacecamActive.value)
+    }
+
+    private fun launchTouchVisualizer(config: com.example.model.RecordingConfig) {
+        touchVisualizerOverlay?.dismiss()
+        touchVisualizerOverlay = TouchVisualizerOverlay(
+            context = this,
+            touchColor = config.touchVisualizerColor
+        ).apply {
+            show()
+        }
+        _isTouchActive.value = touchVisualizerOverlay?.isShowing == true
+        floatingBubbleManager?.updateTouchStatus(_isTouchActive.value)
     }
 
     private fun handleToggleFacecamAction() {
@@ -289,6 +347,42 @@ class ScreenRecordService : Service() {
             launchFacecam(config)
             SettingsRepository(this).toggleFacecam(true)
             Log.i(TAG, "Facecam activada desde la burbuja flotante")
+        }
+    }
+
+    private fun handleToggleBeautyAction() {
+        val current = SettingsRepository(this).getConfig().beautyFilterEnabled
+        val newState = !current
+        SettingsRepository(this).toggleBeautyFilter(newState)
+        _isBeautyActive.value = newState
+        facecamOverlayManager?.setBeautyFilter(newState)
+        floatingBubbleManager?.updateBeautyStatus(newState)
+        Log.i(TAG, "Filtro de Belleza conmutado: $newState")
+    }
+
+    private fun handleToggleRgbBorderAction() {
+        val current = SettingsRepository(this).getConfig().facecamRgbBorder
+        val newState = !current
+        SettingsRepository(this).toggleFacecamRgbBorder(newState)
+        _isRgbActive.value = newState
+        facecamOverlayManager?.setRgbBorder(newState)
+        floatingBubbleManager?.updateRgbStatus(newState)
+        Log.i(TAG, "Borde RGB Arcoíris conmutado: $newState")
+    }
+
+    private fun handleToggleTouchVisualizerAction() {
+        if (touchVisualizerOverlay?.isShowing == true) {
+            touchVisualizerOverlay?.dismiss()
+            touchVisualizerOverlay = null
+            _isTouchActive.value = false
+            floatingBubbleManager?.updateTouchStatus(false)
+            SettingsRepository(this).toggleTouchVisualizer(false)
+            Log.i(TAG, "Touch Visualizer desactivado")
+        } else {
+            val config = SettingsRepository(this).getConfig()
+            SettingsRepository(this).toggleTouchVisualizer(true)
+            launchTouchVisualizer(config)
+            Log.i(TAG, "Touch Visualizer activado")
         }
     }
 
@@ -409,7 +503,12 @@ class ScreenRecordService : Service() {
         floatingBubbleManager = null
         facecamOverlayManager?.dismiss()
         facecamOverlayManager = null
+        touchVisualizerOverlay?.dismiss()
+        touchVisualizerOverlay = null
         _isFacecamActive.value = false
+        _isBeautyActive.value = false
+        _isRgbActive.value = false
+        _isTouchActive.value = false
         captureEngine.release()
         _recordingState.value = RecordingStatus.IDLE
         stopForeground(STOP_FOREGROUND_REMOVE)

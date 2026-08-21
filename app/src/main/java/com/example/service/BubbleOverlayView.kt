@@ -19,7 +19,8 @@ import java.util.Locale
 /**
  * Componente visual modular del widget flotante de grabación.
  * Incluye controles de grabación, cronómetro monospace, pulso en vivo
- * y botón de "Herramientas" (Captura de pantalla rápida y Pincel de dibujo sobre la pantalla).
+ * y menú de herramientas con: Captura rápida, Pincel en pantalla, Facecam,
+ * Filtro de Belleza, Borde RGB Arcoíris y Visualizador de Toques Táctiles en tiempo real.
  */
 class BubbleOverlayView(
     private val context: Context,
@@ -29,7 +30,10 @@ class BubbleOverlayView(
     private val onMicToggleClicked: () -> Unit,
     private val onScreenshotClicked: () -> Unit,
     private val onDrawToolClicked: () -> Unit,
-    private val onFacecamToggleClicked: () -> Unit = {}
+    private val onFacecamToggleClicked: () -> Unit = {},
+    private val onBeautyToggleClicked: () -> Unit = {},
+    private val onRgbBorderToggleClicked: () -> Unit = {},
+    private val onTouchToggleClicked: () -> Unit = {}
 ) {
 
     companion object {
@@ -46,6 +50,12 @@ class BubbleOverlayView(
         private const val COLOR_MIC_OFF_TEXT = 0xFF94A3B8.toInt()
         private const val COLOR_FACECAM_ON_BG = 0x440284C7.toInt()
         private const val COLOR_FACECAM_ON_TEXT = 0xFF38BDF8.toInt()
+        private const val COLOR_BEAUTY_ON_BG = 0x44F472B6.toInt()
+        private const val COLOR_BEAUTY_ON_TEXT = 0xFFF472B6.toInt()
+        private const val COLOR_RGB_ON_BG = 0x4410B981.toInt()
+        private const val COLOR_RGB_ON_TEXT = 0xFF34D399.toInt()
+        private const val COLOR_TOUCH_ON_BG = 0x448B5CF6.toInt()
+        private const val COLOR_TOUCH_ON_TEXT = 0xFFA78BFA.toInt()
     }
 
     val rootView: LinearLayout
@@ -61,6 +71,15 @@ class BubbleOverlayView(
     private val btnFacecamToggle: LinearLayout
     private val iconFacecamToggle: ImageView
     private val tvFacecamToggleLabel: TextView
+    private val btnBeautyToggle: LinearLayout
+    private val iconBeautyToggle: ImageView
+    private val tvBeautyToggleLabel: TextView
+    private val btnRgbToggle: LinearLayout
+    private val iconRgbToggle: ImageView
+    private val tvRgbToggleLabel: TextView
+    private val btnTouchToggle: LinearLayout
+    private val iconTouchToggle: ImageView
+    private val tvTouchToggleLabel: TextView
     private val btnToggleExpand: ImageView
     private var dotPulseAnimator: ObjectAnimator? = null
 
@@ -71,6 +90,12 @@ class BubbleOverlayView(
     var isMicMuted: Boolean = false
         private set
     var isFacecamActive: Boolean = false
+        private set
+    var isBeautyActive: Boolean = false
+        private set
+    var isRgbActive: Boolean = false
+        private set
+    var isTouchActive: Boolean = false
         private set
     var isToolsMenuOpen: Boolean = false
         private set
@@ -196,7 +221,7 @@ class BubbleOverlayView(
         }
         actionControlsLayout.addView(btnMicToggle)
 
-        // Botón Herramientas (Captura & Lapicero)
+        // Botón Herramientas (Captura, Pincel, Facecam, Belleza, RGB, Toques)
         val btnTools = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -289,7 +314,7 @@ class BubbleOverlayView(
 
         rootView.addView(mainBar)
 
-        // Submenú desplegable de Herramientas
+        // Submenú desplegable de Herramientas (Con soporte de múltiples filas o flujo horizontal amplio)
         toolsSubmenuLayout = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -314,12 +339,12 @@ class BubbleOverlayView(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                marginEnd = dpToPx(8)
+                marginEnd = dpToPx(6)
             }
 
             val icon = ImageView(context).apply {
                 setImageResource(android.R.drawable.ic_menu_camera)
-                layoutParams = LinearLayout.LayoutParams(dpToPx(15), dpToPx(15)).apply {
+                layoutParams = LinearLayout.LayoutParams(dpToPx(14), dpToPx(14)).apply {
                     marginEnd = dpToPx(4)
                 }
                 setColorFilter(Color.WHITE)
@@ -329,7 +354,7 @@ class BubbleOverlayView(
             val tv = TextView(context).apply {
                 text = "Captura"
                 setTextColor(Color.WHITE)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 typeface = Typeface.DEFAULT_BOLD
             }
             addView(tv)
@@ -352,12 +377,12 @@ class BubbleOverlayView(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                marginEnd = dpToPx(8)
+                marginEnd = dpToPx(6)
             }
 
             val icon = ImageView(context).apply {
                 setImageResource(android.R.drawable.ic_menu_edit)
-                layoutParams = LinearLayout.LayoutParams(dpToPx(15), dpToPx(15)).apply {
+                layoutParams = LinearLayout.LayoutParams(dpToPx(14), dpToPx(14)).apply {
                     marginEnd = dpToPx(4)
                 }
                 setColorFilter(Color.WHITE)
@@ -367,7 +392,7 @@ class BubbleOverlayView(
             val tv = TextView(context).apply {
                 text = "Pincel"
                 setTextColor(Color.WHITE)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 typeface = Typeface.DEFAULT_BOLD
             }
             addView(tv)
@@ -386,11 +411,17 @@ class BubbleOverlayView(
             gravity = Gravity.CENTER_VERTICAL
             background = createCardDrawable(0x33FFFFFF.toInt(), dpToPx(12))
             setPadding(dpToPx(8), dpToPx(4), dpToPx(8), dpToPx(4))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                marginEnd = dpToPx(6)
+            }
         }
 
         iconFacecamToggle = ImageView(context).apply {
             setImageResource(android.R.drawable.ic_menu_camera)
-            layoutParams = LinearLayout.LayoutParams(dpToPx(15), dpToPx(15)).apply {
+            layoutParams = LinearLayout.LayoutParams(dpToPx(14), dpToPx(14)).apply {
                 marginEnd = dpToPx(4)
             }
             setColorFilter(Color.WHITE)
@@ -400,17 +431,121 @@ class BubbleOverlayView(
         tvFacecamToggleLabel = TextView(context).apply {
             text = "Facecam"
             setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             typeface = Typeface.DEFAULT_BOLD
         }
         btnFacecamToggle.addView(tvFacecamToggleLabel)
 
         btnFacecamToggle.setOnClickListener {
             vibrateQuick()
-            toggleToolsMenu()
             onFacecamToggleClicked()
         }
         toolsSubmenuLayout.addView(btnFacecamToggle)
+
+        // Opción 4: Filtro de Belleza (Suavizado de piel)
+        btnBeautyToggle = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = createCardDrawable(0x33FFFFFF.toInt(), dpToPx(12))
+            setPadding(dpToPx(8), dpToPx(4), dpToPx(8), dpToPx(4))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                marginEnd = dpToPx(6)
+            }
+        }
+
+        iconBeautyToggle = ImageView(context).apply {
+            setImageResource(android.R.drawable.btn_star_big_on)
+            layoutParams = LinearLayout.LayoutParams(dpToPx(14), dpToPx(14)).apply {
+                marginEnd = dpToPx(4)
+            }
+            setColorFilter(Color.WHITE)
+        }
+        btnBeautyToggle.addView(iconBeautyToggle)
+
+        tvBeautyToggleLabel = TextView(context).apply {
+            text = "Belleza"
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        btnBeautyToggle.addView(tvBeautyToggleLabel)
+
+        btnBeautyToggle.setOnClickListener {
+            vibrateQuick()
+            onBeautyToggleClicked()
+        }
+        toolsSubmenuLayout.addView(btnBeautyToggle)
+
+        // Opción 5: Borde RGB Arcoíris
+        btnRgbToggle = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = createCardDrawable(0x33FFFFFF.toInt(), dpToPx(12))
+            setPadding(dpToPx(8), dpToPx(4), dpToPx(8), dpToPx(4))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                marginEnd = dpToPx(6)
+            }
+        }
+
+        iconRgbToggle = ImageView(context).apply {
+            setImageResource(android.R.drawable.ic_menu_compass)
+            layoutParams = LinearLayout.LayoutParams(dpToPx(14), dpToPx(14)).apply {
+                marginEnd = dpToPx(4)
+            }
+            setColorFilter(Color.WHITE)
+        }
+        btnRgbToggle.addView(iconRgbToggle)
+
+        tvRgbToggleLabel = TextView(context).apply {
+            text = "RGB"
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        btnRgbToggle.addView(tvRgbToggleLabel)
+
+        btnRgbToggle.setOnClickListener {
+            vibrateQuick()
+            onRgbBorderToggleClicked()
+        }
+        toolsSubmenuLayout.addView(btnRgbToggle)
+
+        // Opción 6: Visualizador de Toques Táctiles
+        btnTouchToggle = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = createCardDrawable(0x33FFFFFF.toInt(), dpToPx(12))
+            setPadding(dpToPx(8), dpToPx(4), dpToPx(8), dpToPx(4))
+        }
+
+        iconTouchToggle = ImageView(context).apply {
+            setImageResource(android.R.drawable.ic_menu_directions)
+            layoutParams = LinearLayout.LayoutParams(dpToPx(14), dpToPx(14)).apply {
+                marginEnd = dpToPx(4)
+            }
+            setColorFilter(Color.WHITE)
+        }
+        btnTouchToggle.addView(iconTouchToggle)
+
+        tvTouchToggleLabel = TextView(context).apply {
+            text = "Toques"
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        btnTouchToggle.addView(tvTouchToggleLabel)
+
+        btnTouchToggle.setOnClickListener {
+            vibrateQuick()
+            onTouchToggleClicked()
+        }
+        toolsSubmenuLayout.addView(btnTouchToggle)
 
         rootView.addView(toolsSubmenuLayout)
     }
@@ -465,13 +600,11 @@ class BubbleOverlayView(
         this.isMicMuted = muted
         rootView.post {
             if (muted) {
-                // Solo audio del juego grabado (micrófono silenciado)
                 btnMicToggle.background = createCardDrawable(COLOR_MIC_OFF_BG, dpToPx(14))
                 iconMicToggle.setColorFilter(COLOR_MIC_OFF_TEXT)
                 tvMicToggleLabel.text = "Solo Juego"
                 tvMicToggleLabel.setTextColor(COLOR_MIC_OFF_TEXT)
             } else {
-                // Juego + Voz del usuario (micrófono activo)
                 btnMicToggle.background = createCardDrawable(COLOR_MIC_ON_BG, dpToPx(14))
                 iconMicToggle.setColorFilter(COLOR_MIC_ON_TEXT)
                 tvMicToggleLabel.text = "Voz ON"
@@ -493,6 +626,57 @@ class BubbleOverlayView(
                 iconFacecamToggle.setColorFilter(Color.WHITE)
                 tvFacecamToggleLabel.text = "Facecam"
                 tvFacecamToggleLabel.setTextColor(Color.WHITE)
+            }
+        }
+    }
+
+    fun updateBeautyStatus(active: Boolean) {
+        this.isBeautyActive = active
+        rootView.post {
+            if (active) {
+                btnBeautyToggle.background = createCardDrawable(COLOR_BEAUTY_ON_BG, dpToPx(12))
+                iconBeautyToggle.setColorFilter(COLOR_BEAUTY_ON_TEXT)
+                tvBeautyToggleLabel.text = "Belleza ON"
+                tvBeautyToggleLabel.setTextColor(COLOR_BEAUTY_ON_TEXT)
+            } else {
+                btnBeautyToggle.background = createCardDrawable(COLOR_BTN_BG, dpToPx(12))
+                iconBeautyToggle.setColorFilter(Color.WHITE)
+                tvBeautyToggleLabel.text = "Belleza"
+                tvBeautyToggleLabel.setTextColor(Color.WHITE)
+            }
+        }
+    }
+
+    fun updateRgbStatus(active: Boolean) {
+        this.isRgbActive = active
+        rootView.post {
+            if (active) {
+                btnRgbToggle.background = createCardDrawable(COLOR_RGB_ON_BG, dpToPx(12))
+                iconRgbToggle.setColorFilter(COLOR_RGB_ON_TEXT)
+                tvRgbToggleLabel.text = "RGB ON"
+                tvRgbToggleLabel.setTextColor(COLOR_RGB_ON_TEXT)
+            } else {
+                btnRgbToggle.background = createCardDrawable(COLOR_BTN_BG, dpToPx(12))
+                iconRgbToggle.setColorFilter(Color.WHITE)
+                tvRgbToggleLabel.text = "RGB"
+                tvRgbToggleLabel.setTextColor(Color.WHITE)
+            }
+        }
+    }
+
+    fun updateTouchStatus(active: Boolean) {
+        this.isTouchActive = active
+        rootView.post {
+            if (active) {
+                btnTouchToggle.background = createCardDrawable(COLOR_TOUCH_ON_BG, dpToPx(12))
+                iconTouchToggle.setColorFilter(COLOR_TOUCH_ON_TEXT)
+                tvTouchToggleLabel.text = "Toques ON"
+                tvTouchToggleLabel.setTextColor(COLOR_TOUCH_ON_TEXT)
+            } else {
+                btnTouchToggle.background = createCardDrawable(COLOR_BTN_BG, dpToPx(12))
+                iconTouchToggle.setColorFilter(Color.WHITE)
+                tvTouchToggleLabel.text = "Toques"
+                tvTouchToggleLabel.setTextColor(Color.WHITE)
             }
         }
     }

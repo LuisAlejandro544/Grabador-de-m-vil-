@@ -1,10 +1,18 @@
 package com.example.service
 
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Matrix
 import android.graphics.Outline
+import android.graphics.Paint
 import android.graphics.PixelFormat
+import android.graphics.RectF
+import android.graphics.SweepGradient
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.provider.Settings
@@ -16,6 +24,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
 import android.view.WindowManager
+import android.view.animation.LinearInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -34,26 +43,43 @@ import com.example.model.FacecamSize
  * Gestor de la cámara flotante Facecam sobre la pantalla.
  * Permite mostrar la vista previa en vivo de la cámara frontal o trasera durante la grabación
  * con múltiples formas geométricas (Circular, Cuadrado, Cuadrado Redondeado y Rectangular),
- * tamaños dinámicos, borde estilizado y controles táctiles de arrastre y cambio de cámara.
+ * tamaños dinámicos, borde RGB Arcoíris animado, Filtro de Belleza / Suavizado de Piel
+ * y controles táctiles en vivo.
  */
 class FacecamOverlayManager(
     private val context: Context,
     private var shape: FacecamShape = FacecamShape.CIRCLE,
     private var size: FacecamSize = FacecamSize.MEDIUM,
     private var isFrontCamera: Boolean = true,
+    private var beautyFilterEnabled: Boolean = false,
+    private var rgbBorderEnabled: Boolean = false,
     private val onCloseClicked: (() -> Unit)? = null,
     private val onShapeChanged: ((FacecamShape) -> Unit)? = null,
-    private val onCameraFlipped: ((Boolean) -> Unit)? = null
+    private val onCameraFlipped: ((Boolean) -> Unit)? = null,
+    private val onBeautyFilterToggled: ((Boolean) -> Unit)? = null,
+    private val onRgbBorderToggled: ((Boolean) -> Unit)? = null
 ) {
 
     companion object {
         private const val TAG = "FacecamOverlayManager"
+        private val RAINBOW_COLORS = intArrayOf(
+            0xFFFF0055.toInt(),
+            0xFFFF7700.toInt(),
+            0xFFFFEE00.toInt(),
+            0xFF00FF66.toInt(),
+            0xFF00D4FF.toInt(),
+            0xFF8A2BE2.toInt(),
+            0xFFFF00AA.toInt(),
+            0xFFFF0055.toInt()
+        )
     }
 
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
     private var rootContainer: FrameLayout? = null
     private var cameraCard: FrameLayout? = null
     private var previewView: PreviewView? = null
+    private var beautyOverlayView: View? = null
+    private var borderView: RgbBorderView? = null
     private var overlayControls: LinearLayout? = null
     private var params: WindowManager.LayoutParams? = null
 
@@ -62,6 +88,89 @@ class FacecamOverlayManager(
 
     private val lifecycleOwner = FacecamLifecycleOwner()
     private var cameraProvider: ProcessCameraProvider? = null
+
+    /**
+     * Vista de borde dinámico con soporte de borde sólido clásico o borde RGB Arcoíris giratorio animado.
+     */
+    private inner class RgbBorderView(context: Context) : View(context) {
+        private var rotationAngle = 0f
+        private var animator: ValueAnimator? = null
+        private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = dpToPx(3.5f)
+        }
+        private val matrix = Matrix()
+        private val rectF = RectF()
+
+        init {
+            startOrStopAnimation()
+        }
+
+        fun updateRgbMode(enabled: Boolean) {
+            startOrStopAnimation()
+            invalidate()
+        }
+
+        private fun startOrStopAnimation() {
+            animator?.cancel()
+            animator = null
+
+            if (rgbBorderEnabled) {
+                animator = ValueAnimator.ofFloat(0f, 360f).apply {
+                    duration = 2400
+                    repeatCount = ValueAnimator.INFINITE
+                    interpolator = LinearInterpolator()
+                    addUpdateListener { anim ->
+                        rotationAngle = anim.animatedValue as Float
+                        postInvalidateOnAnimation()
+                    }
+                    start()
+                }
+            }
+        }
+
+        fun release() {
+            animator?.cancel()
+            animator = null
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val strokeW = dpToPx(3.5f)
+            val halfStroke = strokeW / 2f
+            rectF.set(halfStroke, halfStroke, width - halfStroke, height - halfStroke)
+
+            if (rgbBorderEnabled) {
+                val cx = width / 2f
+                val cy = height / 2f
+                val gradient = SweepGradient(cx, cy, RAINBOW_COLORS, null)
+                matrix.setRotate(rotationAngle, cx, cy)
+                gradient.setLocalMatrix(matrix)
+                borderPaint.shader = gradient
+            } else {
+                borderPaint.shader = null
+                borderPaint.color = 0xFF0284C7.toInt()
+            }
+
+            when (shape) {
+                FacecamShape.CIRCLE -> {
+                    val radius = (minOf(width, height) / 2f) - halfStroke
+                    canvas.drawCircle(width / 2f, height / 2f, maxOf(radius, 0f), borderPaint)
+                }
+                FacecamShape.ROUNDED_SQUARE -> {
+                    val cornerRadius = dpToPx(24f)
+                    canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, borderPaint)
+                }
+                FacecamShape.SQUARE -> {
+                    canvas.drawRect(rectF, borderPaint)
+                }
+                FacecamShape.RECTANGLE -> {
+                    val cornerRadius = dpToPx(16f)
+                    canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, borderPaint)
+                }
+            }
+        }
+    }
 
     /**
      * Ciclo de vida desacoplado para vincular CameraX de forma segura en un Service.
@@ -137,7 +246,7 @@ class FacecamOverlayManager(
             }
             this.params = p
 
-            // Contenedor principal con sombra y gestos
+            // Contenedor principal
             val container = FrameLayout(context).apply {
                 layoutParams = ViewGroup.LayoutParams(widthPx, heightPx)
             }
@@ -164,20 +273,33 @@ class FacecamOverlayManager(
             this.previewView = pv
             card.addView(pv)
 
-            // Borde decorativo translúcido
-            val borderView = View(context).apply {
+            // Capa de Filtro de Belleza / Suavizado de Piel
+            val beautyView = View(context).apply {
+                layoutParams = FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT
+                )
+                setBackgroundColor(0x18FFE4E1.toInt()) // Sutil calidez difusa
+                visibility = if (beautyFilterEnabled) View.VISIBLE else View.GONE
+            }
+            this.beautyOverlayView = beautyView
+            card.addView(beautyView)
+
+            // Borde decorativo translúcido con soporte RGB
+            val border = RgbBorderView(context).apply {
                 layoutParams = FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT,
                     FrameLayout.LayoutParams.MATCH_PARENT
                 )
             }
-            applyShapeOutline(card, borderView, shape)
-            card.addView(borderView)
+            this.borderView = border
+            applyShapeOutline(card, shape)
+            card.addView(border)
 
             container.addView(card)
 
             // Barra de controles rápidos al tocar
-            val controls = createOverlayControls(borderView)
+            val controls = createOverlayControls()
             this.overlayControls = controls
             container.addView(controls)
 
@@ -228,7 +350,7 @@ class FacecamOverlayManager(
                         try {
                             windowManager?.updateViewLayout(container, p)
                         } catch (e: Exception) {
-                            // Ignore layout updates if detached
+                            // Ignorar si se desconecta
                         }
                     }
                     true
@@ -244,7 +366,7 @@ class FacecamOverlayManager(
         }
     }
 
-    private fun createOverlayControls(borderView: View): LinearLayout {
+    private fun createOverlayControls(): LinearLayout {
         return LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
@@ -252,7 +374,7 @@ class FacecamOverlayManager(
             setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                setColor(0xCC111827.toInt())
+                setColor(0xEE0F172A.toInt())
                 cornerRadius = dpToPx(14).toFloat()
             }
             layoutParams = FrameLayout.LayoutParams(
@@ -266,8 +388,8 @@ class FacecamOverlayManager(
             // 1. Alternar Cámara Frontal / Trasera
             val btnFlip = ImageView(context).apply {
                 setImageResource(android.R.drawable.ic_menu_rotate)
-                layoutParams = LinearLayout.LayoutParams(dpToPx(24), dpToPx(24)).apply {
-                    marginEnd = dpToPx(6)
+                layoutParams = LinearLayout.LayoutParams(dpToPx(22), dpToPx(22)).apply {
+                    marginEnd = dpToPx(4)
                 }
                 setColorFilter(Color.WHITE)
                 setOnClickListener {
@@ -279,20 +401,48 @@ class FacecamOverlayManager(
             // 2. Cambiar Forma de Facecam
             val btnShape = ImageView(context).apply {
                 setImageResource(android.R.drawable.ic_menu_crop)
-                layoutParams = LinearLayout.LayoutParams(dpToPx(24), dpToPx(24)).apply {
-                    marginEnd = dpToPx(6)
+                layoutParams = LinearLayout.LayoutParams(dpToPx(22), dpToPx(22)).apply {
+                    marginEnd = dpToPx(4)
                 }
                 setColorFilter(0xFF38BDF8.toInt())
                 setOnClickListener {
-                    cycleShape(borderView)
+                    cycleShape()
                 }
             }
             addView(btnShape)
 
-            // 3. Cerrar Facecam
+            // 3. Filtro de Belleza (Beauty Filter)
+            val btnBeauty = ImageView(context).apply {
+                setImageResource(android.R.drawable.btn_star_big_on)
+                layoutParams = LinearLayout.LayoutParams(dpToPx(22), dpToPx(22)).apply {
+                    marginEnd = dpToPx(4)
+                }
+                setColorFilter(if (beautyFilterEnabled) 0xFFF472B6.toInt() else 0xFF94A3B8.toInt())
+                setOnClickListener {
+                    toggleBeautyFilter()
+                    setColorFilter(if (beautyFilterEnabled) 0xFFF472B6.toInt() else 0xFF94A3B8.toInt())
+                }
+            }
+            addView(btnBeauty)
+
+            // 4. Borde RGB / Arcoíris
+            val btnRgb = ImageView(context).apply {
+                setImageResource(android.R.drawable.ic_menu_compass)
+                layoutParams = LinearLayout.LayoutParams(dpToPx(22), dpToPx(22)).apply {
+                    marginEnd = dpToPx(4)
+                }
+                setColorFilter(if (rgbBorderEnabled) 0xFF10B981.toInt() else 0xFF94A3B8.toInt())
+                setOnClickListener {
+                    toggleRgbBorder()
+                    setColorFilter(if (rgbBorderEnabled) 0xFF10B981.toInt() else 0xFF94A3B8.toInt())
+                }
+            }
+            addView(btnRgb)
+
+            // 5. Cerrar Facecam
             val btnClose = ImageView(context).apply {
                 setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
-                layoutParams = LinearLayout.LayoutParams(dpToPx(24), dpToPx(24))
+                layoutParams = LinearLayout.LayoutParams(dpToPx(22), dpToPx(22))
                 setColorFilter(0xFFEF4444.toInt())
                 setOnClickListener {
                     dismiss()
@@ -382,7 +532,29 @@ class FacecamOverlayManager(
         }
     }
 
-    private fun cycleShape(borderView: View) {
+    fun setBeautyFilter(enabled: Boolean) {
+        this.beautyFilterEnabled = enabled
+        beautyOverlayView?.visibility = if (enabled) View.VISIBLE else View.GONE
+    }
+
+    fun toggleBeautyFilter() {
+        val newState = !beautyFilterEnabled
+        setBeautyFilter(newState)
+        onBeautyFilterToggled?.invoke(newState)
+    }
+
+    fun setRgbBorder(enabled: Boolean) {
+        this.rgbBorderEnabled = enabled
+        borderView?.updateRgbMode(enabled)
+    }
+
+    fun toggleRgbBorder() {
+        val newState = !rgbBorderEnabled
+        setRgbBorder(newState)
+        onRgbBorderToggled?.invoke(newState)
+    }
+
+    private fun cycleShape() {
         val shapes = FacecamShape.values()
         val nextIndex = (shape.ordinal + 1) % shapes.size
         val nextShape = shapes[nextIndex]
@@ -413,11 +585,9 @@ class FacecamOverlayManager(
                 height = heightPx
             } ?: FrameLayout.LayoutParams(widthPx, heightPx)
 
-            if (card.childCount > 1) {
-                val borderView = card.getChildAt(1)
-                applyShapeOutline(card, borderView, shape)
-            }
+            applyShapeOutline(card, shape)
             card.invalidateOutline()
+            borderView?.invalidate()
 
             if (isShowingInternal) {
                 windowManager?.updateViewLayout(container, p)
@@ -427,7 +597,7 @@ class FacecamOverlayManager(
         }
     }
 
-    private fun applyShapeOutline(card: FrameLayout, borderView: View, currentShape: FacecamShape) {
+    private fun applyShapeOutline(card: FrameLayout, currentShape: FacecamShape) {
         try {
             when (currentShape) {
                 FacecamShape.CIRCLE -> {
@@ -445,13 +615,9 @@ class FacecamOverlayManager(
                         }
                     }
                     card.clipToOutline = true
-                    borderView.background = GradientDrawable().apply {
-                        shape = GradientDrawable.OVAL
-                        setStroke(dpToPx(3), 0xFF0284C7.toInt())
-                    }
                 }
                 FacecamShape.ROUNDED_SQUARE -> {
-                    val radius = dpToPx(24).toFloat()
+                    val radius = dpToPx(24f)
                     card.outlineProvider = object : ViewOutlineProvider() {
                         override fun getOutline(view: View, outline: Outline) {
                             if (view.width <= 0 || view.height <= 0) return
@@ -464,11 +630,6 @@ class FacecamOverlayManager(
                         }
                     }
                     card.clipToOutline = true
-                    borderView.background = GradientDrawable().apply {
-                        shape = GradientDrawable.RECTANGLE
-                        cornerRadius = radius
-                        setStroke(dpToPx(3), 0xFF0284C7.toInt())
-                    }
                 }
                 FacecamShape.SQUARE -> {
                     card.outlineProvider = object : ViewOutlineProvider() {
@@ -482,13 +643,9 @@ class FacecamOverlayManager(
                         }
                     }
                     card.clipToOutline = true
-                    borderView.background = GradientDrawable().apply {
-                        shape = GradientDrawable.RECTANGLE
-                        setStroke(dpToPx(3), 0xFF0284C7.toInt())
-                    }
                 }
                 FacecamShape.RECTANGLE -> {
-                    val radius = dpToPx(16).toFloat()
+                    val radius = dpToPx(16f)
                     card.outlineProvider = object : ViewOutlineProvider() {
                         override fun getOutline(view: View, outline: Outline) {
                             if (view.width <= 0 || view.height <= 0) return
@@ -501,11 +658,6 @@ class FacecamOverlayManager(
                         }
                     }
                     card.clipToOutline = true
-                    borderView.background = GradientDrawable().apply {
-                        shape = GradientDrawable.RECTANGLE
-                        cornerRadius = radius
-                        setStroke(dpToPx(3), 0xFF0284C7.toInt())
-                    }
                 }
             }
         } catch (e: Exception) {
@@ -527,6 +679,7 @@ class FacecamOverlayManager(
         if (!isShowingInternal) return
         try {
             lifecycleOwner.stop()
+            borderView?.release()
             cameraProvider?.unbindAll()
             cameraProvider = null
 
@@ -539,6 +692,8 @@ class FacecamOverlayManager(
             rootContainer = null
             cameraCard = null
             previewView = null
+            beautyOverlayView = null
+            borderView = null
             overlayControls = null
             isShowingInternal = false
         }
@@ -550,5 +705,13 @@ class FacecamOverlayManager(
             dp.toFloat(),
             context.resources.displayMetrics
         ).toInt()
+    }
+
+    private fun dpToPx(dp: Float): Float {
+        return TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            dp,
+            context.resources.displayMetrics
+        )
     }
 }

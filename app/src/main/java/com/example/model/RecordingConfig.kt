@@ -45,6 +45,17 @@ enum class FacecamSize(val label: String, val dpSize: Int) {
     LARGE("Grande (180 dp)", 180)
 }
 
+enum class TouchColorOption(val label: String, val hexColor: String, val primaryArgb: Long) {
+    CYAN("Azul Neón", "#0284C7", 0xFF0284C7),
+    GREEN("Verde Gamer", "#10B981", 0xFF10B981),
+    PURPLE("Púrpura Neón", "#8B5CF6", 0xFF8B5CF6),
+    RED("Rojo Fuego", "#EF4444", 0xFFEF4444),
+    AMBER("Amarillo Eléctrico", "#F59E0B", 0xFFF59E0B),
+    WHITE("Blanco Puro", "#FFFFFF", 0xFFFFFFFF);
+
+    val colorInt: Int get() = primaryArgb.toInt()
+}
+
 data class RecordingConfig(
     val resolution: VideoResolution = VideoResolution.RES_1080P,
     val fps: VideoFps = VideoFps.FPS_60,
@@ -56,7 +67,11 @@ data class RecordingConfig(
     val showFacecam: Boolean = false,
     val facecamShape: FacecamShape = FacecamShape.CIRCLE,
     val facecamSize: FacecamSize = FacecamSize.MEDIUM,
-    val isFrontCamera: Boolean = true
+    val isFrontCamera: Boolean = true,
+    val beautyFilterEnabled: Boolean = false,
+    val facecamRgbBorder: Boolean = false,
+    val showTouchVisualizer: Boolean = false,
+    val touchVisualizerColor: TouchColorOption = TouchColorOption.CYAN
 )
 
 enum class RecordingStatus {

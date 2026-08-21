@@ -192,6 +192,22 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         settingsRepository.toggleFacecamCamera()
     }
 
+    fun toggleBeautyFilter(enabled: Boolean) {
+        settingsRepository.toggleBeautyFilter(enabled)
+    }
+
+    fun toggleFacecamRgbBorder(enabled: Boolean) {
+        settingsRepository.toggleFacecamRgbBorder(enabled)
+    }
+
+    fun toggleTouchVisualizer(enabled: Boolean) {
+        settingsRepository.toggleTouchVisualizer(enabled)
+    }
+
+    fun updateTouchVisualizerColor(color: com.example.model.TouchColorOption) {
+        settingsRepository.updateTouchVisualizerColor(color)
+    }
+
     fun toggleGameMode(enabled: Boolean) {
         settingsRepository.toggleGameMode(enabled)
     }

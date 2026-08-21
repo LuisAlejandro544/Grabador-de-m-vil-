@@ -1,10 +1,9 @@
-feat(facecam): implementar camara flotante con multiples disenos geometricos y conmutacion desde la burbuja de grabacion
+feat(effects): agregar filtro de belleza, borde rgb animado y visualizador de toques tactiles
 
-- Integrar módulo de Facecam flotante (`FacecamOverlayManager`) mediante CameraX y `WindowManager` con ciclo de vida desacoplado (`FacecamLifecycleOwner`) para renderizado fluido en segundo plano.
-- Añadir soporte para múltiples diseños y formas geométricas aceleradas por hardware: Circular 1:1, Cuadrado Redondeado Moderno, Cuadrado 1:1 y Rectangular Panorámico 16:9 estilo webcam.
-- Implementar control de tamaños configurables (Pequeño 100dp, Mediano 140dp, Grande 180dp) y alternancia instantánea entre lente frontal (selfie) y lente trasero.
-- Integrar botón de conmutación rápida de Facecam (`Activar / Desactivar Cámara`) dentro del submenú de herramientas de la burbuja flotante (`BubbleOverlayView` y `FloatingBubbleManager`).
-- Ampliar `RecordingConfig` y `SettingsRepository` para persistir las preferencias de Facecam (estado activo, forma geométrica, tamaño y selección de cámara).
-- Añadir sección dedicada de configuración visual de Facecam en `SettingsView` con selectores interactivos y gestión dinámica del permiso `android.permission.CAMERA`.
-- Declarar permisos de cámara y tipo `FOREGROUND_SERVICE_TYPE_CAMERA` en `AndroidManifest.xml` y `ScreenRecordService` para compatibilidad con Android 14+.
-- Actualizar la documentación técnica del proyecto (`README.md`, `ROADMAP.md`, `STRUCTURE.md` y `AI_CONTEXT.md`).
+- Implementar Filtro de Belleza / Suavizado de Piel para Facecam con atenuación de imperfecciones y luminosidad facial optimizada.
+- Implementar Borde RGB / Arcoíris Gamer animado para Facecam con gradiente rotativo SweepGradient continuo y aceleración por hardware.
+- Implementar Indicador de Toques Táctiles Animado (TouchVisualizerOverlay) con ondas y ripples fluidos que funciona sin necesidad de activar las opciones de desarrollador.
+- Añadir selector interactivo de colores para toques táctiles: Azul Neón, Verde Gamer, Púrpura Neón, Rojo Fuego, Amarillo Eléctrico y Blanco Puro.
+- Integrar conmutadores rápidos para Filtro de Belleza, Borde RGB y Toques Táctiles dentro del submenú de la Burbuja Flotante y en la pantalla de Ajustes.
+- Ampliar RecordingConfig y SettingsRepository para persistir las preferencias de belleza, borde RGB y visualizador táctil.
+- Actualizar la documentación técnica del proyecto (README.md, ROADMAP.md, STRUCTURE.md y AI_CONTEXT.md).

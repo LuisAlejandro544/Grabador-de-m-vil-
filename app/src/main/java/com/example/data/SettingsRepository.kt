@@ -77,6 +77,15 @@ class SettingsRepository(context: Context) {
         }
 
         val isFrontCamera = prefs.getBoolean(KEY_FACECAM_FRONT, true)
+        val beautyFilter = prefs.getBoolean(KEY_BEAUTY_FILTER, false)
+        val facecamRgbBorder = prefs.getBoolean(KEY_FACECAM_RGB, false)
+        val showTouchVisualizer = prefs.getBoolean(KEY_SHOW_TOUCH_VISUALIZER, false)
+        val touchColorName = prefs.getString(KEY_TOUCH_COLOR, com.example.model.TouchColorOption.CYAN.name)
+        val touchColor = try {
+            com.example.model.TouchColorOption.valueOf(touchColorName ?: com.example.model.TouchColorOption.CYAN.name)
+        } catch (e: Exception) {
+            com.example.model.TouchColorOption.CYAN
+        }
 
         return RecordingConfig(
             resolution = resolution,
@@ -89,7 +98,11 @@ class SettingsRepository(context: Context) {
             showFacecam = showFacecam,
             facecamShape = facecamShape,
             facecamSize = facecamSize,
-            isFrontCamera = isFrontCamera
+            isFrontCamera = isFrontCamera,
+            beautyFilterEnabled = beautyFilter,
+            facecamRgbBorder = facecamRgbBorder,
+            showTouchVisualizer = showTouchVisualizer,
+            touchVisualizerColor = touchColor
         )
     }
 
@@ -106,6 +119,10 @@ class SettingsRepository(context: Context) {
             putString(KEY_FACECAM_SHAPE, config.facecamShape.name)
             putString(KEY_FACECAM_SIZE, config.facecamSize.name)
             putBoolean(KEY_FACECAM_FRONT, config.isFrontCamera)
+            putBoolean(KEY_BEAUTY_FILTER, config.beautyFilterEnabled)
+            putBoolean(KEY_FACECAM_RGB, config.facecamRgbBorder)
+            putBoolean(KEY_SHOW_TOUCH_VISUALIZER, config.showTouchVisualizer)
+            putString(KEY_TOUCH_COLOR, config.touchVisualizerColor.name)
             apply()
         }
         _configFlow.value = config
@@ -167,6 +184,26 @@ class SettingsRepository(context: Context) {
         saveConfig(updated)
     }
 
+    fun toggleBeautyFilter(enabled: Boolean) {
+        val updated = _configFlow.value.copy(beautyFilterEnabled = enabled)
+        saveConfig(updated)
+    }
+
+    fun toggleFacecamRgbBorder(enabled: Boolean) {
+        val updated = _configFlow.value.copy(facecamRgbBorder = enabled)
+        saveConfig(updated)
+    }
+
+    fun toggleTouchVisualizer(enabled: Boolean) {
+        val updated = _configFlow.value.copy(showTouchVisualizer = enabled)
+        saveConfig(updated)
+    }
+
+    fun updateTouchVisualizerColor(color: com.example.model.TouchColorOption) {
+        val updated = _configFlow.value.copy(touchVisualizerColor = color)
+        saveConfig(updated)
+    }
+
     fun toggleGameMode(enabled: Boolean) {
         val current = _configFlow.value
         val updated = if (enabled) {
@@ -198,5 +235,9 @@ class SettingsRepository(context: Context) {
         private const val KEY_FACECAM_SHAPE = "pref_facecam_shape"
         private const val KEY_FACECAM_SIZE = "pref_facecam_size"
         private const val KEY_FACECAM_FRONT = "pref_facecam_front"
+        private const val KEY_BEAUTY_FILTER = "pref_beauty_filter"
+        private const val KEY_FACECAM_RGB = "pref_facecam_rgb"
+        private const val KEY_SHOW_TOUCH_VISUALIZER = "pref_show_touch_visualizer"
+        private const val KEY_TOUCH_COLOR = "pref_touch_color"
     }
 }

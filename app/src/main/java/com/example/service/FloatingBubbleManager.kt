@@ -13,8 +13,9 @@ import android.view.WindowManager
 /**
  * Gestor modular de la burbuja flotante / widget superpuesto durante la grabación.
  * Coordina el ciclo de vida en WindowManager, la vista visual [BubbleOverlayView],
- * la detección de gestos de arrastre [BubbleTouchHandler], la captura rápida [ScreenshotHelper]
- * y el lienzo de dibujo en pantalla [ScreenDrawingOverlay].
+ * la detección de gestos de arrastre [BubbleTouchHandler], la captura rápida [ScreenshotHelper],
+ * el lienzo de dibujo en pantalla [ScreenDrawingOverlay], el Facecam,
+ * el Filtro de Belleza, Borde RGB y el Visualizador de Toques Táctiles.
  */
 class FloatingBubbleManager(
     private val context: Context,
@@ -23,7 +24,10 @@ class FloatingBubbleManager(
     private val onStopClicked: () -> Unit,
     private val onMicToggleClicked: (() -> Unit)? = null,
     private val onScreenshotRequested: (() -> Unit)? = null,
-    private val onFacecamToggleClicked: (() -> Unit)? = null
+    private val onFacecamToggleClicked: (() -> Unit)? = null,
+    private val onBeautyToggleClicked: (() -> Unit)? = null,
+    private val onRgbBorderToggleClicked: (() -> Unit)? = null,
+    private val onTouchToggleClicked: (() -> Unit)? = null
 ) {
 
     companion object {
@@ -95,6 +99,15 @@ class FloatingBubbleManager(
                 },
                 onFacecamToggleClicked = {
                     onFacecamToggleClicked?.invoke()
+                },
+                onBeautyToggleClicked = {
+                    onBeautyToggleClicked?.invoke()
+                },
+                onRgbBorderToggleClicked = {
+                    onRgbBorderToggleClicked?.invoke()
+                },
+                onTouchToggleClicked = {
+                    onTouchToggleClicked?.invoke()
                 }
             )
             this.bubbleOverlayView = overlay
@@ -163,6 +176,21 @@ class FloatingBubbleManager(
         bubbleOverlayView?.updateFacecamStatus(active)
     }
 
+    fun updateBeautyStatus(active: Boolean) {
+        if (!isShowingInternal) return
+        bubbleOverlayView?.updateBeautyStatus(active)
+    }
+
+    fun updateRgbStatus(active: Boolean) {
+        if (!isShowingInternal) return
+        bubbleOverlayView?.updateRgbStatus(active)
+    }
+
+    fun updateTouchStatus(active: Boolean) {
+        if (!isShowingInternal) return
+        bubbleOverlayView?.updateTouchStatus(active)
+    }
+
     /**
      * Oculta y remueve la vista del WindowManager y el lienzo de dibujo.
      */
@@ -179,8 +207,9 @@ class FloatingBubbleManager(
         } catch (e: Exception) {
             Log.w(TAG, "Error al remover vista flotante: ${e.message}")
         } finally {
-            bubbleOverlayView = null
             isShowingInternal = false
+            bubbleOverlayView = null
+            params = null
         }
     }
 

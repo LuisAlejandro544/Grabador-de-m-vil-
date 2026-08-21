@@ -29,11 +29,20 @@ Este documento detalla las fases de evolución del proyecto para transformar la 
 
 ---
 
-## 📍 Fase 3: Composición de Escenas y Facecam (En Progreso 🚀)
+## 📍 Fase 3: Composición de Escenas, Facecam y Efectos Visuales (Completada ✅)
 - [x] **Facecam Flotante con Diseños Geométricos (CameraX & WindowManager):**
   - Superposición flotante arrastrable con cámara frontal y trasera en tiempo real.
   - Diseños configurables con clip nativo: Circular 1:1, Cuadrado redondeado, Cuadrado y Rectangular 16:9.
   - Control de activación/desactivación dinámica desde la burbuja flotante del grabador y persistencia de estado.
+- [x] **Filtro de Belleza Facial y Suavizado de Piel:**
+  - Capa de filtro cosmético con balance cromático y reducción de asperezas faciales.
+  - Conmutable en Ajustes, en el Facecam y desde el menú rápido de la burbuja.
+- [x] **Borde RGB / Arcoíris Animado para Facecam:**
+  - Marco con gradiente rotativo continuo (`SweepGradient`) acelerado por hardware.
+  - Conmutador en vivo en Ajustes y en el submenú de herramientas de la burbuja.
+- [x] **Indicador de Toques Táctiles Animado (Touch Visualizer):**
+  - Ondas de feedback táctil sobre pantalla completa sin necesidad de habilitar opciones de desarrollador.
+  - 6 variantes de color neón/gamer configurables en Ajustes y conmutable en caliente desde la burbuja flotante.
 - [x] **Motor Gráfico C++ con OpenGL ES 3.0 & EGL:**
   - Contexto EGL nativo y renderizado acelerado por GPU a 60 FPS.
   - Soporte de múltiples capas (*z-order*): Juego, Facecam, Overlays, Texto.
@@ -41,10 +50,6 @@ Este documento detalla las fases de evolución del proyecto para transformar la 
   - **Máscara Circular para Facecam:** Recorte circular con suavizado antialiasing (`smoothstep`) para la cámara frontal.
   - **Filtro Chroma Key en GPU:** Eliminación de fondo verde en tiempo real con tolerancia y suavizado configurable.
   - Métricas de rendimiento en tiempo real (FPS de renderizado del motor y tiempo de frame en ms).
-- [ ] **Enlace de Captura CameraX / Facecam a Textura OES Nativa:**
-  - Envío del flujo de la cámara frontal al compositor C++ en tiempo real.
-- [ ] **Editor Visual de Escenas en Compose:**
-  - Arrastrar, redimensionar y posicionar la cámara y elementos en un lienzo interactivo previo antes de grabar.
 
 ---
 

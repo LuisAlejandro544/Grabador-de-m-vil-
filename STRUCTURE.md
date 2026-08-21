@@ -33,7 +33,7 @@ obs-mobile/
 │       │   ├── java/com/example/
 │       │   │   ├── MainActivity.kt          # Entrada principal (Edge-to-edge Compose)
 │       │   │   ├── model/
-│       │   │   │   ├── RecordingConfig.kt   # Modelos de configuración (FPS, Bitrate, Audio, Burbuja)
+│       │   │   │   ├── RecordingConfig.kt   # Modelos de configuración (FPS, Bitrate, Audio, Facecam, Belleza, RGB, Toques)
 │       │   │   │   └── RecordedVideo.kt     # Entidad de video grabado con helpers de formato
 │       │   │   ├── nativecore/
 │       │   │   │   ├── NativeOBSBridge.kt   # Puente JNI seguro hacia C++ (GLES3 / EGL / Transformaciones)
@@ -42,6 +42,7 @@ obs-mobile/
 │       │   │   │   └── NativeRustNetwork.kt # Puente JNI seguro hacia Rust (RTMP/SRT)
 │       │   │   ├── data/
 │       │   │   │   ├── InstalledGamesHelper.kt # Detector de juegos instalados en el dispositivo
+│       │   │   │   ├── SettingsRepository.kt   # Persistencia centralizada de ajustes (Audio, Facecam, Belleza, RGB, Toques)
 │       │   │   │   └── RecordingsRepository.kt # Acceso a videos grabados en MediaStore
 │       │   │   ├── service/
 │       │   │   │   ├── ScreenRecordService.kt     # Coordinador ligero de Foreground Service y conmutación de audio
@@ -50,9 +51,10 @@ obs-mobile/
 │       │   │   │   ├── RecordStorageHelper.kt     # Rutas seguras de archivos MP4 e indexación en MediaStore
 │       │   │   │   ├── ScreenshotHelper.kt        # Captura instantánea de pantalla y extracción de fotogramas
 │       │   │   │   ├── ScreenDrawingOverlay.kt    # Lienzo interactivo y pincel de dibujo en tiempo real sobre la pantalla
-│       │   │   │   ├── FacecamOverlayManager.kt   # Gestor de Facecam flotante (CameraX, formas círculo/cuadrado/rectángulo y flip)
+│       │   │   │   ├── FacecamOverlayManager.kt   # Gestor de Facecam flotante con Filtro de Belleza y Borde RGB animado
+│       │   │   │   ├── TouchVisualizerOverlay.kt  # Overlay de toques táctiles animados sin opciones de desarrollador
 │       │   │   │   ├── FloatingBubbleManager.kt   # Coordinador del ciclo de vida del widget flotante y herramientas
-│       │   │   │   ├── BubbleOverlayView.kt       # Jerarquía visual del widget, selector dinámico de voz en vivo, cronómetro y menú
+│       │   │   │   ├── BubbleOverlayView.kt       # Jerarquía visual del widget con submenús de herramientas, Facecam y toques
 │       │   │   │   └── BubbleTouchHandler.kt      # Detección y cálculo de arrastre táctil y toques
 │       │   │   └── ui/
 │       │   │       ├── RecordViewModel.kt         # Gestión de estado (StateFlow) y lógica UI
@@ -67,7 +69,7 @@ obs-mobile/
 │       │   │       │   ├── GameLauncherCard.kt    # Pestaña y tarjetas de acceso rápido a juegos
 │       │   │       │   ├── VideoItemCard.kt       # Elemento individual de video en galería
 │       │   │       │   ├── VideoPlayerDialog.kt   # Reproductor de video nativo integrado
-│       │   │       │   └── SettingsView.kt        # Ajustes de calidad, audio, burbuja y estado nativo
+│       │   │       │   └── SettingsView.kt        # Ajustes de calidad, audio, Facecam, Belleza, RGB y Toques
 │       │   │       └── theme/
 │       │   │           ├── Color.kt               # Paleta de colores M3
 │       │   │           ├── Theme.kt               # Configuración de tema claro/oscuro
@@ -93,26 +95,15 @@ obs-mobile/
 
 1. **Capa de Presentación (`ui/`):**
    - Construida 100% con **Jetpack Compose (Material Design 3)**.
-   - Completamente modularizada: `HomeScreen.kt` actúa como orquestador liviano delegando en `RecordTab`, `GalleryTab`, `RecordTopBar` y `RecordBottomBar`.
+   - Completamente modularizada: `HomeScreen.kt` actúa como orquestador liviano delegando en `RecordTab`, `GalleryTab`, `GameLauncherCard` y `SettingsView`.
    - Implementa `testTag` en todos los componentes interactivos.
 
 2. **Capa de Negocio y Estado (`RecordViewModel.kt`):**
    - Expone un flujo reactivo inmutable `uiState: StateFlow<UiState>`.
-   - Coordina temporizadores de cuenta atrás y la comunicación con el servicio de grabación.
+   - Coordina el inicio seguro del servicio de grabación en primer plano antes de la cuenta atrás para garantizar compatibilidad estricta con Android 14+.
 
-3. **Capa de Servicio y Captura (`service/`):**
-   - **`ScreenRecordService`:** Foreground Service liviano con tipo `MEDIA_PROJECTION` y `MICROPHONE`.
-   - **`ScreenCaptureEngine`:** Encapsula `MediaProjection`, `VirtualDisplay`, codificadores de hardware `MediaCodec` y enlace directo con el procesador nativo de audio C++ DSP (`AudioDspEngine`) para mezcla en caliente a 48 kHz.
-   - **`RecordNotificationHelper`:** Construye notificaciones interactivas con botones de acción (Pausar/Reanudar/Detener/Conmutar Voz).
-   - **`RecordStorageHelper`:** Gestiona el sistema de archivos y sincronización con `MediaStore`.
-   - **`ScreenshotHelper`:** Genera instantáneas en alta calidad (.png) y las indexa automáticamente en la galería de imágenes.
-   - **`ScreenDrawingOverlay`:** Monta un lienzo transparente acelerado por hardware en `WindowManager` para dibujar trazos, anotaciones o marcas con selección de colores y grosores durante grabaciones o gameplays.
-   - **`FloatingBubbleManager` & `BubbleOverlayView` & `BubbleTouchHandler`:** Widget flotante desacoplado con selector de voz en vivo (`Voz ON` / `Solo Juego`), menú de herramientas expandible (*Captura*, *Pincel*), arrastre suave y cronómetro en vivo sobre cualquier juego o aplicación.
-
-4. **Capa Nativa C++ (`cpp/`):**
-   - **`obs_compositor`:** Diseñada para procesar texturas gráficas en tiempo real vía OpenGL ES 3.0 (máscaras de cámara y Chroma Key).
-   - **`audio_dsp_engine`:** Procesamiento digital de señales en vivo (Noise Gate / Puerta de ruido, Ducking inteligente del juego al hablar y Soft Limiter / Saturation Shaper contra distorsión digital).
-   - **`ffmpeg_engine`:** Motor FFmpeg puro (libav*) para recorte instantáneo, extracción de pistas y transcodificación de video.
-
-5. **Capa Nativa Rust (`rust/`):**
-   - Diseñada para empaquetado de red a alta velocidad, control de congestión y streaming sin riesgo de punteros nulos o *data races*.
+3. **Capa de Servicios y Overlays (`service/`):**
+   - `ScreenRecordService`: Servicio desacoplado tipo Media Projection, Microphone y Camera.
+   - `FacecamOverlayManager`: Ventana flotante de cámara con máscaras geométricas, Filtro de Belleza y Borde RGB animado.
+   - `TouchVisualizerOverlay`: Renderizado de ripples y retroalimentación táctil de alta velocidad en pantalla completa sin requerir depuración USB ni opciones de desarrollador.
+   - `FloatingBubbleManager`: Controlador de widget flotante con submenú interactivo para alternar herramientas, voz y efectos en vivo.

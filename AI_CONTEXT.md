@@ -5,7 +5,7 @@ Este documento provee el contexto de dominio y las restricciones técnicas funda
 ---
 
 ## 🎯 Propósito del Proyecto
-Construir una suite de grabación de pantalla y streaming en vivo para Android equivalente a **OBS Studio**, optimizada específicamente para teléfonos móviles, sesiones de videojuegos a 60 FPS, herramientas de anotación en tiempo real y consumo térmico eficiente.
+Construir una suite de grabación de pantalla y streaming en vivo para Android equivalente a **OBS Studio**, optimizada específicamente para teléfonos móviles, sesiones de videojuegos a 60 FPS, herramientas de anotación en tiempo real, efectos visuales (Filtro de Belleza, Borde RGB, Toques Táctiles) y consumo térmico eficiente.
 
 ---
 
@@ -29,14 +29,18 @@ Construir una suite de grabación de pantalla y streaming en vivo para Android e
    - **`ScreenDrawingOverlay`:** Dibuja directamente sobre una ventana transparente acelerada por GPU (`Canvas`/`Path`), siendo capturada de inmediato por el stream de `MediaProjection` sin requerir recodificación en C++.
    - **`ScreenshotHelper`:** Extracción de fotogramas e instantáneas guardadas en `Pictures/Screenshots` con indexación en `MediaStore`.
 
-5. **Facecam Flotante Multiforma (CameraX & WindowManager):**
+5. **Facecam Flotante con Filtro de Belleza y Borde RGB:**
    - **`FacecamOverlayManager`:** Despliega una vista de cámara flotante arrastrable con soporte de formas geométricas por hardware (`ViewOutlineProvider` y `GradientDrawable`): Circular 1:1, Cuadrado Redondeado, Cuadrado 1:1 y Rectangular 16:9.
+   - **Filtro de Belleza:** Capa cromática y difuminado suave para un acabado facial limpio sin sobrecargar el procesador.
+   - **Borde RGB:** Marco animado con gradiente circular `SweepGradient` continuo.
    - **Ciclo de vida desacoplado:** Implementa un `LifecycleOwner` personalizado para CameraX (`FacecamLifecycleOwner`) dentro del contexto de `ScreenRecordService`.
-   - **Control de permisos y segundo plano:** Compatible con `FOREGROUND_SERVICE_TYPE_CAMERA` y conmutación de lente frontal/trasero en caliente.
 
-6. **Integración Nativa Segura (C++, DSP y Rust):**
+6. **Indicador de Toques Táctiles Animado (Touch Visualizer):**
+   - **`TouchVisualizerOverlay`:** Dibuja ondas táctiles fluidas en tiempo real sobre toda la pantalla sin requerir permisos de desarrollador ni depuración USB.
+   - **Colores Personalizables:** Azul Neón, Verde Gamer, Púrpura Neón, Rojo Fuego, Amarillo Eléctrico y Blanco Puro.
+
+7. **Integración Nativa Segura (C++, DSP y Rust):**
    - Toda llamada a librerías nativas debe estar envuelta con protección contra `UnsatisfiedLinkError` en sus respectivos puentes (`NativeOBSBridge.kt`, `NativeAudioDSPBridge.kt`, `NativeFFmpegBridge.kt`, `NativeRustNetwork.kt`).
-   - Esto asegura que el frontend en Compose funcione fluidamente incluso en entornos donde las bibliotecas nativas se compilan por separado.
 
 ---
 
@@ -52,9 +56,13 @@ data class RecordingConfig(
     val isGameMode: Boolean = true,
     val showFloatingBubble: Boolean = true,
     val showFacecam: Boolean = false,
-    val facecamShape: FacecamShape = FacecamShape.ROUNDED_SQUARE,
+    val facecamShape: FacecamShape = FacecamShape.CIRCLE,
     val facecamSize: FacecamSize = FacecamSize.MEDIUM,
-    val isFrontCamera: Boolean = true
+    val isFrontCamera: Boolean = true,
+    val beautyFilterEnabled: Boolean = false,
+    val facecamRgbBorder: Boolean = false,
+    val showTouchVisualizer: Boolean = false,
+    val touchVisualizerColor: TouchColorOption = TouchColorOption.CYAN
 )
 
 data class RecordedVideo(
@@ -75,11 +83,3 @@ data class RecordedVideo(
 - **Facecam Circular:** Máscara de fragmento con `smoothstep` para bordes antialiasing suaves.
 - **Chroma Key GPU:** Supresión de color verde con parámetros dinámicos de similitud y suavizado sin impacto en la CPU.
 - **EGL Offscreen Surface:** Permite renderizar y componer frames a 60 FPS directamente hacia los buffers de video.
-
----
-
-## 🎬 Motor de Edición FFmpeg Puro Nativo (C/C++ libav*)
-
-- **Sin Wrappers Descontinuados:** Implementación directa sobre librerías C nativas de FFmpeg (`libavcodec`, `libavformat`, `libavfilter`, `libswscale`).
-- **Recorte Stream Copy:** Permite recortar videos de forma instantánea al no recodificar los fotogramas (`fast copy`).
-- **Seguridad en NDK:** Encapsulado en `ffmpeg_engine.hpp` / `ffmpeg_engine.cpp` y exportado vía JNI en `NativeFFmpegBridge.kt`.

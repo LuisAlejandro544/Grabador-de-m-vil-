@@ -211,7 +211,11 @@ fun HomeScreen(
                     },
                     onUpdateFacecamShape = { viewModel.updateFacecamShape(it) },
                     onUpdateFacecamSize = { viewModel.updateFacecamSize(it) },
-                    onToggleFacecamCamera = { viewModel.toggleFacecamCamera() }
+                    onToggleFacecamCamera = { viewModel.toggleFacecamCamera() },
+                    onToggleBeautyFilter = { viewModel.toggleBeautyFilter(it) },
+                    onToggleFacecamRgbBorder = { viewModel.toggleFacecamRgbBorder(it) },
+                    onToggleTouchVisualizer = { viewModel.toggleTouchVisualizer(it) },
+                    onUpdateTouchVisualizerColor = { viewModel.updateTouchVisualizerColor(it) }
                 )
             }
         }
