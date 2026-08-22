@@ -19,6 +19,13 @@
   - **Tasa de Cuadros de Cámara Ajustable:** Selección directa de 30 FPS (estándar de ahorro), 45 FPS, 50 FPS y 60 FPS (máxima fluidez) configurada por hardware mediante `Camera2Interop` (`CONTROL_AE_TARGET_FPS_RANGE`).
   - **Múltiples Diseños Geométricos:** Selector de formas con un solo toque (Circular 1:1, Cuadrado Redondeado Moderno, Cuadrado Clásico 1:1 y Rectangular Panorámico 16:9 estilo webcam streamer).
   - **Dimensiones y Lentes:** Tamaños configurables (Pequeño 100dp, Mediano 140dp, Grande 180dp) y conmutación instantánea entre cámara frontal (selfie) y trasera.
+- **🎭 Avatar 2D / PNGtuber Reactivo por Voz:**
+  - Alternativa ligera y privada a la cámara real: sustituye el Facecam por un avatar 2D animado interactivo que reacciona a tu voz en tiempo real.
+  - **Detección Acústica Instantánea:** Abre y mueve la boca sincrónicamente al hablar analizando el nivel RMS del micrófono.
+  - **Parpadeo Ocular Automático:** Simula parpadeos naturales aleatorios (cada 3-5 segundos) para dar vida al personaje.
+  - **Presets Gamer Incluidos:** *Gamer Cat*, *Cyber Fox* y *Chibi Bot* renderizados con gráficos vectoriales nativos ultra-ligeros.
+  - **Soporte de PNGs Personalizados de 4 Estados:** Importa tus propias ilustraciones desde el almacenamiento (`Boca Cerrada + Ojos Abiertos`, `Boca Abierta + Ojos Abiertos`, `Boca Cerrada + Ojos Cerrados`, `Boca Abierta + Ojos Cerrados`).
+  - **Totalmente Arrastrable:** Reposicionable libremente en pantalla mediante toques y conmutador rápido desde el menú de la Burbuja Flotante.
 - **👆 Indicador de Toques Táctiles Animado (Touch Visualizer):**
   - Ondas y ripples dinámicos de alta respuesta que se renderizan sobre la pantalla mediante overlay `WindowManager` transparente.
   - **Sin opciones de desarrollador:** Funciona directamente sin requerir activar "Mostrar toques" en el sistema operativo.
@@ -32,9 +39,13 @@
   - **Soporte de PNG Personalizado:** Carga de imágenes PNG transparentes completas desde la galería.
   - **Control de Opacidad:** Ajuste fino de transparencia para no obstruir el gameplay, conmutable en caliente desde la Burbuja Flotante.
 - **🔊 Captura, Mezcla, Frecuencia Ajustable y DSP en C++:**
+  - **📊 Vúmetro de Audio Flotante & Mezclador OBS en Vivo:**
+    - Widget superpuesto interactivo y arrastrable sobre cualquier juego que muestra barras LED dinámicas de decibelios (dB) con gradiente verde-amarillo-rojo para monitoreo en vivo de señales acústicas.
+    - **Control de Ganancia Independiente:** Faders deslizantes en pantalla para regular de forma precisa el volumen del juego (0% a 200%) y del micrófono/voz (0% a 200%) sin detener la grabación.
+    - **Conmutación Rápida de Filtros DSP:** Botones táctiles para encender/apagar en caliente la Puerta de Ruido (Noise Gate), el Auto-Ducking y el silenciamiento del micrófono (Mute).
   - **🎛️ Frecuencia de Muestreo (Sample Rate):** Selección de tasa de muestreo entre 32.000 Hz, 44.100 Hz (calidad CD), 48.000 Hz (estándar broadcast recomendado) y 96.000 Hz (Hi-Res para alta fidelidad acústica).
   - **🎛️ Motor Nativo de Audio DSP (C++):** Procesamiento de señales estéreo con **Noise Gate** (puerta de ruido para atenuar respiración y ventiladores), **Audio Ducking Automático** (atenúa el juego -9 dB cuando hablas para dar prioridad a tu voz) y **Soft Limiter / Saturation Shaper** para prevenir distorsión y saturación digital al mezclar.
-  - **🎙️ Conmutador Dinámico de Voz en Vivo:** Graba el audio del juego y conmuta con un toque desde la burbuja flotante o la notificación si deseas grabar tu voz (`Voz ON`) o dejar únicamente el sonido limpio del juego (`Solo Juego`), mezclando audio PCM en tiempo real sin cortar el video ni reiniciar codificadores.
+  - **🎙️ Conmutador Dinámico de Voz en Vivo:** Graba el audio del juego y conmuta con un toque desde la burbuja flotante, el vúmetro o la notificación si deseas grabar tu voz (`Voz ON`) o dejar únicamente el sonido limpio del juego (`Solo Juego`), mezclando audio PCM en tiempo real sin cortar el video ni reiniciar codificadores.
   - **Solo Audio del Juego (Interno):** Graba música y efectos del juego sin capturar tu voz ni ruidos del entorno.
   - **Micrófono:** Captura tu voz y comentarios en vivo con reducción de ruido en caliente.
   - **Mudo:** Graba únicamente el video para optimizar espacio de almacenamiento.

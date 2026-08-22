@@ -62,6 +62,45 @@ object NativeAudioDSPBridge {
         }
     }
 
+    fun setGains(gameGain: Float, micGain: Float) {
+        if (isLibraryLoaded) {
+            try {
+                nativeSetGains(gameGain, micGain)
+            } catch (e: Throwable) {
+                Log.w(TAG, "Error setting native gains: ${e.message}")
+            }
+        }
+    }
+
+    fun setFilters(noiseGate: Boolean, ducking: Boolean, limiter: Boolean) {
+        if (isLibraryLoaded) {
+            try {
+                nativeSetFilters(noiseGate, ducking, limiter)
+            } catch (e: Throwable) {
+                Log.w(TAG, "Error setting native filters: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Devuelve los niveles en tiempo real para el Vúmetro:
+     * [0] = gameLevel (0.0f - 1.0f)
+     * [1] = micLevel (0.0f - 1.0f)
+     * [2] = masterLevel (0.0f - 1.0f)
+     * [3] = duckingGain (0.0f - 1.0f)
+     */
+    fun getAudioLevels(): FloatArray {
+        val levels = FloatArray(4)
+        if (isLibraryLoaded) {
+            try {
+                nativeGetAudioLevels(levels)
+            } catch (e: Throwable) {
+                // Fallback
+            }
+        }
+        return levels
+    }
+
     fun processAndMixAudio(
         internalAudio: ByteArray?,
         micAudio: ByteArray?,
@@ -136,6 +175,9 @@ object NativeAudioDSPBridge {
         duckingEnabled: Boolean,
         peakLimiterEnabled: Boolean
     )
+    private external fun nativeSetGains(gameGain: Float, micGain: Float)
+    private external fun nativeSetFilters(noiseGate: Boolean, ducking: Boolean, limiter: Boolean)
+    private external fun nativeGetAudioLevels(outArray: FloatArray)
     private external fun nativeProcessAndMixAudio(
         internalAudio: ByteArray?,
         micAudio: ByteArray?,

@@ -31,6 +31,9 @@ public:
     void setConfig(const AudioDspConfig& config);
     AudioDspConfig getConfig() const { return mConfig; }
 
+    void setGains(float gameGain, float micGain);
+    void setFilters(bool noiseGateEnabled, bool duckingEnabled, bool peakLimiterEnabled);
+
     /**
      * Procesa y mezcla en tiempo real los buffers de audio del juego y del micrófono.
      * Aplica Noise Gate, Ducking inteligente y Soft Limiter contra saturación digital.
@@ -50,10 +53,13 @@ public:
         bool isMicMuted
     );
 
-    // Estado en vivo para telemetría
+    // Estado en vivo para telemetría y Vúmetro de Audio Flotante OBS
     float getVoiceActivityLevel() const { return mVoiceEnvelope; }
     float getDuckingLevel() const { return mCurrentDuckingGain; }
     bool isVoiceDetected() const { return mVoiceEnvelope > mGateLinearThreshold; }
+    float getGameLevel() const { return mGamePeakLevel; }
+    float getMicLevel() const { return mMicPeakLevel; }
+    float getMasterLevel() const { return mMasterPeakLevel; }
 
 private:
     AudioDspConfig mConfig;
@@ -61,11 +67,17 @@ private:
     float mVoiceEnvelope;
     float mCurrentDuckingGain;
     
+    // Niveles en tiempo real para el Vúmetro estéreo OBS [0.0f, 1.0f]
+    float mGamePeakLevel;
+    float mMicPeakLevel;
+    float mMasterPeakLevel;
+
     // Constantes de filtro envelope follower (Attack / Release)
     float mGateAttackCoeff;
     float mGateReleaseCoeff;
     float mDuckingAttackCoeff;
     float mDuckingReleaseCoeff;
+    float mLevelDecayCoeff;
 
     void updateCoefficients();
     static inline float softClip(float x);

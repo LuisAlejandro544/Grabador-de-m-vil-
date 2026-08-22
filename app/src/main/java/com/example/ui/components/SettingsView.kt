@@ -26,6 +26,8 @@ import com.example.model.TouchColorOption
 import com.example.model.VideoBitrate
 import com.example.model.VideoFps
 import com.example.model.VideoResolution
+import com.example.model.VtuberPreset
+import com.example.model.VtuberSize
 import com.example.model.WatermarkSize
 import com.example.model.WatermarkType
 import com.example.ui.components.settings.AudioSettingsCard
@@ -37,6 +39,7 @@ import com.example.ui.components.settings.NativeModulesStatusCard
 import com.example.ui.components.settings.SceneOverlaySettingsCard
 import com.example.ui.components.settings.TouchVisualizerSettingsCard
 import com.example.ui.components.settings.VideoQualitySettingsCard
+import com.example.ui.components.settings.VtuberSettingsCard
 import com.example.ui.components.settings.WatermarkSettingsCard
 
 /**
@@ -52,6 +55,11 @@ fun SettingsView(
     onUpdateBitrateMbps: (Int) -> Unit = {},
     onUpdateAudioSource: (AudioSourceType) -> Unit,
     onUpdateAudioSampleRate: (AudioSampleRate) -> Unit = {},
+    onToggleFloatingVuMeter: (Boolean) -> Unit = {},
+    onUpdateGameGain: (Float) -> Unit = {},
+    onUpdateMicGain: (Float) -> Unit = {},
+    onToggleNoiseGate: (Boolean) -> Unit = {},
+    onToggleAudioDucking: (Boolean) -> Unit = {},
     onUpdateCountdown: (Int) -> Unit,
     onToggleGameMode: (Boolean) -> Unit,
     onToggleFloatingBubble: (Boolean) -> Unit = {},
@@ -62,6 +70,15 @@ fun SettingsView(
     onToggleFacecamCamera: () -> Unit = {},
     onToggleBeautyFilter: (Boolean) -> Unit = {},
     onToggleFacecamRgbBorder: (Boolean) -> Unit = {},
+    onToggleVtuber: (Boolean) -> Unit = {},
+    onUpdateVtuberPreset: (VtuberPreset) -> Unit = {},
+    onUpdateVtuberSize: (VtuberSize) -> Unit = {},
+    onUpdateVtuberSensitivity: (Float) -> Unit = {},
+    onToggleVtuberBounce: (Boolean) -> Unit = {},
+    onUpdateVtuberIdleImage: (String?) -> Unit = {},
+    onUpdateVtuberTalkImage: (String?) -> Unit = {},
+    onUpdateVtuberBlinkImage: (String?) -> Unit = {},
+    onUpdateVtuberBlinkTalkImage: (String?) -> Unit = {},
     onToggleTouchVisualizer: (Boolean) -> Unit = {},
     onUpdateTouchVisualizerColor: (TouchColorOption) -> Unit = {},
     onToggleWatermark: (Boolean) -> Unit = {},
@@ -144,6 +161,20 @@ fun SettingsView(
             onUpdateFacecamFps = onUpdateFacecamFps
         )
 
+        // Avatar 2D / PNGtuber Reactivo (Modo VTuber)
+        VtuberSettingsCard(
+            config = config,
+            onToggleVtuber = onToggleVtuber,
+            onPresetSelected = onUpdateVtuberPreset,
+            onSizeSelected = onUpdateVtuberSize,
+            onSensitivityChanged = onUpdateVtuberSensitivity,
+            onToggleBounce = onToggleVtuberBounce,
+            onIdleImageSelected = onUpdateVtuberIdleImage,
+            onTalkImageSelected = onUpdateVtuberTalkImage,
+            onBlinkImageSelected = onUpdateVtuberBlinkImage,
+            onBlinkTalkImageSelected = onUpdateVtuberBlinkTalkImage
+        )
+
         // Visualizador de Toques Táctiles
         TouchVisualizerSettingsCard(
             showTouchVisualizer = config.showTouchVisualizer,
@@ -168,8 +199,18 @@ fun SettingsView(
         AudioSettingsCard(
             audioSource = config.audioSource,
             audioSampleRate = config.audioSampleRate,
+            showFloatingVuMeter = config.showFloatingVuMeter,
+            gameAudioGain = config.gameAudioGain,
+            micAudioGain = config.micAudioGain,
+            noiseGateEnabled = config.noiseGateEnabled,
+            audioDuckingEnabled = config.audioDuckingEnabled,
             onUpdateAudioSource = onUpdateAudioSource,
-            onUpdateAudioSampleRate = onUpdateAudioSampleRate
+            onUpdateAudioSampleRate = onUpdateAudioSampleRate,
+            onToggleFloatingVuMeter = onToggleFloatingVuMeter,
+            onUpdateGameGain = onUpdateGameGain,
+            onUpdateMicGain = onUpdateMicGain,
+            onToggleNoiseGate = onToggleNoiseGate,
+            onToggleAudioDucking = onToggleAudioDucking
         )
 
         // Cuenta Atrás

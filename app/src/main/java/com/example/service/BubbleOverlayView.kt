@@ -29,7 +29,9 @@ class BubbleOverlayView(
     private val onRgbBorderToggleClicked: () -> Unit = {},
     private val onTouchToggleClicked: () -> Unit = {},
     private val onWatermarkToggleClicked: () -> Unit = {},
-    private val onSceneOverlayToggleClicked: () -> Unit = {}
+    private val onSceneOverlayToggleClicked: () -> Unit = {},
+    private val onVtuberToggleClicked: () -> Unit = {},
+    private val onVuMeterToggleClicked: () -> Unit = {}
 ) {
 
     val rootView: LinearLayout
@@ -43,6 +45,10 @@ class BubbleOverlayView(
     var isMicMuted: Boolean = false
         private set
     var isFacecamActive: Boolean = false
+        private set
+    var isVtuberActive: Boolean = false
+        private set
+    var isVuMeterActive: Boolean = false
         private set
     var isBeautyActive: Boolean = false
         private set
@@ -92,6 +98,8 @@ class BubbleOverlayView(
             onTouchToggleClicked = onTouchToggleClicked,
             onWatermarkToggleClicked = onWatermarkToggleClicked,
             onSceneOverlayToggleClicked = onSceneOverlayToggleClicked,
+            onVtuberToggleClicked = onVtuberToggleClicked,
+            onVuMeterToggleClicked = onVuMeterToggleClicked,
             onVibrateRequested = { vibrateQuick() }
         )
         rootView.addView(toolsSubmenu.layout)
@@ -130,6 +138,20 @@ class BubbleOverlayView(
         this.isFacecamActive = active
         rootView.post {
             toolsSubmenu.updateFacecamStatus(active)
+        }
+    }
+
+    fun updateVtuberStatus(active: Boolean) {
+        this.isVtuberActive = active
+        rootView.post {
+            toolsSubmenu.updateVtuberStatus(active)
+        }
+    }
+
+    fun updateVuMeterStatus(active: Boolean) {
+        this.isVuMeterActive = active
+        rootView.post {
+            toolsSubmenu.updateVuMeterStatus(active)
         }
     }
 

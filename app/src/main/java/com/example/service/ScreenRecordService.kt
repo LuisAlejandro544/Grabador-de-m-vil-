@@ -1,17 +1,15 @@
 package com.example.service
 
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
-import android.util.DisplayMetrics
 import android.util.Log
-import android.view.WindowManager
 import com.example.data.SettingsRepository
 import com.example.model.AudioSourceType
 import com.example.model.RecordingStatus
+import com.example.service.overlay.ServiceOverlayCoordinator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -23,10 +21,9 @@ import kotlinx.coroutines.launch
 import java.io.File
 
 /**
- * Servicio en primer plano desacoplado para la grabación de pantalla.
- * Orquesta [ScreenCaptureEngine], [RecordNotificationHelper], [RecordStorageHelper],
- * [FloatingBubbleManager], [ScreenshotHelper], [ScreenDrawingOverlay], [FacecamOverlayManager]
- * y [TouchVisualizerOverlay].
+ * Servicio en primer plano modular y desacoplado para la grabación de pantalla.
+ * Coordina [ScreenCaptureEngine], [RecordNotificationHelper], [RecordStorageHelper]
+ * y delega el ciclo de vida de interfaces flotantes a [ServiceOverlayCoordinator].
  */
 class ScreenRecordService : Service() {
 
@@ -45,6 +42,8 @@ class ScreenRecordService : Service() {
         const val ACTION_TOGGLE_TOUCH = "com.example.service.TOGGLE_TOUCH"
         const val ACTION_TOGGLE_WATERMARK = "com.example.service.TOGGLE_WATERMARK"
         const val ACTION_TOGGLE_SCENE_OVERLAY = "com.example.service.TOGGLE_SCENE_OVERLAY"
+        const val ACTION_TOGGLE_VTUBER = "com.example.service.TOGGLE_VTUBER"
+        const val ACTION_TOGGLE_VUMETER = "com.example.service.TOGGLE_VUMETER"
 
         const val EXTRA_RESULT_CODE = "extra_result_code"
         const val EXTRA_RESULT_DATA = "extra_result_data"
@@ -68,6 +67,12 @@ class ScreenRecordService : Service() {
 
         private val _isFacecamActive = MutableStateFlow(false)
         val isFacecamActive = _isFacecamActive.asStateFlow()
+
+        private val _isVtuberActive = MutableStateFlow(false)
+        val isVtuberActive = _isVtuberActive.asStateFlow()
+
+        private val _isVuMeterActive = MutableStateFlow(false)
+        val isVuMeterActive = _isVuMeterActive.asStateFlow()
 
         private val _isBeautyActive = MutableStateFlow(false)
         val isBeautyActive = _isBeautyActive.asStateFlow()
@@ -98,15 +103,11 @@ class ScreenRecordService : Service() {
 
     private lateinit var captureEngine: ScreenCaptureEngine
     private lateinit var notificationHelper: RecordNotificationHelper
-    private var floatingBubbleManager: FloatingBubbleManager? = null
-    private var facecamOverlayManager: FacecamOverlayManager? = null
-    private var touchVisualizerOverlay: TouchVisualizerOverlay? = null
-    private var watermarkOverlayManager: WatermarkOverlayManager? = null
-    private var sceneOverlayManager: SceneOverlayManager? = null
+    private lateinit var overlayCoordinator: ServiceOverlayCoordinator
+    private lateinit var settingsRepository: SettingsRepository
 
     private var timerJob: Job? = null
     private val serviceScope = CoroutineScope(Dispatchers.Main)
-    private var currentAudioEnabled = true
     private var currentActiveFile: File? = null
     private var currentRecWidth = 1080
     private var currentRecHeight = 1920
@@ -118,22 +119,39 @@ class ScreenRecordService : Service() {
         super.onCreate()
         captureEngine = ScreenCaptureEngine(this)
         notificationHelper = RecordNotificationHelper(this)
+        settingsRepository = SettingsRepository(this)
+
+        overlayCoordinator = ServiceOverlayCoordinator(
+            context = this,
+            settingsRepository = settingsRepository,
+            onFacecamStateChanged = { _isFacecamActive.value = it },
+            onBeautyStateChanged = { _isBeautyActive.value = it },
+            onRgbStateChanged = { _isRgbActive.value = it },
+            onTouchStateChanged = { _isTouchActive.value = it },
+            onWatermarkStateChanged = { _isWatermarkActive.value = it },
+            onSceneOverlayStateChanged = { _isSceneOverlayActive.value = it },
+            onVtuberStateChanged = { _isVtuberActive.value = it },
+            onVuMeterStateChanged = { _isVuMeterActive.value = it },
+            onAudioGainsChanged = { gameGain, micGain ->
+                captureEngine.setAudioGains(gameGain, micGain)
+            },
+            onAudioFiltersChanged = { noiseGate, ducking ->
+                captureEngine.setAudioFilters(noiseGate, ducking)
+            },
+            onMicMuteToggled = {
+                handleToggleMicAction()
+            },
+            isMicMutedProvider = { captureEngine.isMicrophoneMuted },
+            audioLevelsProvider = { captureEngine.getAudioLevels() }
+        )
+
         observeSettingsChanges()
     }
 
     private fun observeSettingsChanges() {
         serviceScope.launch {
-            SettingsRepository(this@ScreenRecordService).configFlow.collect { config ->
-                if (facecamOverlayManager?.isShowing == true) {
-                    facecamOverlayManager?.setShape(config.facecamShape)
-                    facecamOverlayManager?.setSize(config.facecamSize)
-                    facecamOverlayManager?.setFacecamFps(config.facecamFps)
-                    facecamOverlayManager?.setBeautyFilter(config.beautyFilterEnabled)
-                    facecamOverlayManager?.setRgbBorder(config.facecamRgbBorder)
-                }
-                touchVisualizerOverlay?.updateColor(config.touchVisualizerColor)
-                watermarkOverlayManager?.updateConfig(config)
-                sceneOverlayManager?.updateConfig(config)
+            settingsRepository.configFlow.collect { config ->
+                overlayCoordinator.onConfigUpdated(config)
             }
         }
     }
@@ -146,83 +164,38 @@ class ScreenRecordService : Service() {
             ACTION_RESUME -> handleResumeAction()
             ACTION_SCREENSHOT -> handleScreenshotAction()
             ACTION_TOGGLE_MIC -> handleToggleMicAction()
-            ACTION_TOGGLE_FACECAM -> handleToggleFacecamAction()
-            ACTION_TOGGLE_BEAUTY -> handleToggleBeautyAction()
-            ACTION_TOGGLE_RGB -> handleToggleRgbBorderAction()
-            ACTION_TOGGLE_TOUCH -> handleToggleTouchVisualizerAction()
-            ACTION_TOGGLE_WATERMARK -> handleToggleWatermarkAction()
-            ACTION_TOGGLE_SCENE_OVERLAY -> handleToggleSceneOverlayAction()
+            ACTION_TOGGLE_FACECAM -> overlayCoordinator.toggleFacecam()
+            ACTION_TOGGLE_BEAUTY -> overlayCoordinator.toggleBeauty()
+            ACTION_TOGGLE_RGB -> overlayCoordinator.toggleRgbBorder()
+            ACTION_TOGGLE_TOUCH -> overlayCoordinator.toggleTouchVisualizer()
+            ACTION_TOGGLE_WATERMARK -> overlayCoordinator.toggleWatermark()
+            ACTION_TOGGLE_SCENE_OVERLAY -> overlayCoordinator.toggleSceneOverlay()
+            ACTION_TOGGLE_VTUBER -> overlayCoordinator.toggleVtuber()
+            ACTION_TOGGLE_VUMETER -> overlayCoordinator.toggleVuMeter()
         }
         return START_NOT_STICKY
     }
 
     private fun handleStartAction(intent: Intent) {
-        val resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, 0)
-        val resultData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
-        } else {
-            @Suppress("DEPRECATION")
-            intent.getParcelableExtra(EXTRA_RESULT_DATA)
-        }
-
-        // Cargar configuración guardada persistentemente como base y respaldo
-        val savedConfig = SettingsRepository(this).getConfig()
-        val defaultDims = savedConfig.resolution.getDimensions(isPortrait = true)
-
-        val width = intent.getIntExtra(EXTRA_RES_WIDTH, defaultDims.first)
-        val height = intent.getIntExtra(EXTRA_RES_HEIGHT, defaultDims.second)
-        val fps = intent.getIntExtra(EXTRA_FPS, savedConfig.fps.fps)
-        val bitrate = intent.getIntExtra(EXTRA_BITRATE, savedConfig.getEffectiveBitrateBps())
-        val audioSource = intent.getStringExtra(EXTRA_AUDIO_SOURCE) ?: savedConfig.audioSource.name
-        val sampleRate = intent.getIntExtra(EXTRA_SAMPLE_RATE, savedConfig.audioSampleRate.sampleRate)
-        val showFloatingBubble = intent.getBooleanExtra(EXTRA_SHOW_FLOATING_BUBBLE, savedConfig.showFloatingBubble)
-        val showFacecam = intent.getBooleanExtra(EXTRA_SHOW_FACECAM, savedConfig.showFacecam)
-
-        if (resultCode == 0 || resultData == null) {
+        val params = ServiceParamsExtractor.extractParams(this, intent)
+        if (params == null) {
             Log.e(TAG, "Parámetros de proyección inválidos")
             stopSelf()
             return
         }
 
-        // Determinar orientación y dimensiones reales
-        val metrics = DisplayMetrics()
-        val windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        @Suppress("DEPRECATION")
-        windowManager.defaultDisplay.getRealMetrics(metrics)
+        currentRecWidth = params.width
+        currentRecHeight = params.height
+        currentDensityDpi = params.densityDpi
+        val isAudioEnabled = params.audioSource != AudioSourceType.NONE.name
 
-        val isPortrait = metrics.heightPixels >= metrics.widthPixels
-        val recWidth = if (isPortrait) minOf(width, height) else maxOf(width, height)
-        val recHeight = if (isPortrait) maxOf(width, height) else minOf(width, height)
-
-        currentRecWidth = recWidth
-        currentRecHeight = recHeight
-        currentDensityDpi = metrics.densityDpi
-        currentAudioEnabled = audioSource != AudioSourceType.NONE.name
-
-        // 1. Iniciar Foreground Service con tipo MEDIA_PROJECTION, MICROPHONE y CAMERA
-        val initialNotification = notificationHelper.buildForegroundNotification(0, isPaused = false, isMicrophoneEnabled = currentAudioEnabled)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            var serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-            if (currentAudioEnabled) {
-                serviceType = serviceType or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            }
-            if (showFacecam) {
-                serviceType = serviceType or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
-            }
-            startForeground(
-                RecordNotificationHelper.NOTIFICATION_ID,
-                initialNotification,
-                serviceType
-            )
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                RecordNotificationHelper.NOTIFICATION_ID,
-                initialNotification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-            )
-        } else {
-            startForeground(RecordNotificationHelper.NOTIFICATION_ID, initialNotification)
-        }
+        // 1. Iniciar Foreground Service con tipos específicos (Android 14+)
+        val initialNotification = notificationHelper.buildForegroundNotification(
+            0,
+            isPaused = false,
+            isMicrophoneEnabled = isAudioEnabled
+        )
+        startForegroundWithType(initialNotification, isAudioEnabled, params.showFacecam)
 
         // 2. Preparar archivo de destino
         val outputFile = RecordStorageHelper.prepareOutputFile(this)
@@ -230,16 +203,19 @@ class ScreenRecordService : Service() {
 
         // 3. Arrancar motor de captura
         val started = captureEngine.startCapture(
-            resultCode = resultCode,
-            resultData = resultData,
-            width = recWidth,
-            height = recHeight,
-            densityDpi = metrics.densityDpi,
-            fps = fps,
-            bitrate = bitrate,
-            audioSource = audioSource,
-            sampleRate = sampleRate,
+            resultCode = params.resultCode,
+            resultData = params.resultData,
+            width = params.width,
+            height = params.height,
+            densityDpi = params.densityDpi,
+            fps = params.fps,
+            bitrate = params.bitrate,
+            audioSource = params.audioSource,
+            sampleRate = params.sampleRate,
             outputFile = outputFile,
+            onAudioAmplitude = { amp ->
+                overlayCoordinator.onAudioAmplitude(amp)
+            },
             onError = { errorMsg ->
                 Log.e(TAG, "Error en captura: $errorMsg")
                 _errorMessage.value = errorMsg
@@ -257,60 +233,27 @@ class ScreenRecordService : Service() {
             _elapsedSeconds.value = 0
             _errorMessage.value = null
             _isMicMuted.value = captureEngine.isMicrophoneMuted
-            _isBeautyActive.value = savedConfig.beautyFilterEnabled
-            _isRgbActive.value = savedConfig.facecamRgbBorder
-            _isTouchActive.value = savedConfig.showTouchVisualizer
-            _isWatermarkActive.value = savedConfig.showWatermark
-            _isSceneOverlayActive.value = savedConfig.showSceneOverlay
 
-            // 4. Activar Facecam si estaba solicitado
-            if (showFacecam) {
-                launchFacecam(savedConfig)
-            } else {
-                _isFacecamActive.value = false
-            }
+            // 4. Iniciar Overlays configurados
+            if (params.showFacecam) overlayCoordinator.launchFacecam(params.savedConfig)
+            if (params.savedConfig.showVtuber) overlayCoordinator.launchVtuber(params.savedConfig)
+            if (params.savedConfig.showFloatingVuMeter) overlayCoordinator.launchVuMeter(params.savedConfig)
+            if (params.savedConfig.showTouchVisualizer) overlayCoordinator.launchTouchVisualizer(params.savedConfig)
+            if (params.savedConfig.showWatermark) overlayCoordinator.launchWatermark(params.savedConfig)
+            if (params.savedConfig.showSceneOverlay) overlayCoordinator.launchSceneOverlay(params.savedConfig)
 
-            // 5. Activar Visualizador de Toques Táctiles si estaba configurado
-            if (savedConfig.showTouchVisualizer) {
-                launchTouchVisualizer(savedConfig)
-            }
-
-            // 6. Activar Marca de Agua / Logo si estaba configurado
-            if (savedConfig.showWatermark) {
-                launchWatermark(savedConfig)
-            }
-
-            // 7. Activar Overlays de Escena si estaba configurado
-            if (savedConfig.showSceneOverlay) {
-                launchSceneOverlay(savedConfig)
-            }
-
-            // 8. Activar burbuja flotante opcional con submenú de herramientas
-            if (showFloatingBubble) {
-                floatingBubbleManager?.dismiss()
-                floatingBubbleManager = FloatingBubbleManager(
-                    context = this,
+            // 5. Iniciar Burbuja Flotante si estaba activada
+            if (params.showFloatingBubble) {
+                overlayCoordinator.setupFloatingBubble(
+                    isMicMuted = captureEngine.isMicrophoneMuted,
+                    isBeautyActive = params.savedConfig.beautyFilterEnabled,
+                    isRgbActive = params.savedConfig.facecamRgbBorder,
                     onPauseClicked = { handlePauseAction() },
                     onResumeClicked = { handleResumeAction() },
                     onStopClicked = { handleStopAction() },
                     onMicToggleClicked = { handleToggleMicAction() },
-                    onScreenshotRequested = { handleScreenshotAction() },
-                    onFacecamToggleClicked = { handleToggleFacecamAction() },
-                    onBeautyToggleClicked = { handleToggleBeautyAction() },
-                    onRgbBorderToggleClicked = { handleToggleRgbBorderAction() },
-                    onTouchToggleClicked = { handleToggleTouchVisualizerAction() },
-                    onWatermarkToggleClicked = { handleToggleWatermarkAction() },
-                    onSceneOverlayToggleClicked = { handleToggleSceneOverlayAction() }
-                ).apply {
-                    show()
-                    updateMicStatus(captureEngine.isMicrophoneMuted)
-                    updateFacecamStatus(_isFacecamActive.value)
-                    updateBeautyStatus(_isBeautyActive.value)
-                    updateRgbStatus(_isRgbActive.value)
-                    updateTouchStatus(_isTouchActive.value)
-                    updateWatermarkStatus(_isWatermarkActive.value)
-                    updateSceneOverlayStatus(_isSceneOverlayActive.value)
-                }
+                    onScreenshotRequested = { handleScreenshotAction() }
+                )
             }
 
             startChronometerTimer()
@@ -319,185 +262,35 @@ class ScreenRecordService : Service() {
         }
     }
 
-    private fun launchFacecam(config: com.example.model.RecordingConfig) {
-        facecamOverlayManager?.dismiss()
-        facecamOverlayManager = FacecamOverlayManager(
-            context = this,
-            shape = config.facecamShape,
-            size = config.facecamSize,
-            fps = config.facecamFps,
-            isFrontCamera = config.isFrontCamera,
-            beautyFilterEnabled = config.beautyFilterEnabled,
-            rgbBorderEnabled = config.facecamRgbBorder,
-            onCloseClicked = {
-                _isFacecamActive.value = false
-                floatingBubbleManager?.updateFacecamStatus(false)
-                SettingsRepository(this).toggleFacecam(false)
-            },
-            onShapeChanged = { newShape ->
-                SettingsRepository(this).updateFacecamShape(newShape)
-            },
-            onCameraFlipped = { isFront ->
-                SettingsRepository(this).setFacecamCamera(isFront)
-            },
-            onBeautyFilterToggled = { enabled ->
-                _isBeautyActive.value = enabled
-                floatingBubbleManager?.updateBeautyStatus(enabled)
-                SettingsRepository(this).toggleBeautyFilter(enabled)
-            },
-            onRgbBorderToggled = { enabled ->
-                _isRgbActive.value = enabled
-                floatingBubbleManager?.updateRgbStatus(enabled)
-                SettingsRepository(this).toggleFacecamRgbBorder(enabled)
-            }
-        ).apply {
-            show()
-        }
-        _isFacecamActive.value = facecamOverlayManager?.isShowing == true
-        floatingBubbleManager?.updateFacecamStatus(_isFacecamActive.value)
-    }
-
-    private fun launchTouchVisualizer(config: com.example.model.RecordingConfig) {
-        touchVisualizerOverlay?.dismiss()
-        touchVisualizerOverlay = TouchVisualizerOverlay(
-            context = this,
-            touchColor = config.touchVisualizerColor
-        ).apply {
-            show()
-        }
-        _isTouchActive.value = touchVisualizerOverlay?.isShowing == true
-        floatingBubbleManager?.updateTouchStatus(_isTouchActive.value)
-    }
-
-    private fun launchWatermark(config: com.example.model.RecordingConfig) {
-        watermarkOverlayManager?.dismiss()
-        watermarkOverlayManager = WatermarkOverlayManager(
-            context = this,
-            config = config,
-            onCloseClicked = {
-                _isWatermarkActive.value = false
-                floatingBubbleManager?.updateWatermarkStatus(false)
-                SettingsRepository(this).toggleWatermark(false)
-            }
-        ).apply {
-            show()
-        }
-        _isWatermarkActive.value = watermarkOverlayManager?.isShowing == true
-        floatingBubbleManager?.updateWatermarkStatus(_isWatermarkActive.value)
-    }
-
-    private fun launchSceneOverlay(config: com.example.model.RecordingConfig) {
-        sceneOverlayManager?.dismiss()
-        sceneOverlayManager = SceneOverlayManager(
-            context = this,
-            config = config
-        ).apply {
-            show()
-        }
-        _isSceneOverlayActive.value = sceneOverlayManager?.isShowing == true
-        floatingBubbleManager?.updateSceneOverlayStatus(_isSceneOverlayActive.value)
-    }
-
-    private fun handleToggleFacecamAction() {
-        if (facecamOverlayManager?.isShowing == true) {
-            facecamOverlayManager?.dismiss()
-            facecamOverlayManager = null
-            _isFacecamActive.value = false
-            floatingBubbleManager?.updateFacecamStatus(false)
-            SettingsRepository(this).toggleFacecam(false)
-            Log.i(TAG, "Facecam desactivada desde la burbuja flotante")
+    private fun startForegroundWithType(notification: android.app.Notification, isAudioEnabled: Boolean, showFacecam: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            var serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            if (isAudioEnabled) serviceType = serviceType or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            if (showFacecam) serviceType = serviceType or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+            startForeground(RecordNotificationHelper.NOTIFICATION_ID, notification, serviceType)
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(RecordNotificationHelper.NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
         } else {
-            val config = SettingsRepository(this).getConfig()
-            launchFacecam(config)
-            SettingsRepository(this).toggleFacecam(true)
-            Log.i(TAG, "Facecam activada desde la burbuja flotante")
-        }
-    }
-
-    private fun handleToggleBeautyAction() {
-        val current = SettingsRepository(this).getConfig().beautyFilterEnabled
-        val newState = !current
-        SettingsRepository(this).toggleBeautyFilter(newState)
-        _isBeautyActive.value = newState
-        facecamOverlayManager?.setBeautyFilter(newState)
-        floatingBubbleManager?.updateBeautyStatus(newState)
-        Log.i(TAG, "Filtro de Belleza conmutado: $newState")
-    }
-
-    private fun handleToggleRgbBorderAction() {
-        val current = SettingsRepository(this).getConfig().facecamRgbBorder
-        val newState = !current
-        SettingsRepository(this).toggleFacecamRgbBorder(newState)
-        _isRgbActive.value = newState
-        facecamOverlayManager?.setRgbBorder(newState)
-        floatingBubbleManager?.updateRgbStatus(newState)
-        Log.i(TAG, "Borde RGB Arcoíris conmutado: $newState")
-    }
-
-    private fun handleToggleTouchVisualizerAction() {
-        if (touchVisualizerOverlay?.isShowing == true) {
-            touchVisualizerOverlay?.dismiss()
-            touchVisualizerOverlay = null
-            _isTouchActive.value = false
-            floatingBubbleManager?.updateTouchStatus(false)
-            SettingsRepository(this).toggleTouchVisualizer(false)
-            Log.i(TAG, "Touch Visualizer desactivado")
-        } else {
-            val config = SettingsRepository(this).getConfig()
-            SettingsRepository(this).toggleTouchVisualizer(true)
-            launchTouchVisualizer(config)
-            Log.i(TAG, "Touch Visualizer activado")
-        }
-    }
-
-    private fun handleToggleWatermarkAction() {
-        if (watermarkOverlayManager?.isShowing == true) {
-            watermarkOverlayManager?.dismiss()
-            watermarkOverlayManager = null
-            _isWatermarkActive.value = false
-            floatingBubbleManager?.updateWatermarkStatus(false)
-            SettingsRepository(this).toggleWatermark(false)
-            Log.i(TAG, "Marca de Agua desactivada")
-        } else {
-            val config = SettingsRepository(this).getConfig()
-            SettingsRepository(this).toggleWatermark(true)
-            launchWatermark(config)
-            Log.i(TAG, "Marca de Agua activada")
-        }
-    }
-
-    private fun handleToggleSceneOverlayAction() {
-        if (sceneOverlayManager?.isShowing == true) {
-            sceneOverlayManager?.dismiss()
-            sceneOverlayManager = null
-            _isSceneOverlayActive.value = false
-            floatingBubbleManager?.updateSceneOverlayStatus(false)
-            SettingsRepository(this).toggleSceneOverlay(false)
-            Log.i(TAG, "Scene Overlay desactivado")
-        } else {
-            val config = SettingsRepository(this).getConfig()
-            SettingsRepository(this).toggleSceneOverlay(true)
-            launchSceneOverlay(config)
-            Log.i(TAG, "Scene Overlay activado")
+            startForeground(RecordNotificationHelper.NOTIFICATION_ID, notification)
         }
     }
 
     private fun handleToggleMicAction() {
         val newMuted = captureEngine.toggleMicrophoneMuted()
         _isMicMuted.value = newMuted
-        floatingBubbleManager?.updateMicStatus(newMuted)
+        overlayCoordinator.updateBubbleMicStatus(newMuted)
         notificationHelper.updateNotification(
             _elapsedSeconds.value.toLong(),
             isPaused = captureEngine.isPaused,
             isMicrophoneEnabled = !newMuted
         )
-        Log.i(TAG, "Conmutador de micrófono ejecutado: ${if (newMuted) "Silenciado (Solo Juego)" else "Activo (Juego + Voz)"}")
+        Log.i(TAG, "Micrófono conmutado: ${if (newMuted) "Silenciado (Solo Juego)" else "Activo (Juego + Voz)"}")
     }
 
     private fun handlePauseAction() {
         if (captureEngine.pauseCapture()) {
             _recordingState.value = RecordingStatus.PAUSED
-            floatingBubbleManager?.updateStatus(true)
+            overlayCoordinator.updateBubbleStatus(isPaused = true)
             notificationHelper.updateNotification(
                 _elapsedSeconds.value.toLong(),
                 isPaused = true,
@@ -509,7 +302,7 @@ class ScreenRecordService : Service() {
     private fun handleResumeAction() {
         if (captureEngine.resumeCapture()) {
             _recordingState.value = RecordingStatus.RECORDING
-            floatingBubbleManager?.updateStatus(false)
+            overlayCoordinator.updateBubbleStatus(isPaused = false)
             notificationHelper.updateNotification(
                 _elapsedSeconds.value.toLong(),
                 isPaused = false,
@@ -526,10 +319,10 @@ class ScreenRecordService : Service() {
                 height = currentRecHeight,
                 densityDpi = currentDensityDpi,
                 onSuccess = { shotFile ->
-                    Log.i(TAG, "Screenshot tomado exitosamente con ImageReader: ${shotFile.absolutePath}")
+                    Log.i(TAG, "Screenshot tomado exitosamente: ${shotFile.absolutePath}")
                 },
                 onError = { err ->
-                    Log.w(TAG, "Fallo al capturar con ImageReader, intentando fallback: $err")
+                    Log.w(TAG, "Fallo ImageReader, intentando fallback: $err")
                     currentActiveFile?.let { videoFile ->
                         ScreenshotHelper.captureFrameFromVideo(
                             context = this,
@@ -545,12 +338,8 @@ class ScreenRecordService : Service() {
                 ScreenshotHelper.captureFrameFromVideo(
                     context = this,
                     videoFile = videoFile,
-                    onSuccess = { shotFile ->
-                        Log.i(TAG, "Screenshot tomado desde video: ${shotFile.absolutePath}")
-                    },
-                    onError = { err ->
-                        Log.w(TAG, "Screenshot no capturado: $err")
-                    }
+                    onSuccess = { shotFile -> Log.i(TAG, "Screenshot tomado desde video: ${shotFile.absolutePath}") },
+                    onError = { err -> Log.w(TAG, "Screenshot no capturado: $err") }
                 )
             }
         }
@@ -560,8 +349,7 @@ class ScreenRecordService : Service() {
         _recordingState.value = RecordingStatus.SAVING
         timerJob?.cancel()
 
-        floatingBubbleManager?.dismiss()
-        floatingBubbleManager = null
+        overlayCoordinator.dismissAll()
 
         val savedFile = captureEngine.stopCapture()
 
@@ -586,8 +374,12 @@ class ScreenRecordService : Service() {
                 if (captureEngine.isRecording && !captureEngine.isPaused) {
                     _elapsedSeconds.value += 1
                     val currentSec = _elapsedSeconds.value
-                    floatingBubbleManager?.updateTime(currentSec)
-                    notificationHelper.updateNotification(currentSec.toLong(), isPaused = false, isMicrophoneEnabled = !captureEngine.isMicrophoneMuted)
+                    overlayCoordinator.updateBubbleTime(currentSec)
+                    notificationHelper.updateNotification(
+                        currentSec.toLong(),
+                        isPaused = false,
+                        isMicrophoneEnabled = !captureEngine.isMicrophoneMuted
+                    )
                 }
             }
         }
@@ -595,23 +387,12 @@ class ScreenRecordService : Service() {
 
     private fun cleanupAndStop() {
         timerJob?.cancel()
-        floatingBubbleManager?.dismiss()
-        floatingBubbleManager = null
-        facecamOverlayManager?.dismiss()
-        facecamOverlayManager = null
-        touchVisualizerOverlay?.dismiss()
-        touchVisualizerOverlay = null
-        watermarkOverlayManager?.dismiss()
-        watermarkOverlayManager = null
-        sceneOverlayManager?.dismiss()
-        sceneOverlayManager = null
-        _isFacecamActive.value = false
-        _isBeautyActive.value = false
-        _isRgbActive.value = false
-        _isTouchActive.value = false
-        _isWatermarkActive.value = false
-        _isSceneOverlayActive.value = false
-        captureEngine.release()
+        if (::overlayCoordinator.isInitialized) {
+            overlayCoordinator.dismissAll()
+        }
+        if (::captureEngine.isInitialized) {
+            captureEngine.release()
+        }
         _recordingState.value = RecordingStatus.IDLE
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()

@@ -137,6 +137,31 @@ class SettingsRepository(context: Context) {
         val sceneOverlayOpacity = prefs.getFloat(KEY_SCENE_OVERLAY_OPACITY, 0.90f)
         val sceneOverlayImageUri = prefs.getString(KEY_SCENE_OVERLAY_IMAGE_URI, null)
 
+        val showVtuber = prefs.getBoolean(KEY_SHOW_VTUBER, false)
+        val vtuberPresetName = prefs.getString(KEY_VTUBER_PRESET, com.example.model.VtuberPreset.CYBER_CAT.name)
+        val vtuberPreset = try {
+            com.example.model.VtuberPreset.valueOf(vtuberPresetName ?: com.example.model.VtuberPreset.CYBER_CAT.name)
+        } catch (e: Exception) {
+            com.example.model.VtuberPreset.CYBER_CAT
+        }
+        val vtuberSizeName = prefs.getString(KEY_VTUBER_SIZE, com.example.model.VtuberSize.MEDIUM.name)
+        val vtuberSize = try {
+            com.example.model.VtuberSize.valueOf(vtuberSizeName ?: com.example.model.VtuberSize.MEDIUM.name)
+        } catch (e: Exception) {
+            com.example.model.VtuberSize.MEDIUM
+        }
+        val vtuberSensitivity = prefs.getFloat(KEY_VTUBER_SENSITIVITY, 0.18f)
+        val vtuberBounceEnabled = prefs.getBoolean(KEY_VTUBER_BOUNCE, true)
+        val vtuberIdleUri = prefs.getString(KEY_VTUBER_IDLE_URI, null)
+        val vtuberTalkUri = prefs.getString(KEY_VTUBER_TALK_URI, null)
+        val vtuberBlinkUri = prefs.getString(KEY_VTUBER_BLINK_URI, null)
+        val vtuberBlinkTalkUri = prefs.getString(KEY_VTUBER_BLINK_TALK_URI, null)
+        val gameGain = prefs.getFloat(KEY_GAME_AUDIO_GAIN, 1.0f)
+        val micGain = prefs.getFloat(KEY_MIC_AUDIO_GAIN, 1.25f)
+        val audioDucking = prefs.getBoolean(KEY_AUDIO_DUCKING, true)
+        val noiseGate = prefs.getBoolean(KEY_NOISE_GATE, true)
+        val showVuMeter = prefs.getBoolean(KEY_SHOW_FLOATING_VU_METER, false)
+
         return RecordingConfig(
             resolution = resolution,
             fps = fps,
@@ -167,7 +192,21 @@ class SettingsRepository(context: Context) {
             sceneOverlayType = sceneOverlayType,
             sceneOverlayText = sceneOverlayText,
             sceneOverlayOpacity = sceneOverlayOpacity,
-            sceneOverlayImageUri = sceneOverlayImageUri
+            sceneOverlayImageUri = sceneOverlayImageUri,
+            showVtuber = showVtuber,
+            vtuberPreset = vtuberPreset,
+            vtuberSize = vtuberSize,
+            vtuberSensitivity = vtuberSensitivity,
+            vtuberBounceEnabled = vtuberBounceEnabled,
+            vtuberIdleImageUri = vtuberIdleUri,
+            vtuberTalkImageUri = vtuberTalkUri,
+            vtuberBlinkImageUri = vtuberBlinkUri,
+            vtuberBlinkTalkImageUri = vtuberBlinkTalkUri,
+            gameAudioGain = gameGain,
+            micAudioGain = micGain,
+            audioDuckingEnabled = audioDucking,
+            noiseGateEnabled = noiseGate,
+            showFloatingVuMeter = showVuMeter
         )
     }
 
@@ -203,9 +242,123 @@ class SettingsRepository(context: Context) {
             putString(KEY_SCENE_OVERLAY_TEXT, config.sceneOverlayText)
             putFloat(KEY_SCENE_OVERLAY_OPACITY, config.sceneOverlayOpacity)
             putString(KEY_SCENE_OVERLAY_IMAGE_URI, config.sceneOverlayImageUri)
+            putBoolean(KEY_SHOW_VTUBER, config.showVtuber)
+            putString(KEY_VTUBER_PRESET, config.vtuberPreset.name)
+            putString(KEY_VTUBER_SIZE, config.vtuberSize.name)
+            putFloat(KEY_VTUBER_SENSITIVITY, config.vtuberSensitivity)
+            putBoolean(KEY_VTUBER_BOUNCE, config.vtuberBounceEnabled)
+            putString(KEY_VTUBER_IDLE_URI, config.vtuberIdleImageUri)
+            putString(KEY_VTUBER_TALK_URI, config.vtuberTalkImageUri)
+            putString(KEY_VTUBER_BLINK_URI, config.vtuberBlinkImageUri)
+            putString(KEY_VTUBER_BLINK_TALK_URI, config.vtuberBlinkTalkImageUri)
+            putFloat(KEY_GAME_AUDIO_GAIN, config.gameAudioGain)
+            putFloat(KEY_MIC_AUDIO_GAIN, config.micAudioGain)
+            putBoolean(KEY_AUDIO_DUCKING, config.audioDuckingEnabled)
+            putBoolean(KEY_NOISE_GATE, config.noiseGateEnabled)
+            putBoolean(KEY_SHOW_FLOATING_VU_METER, config.showFloatingVuMeter)
             apply()
         }
         _configFlow.value = config
+    }
+
+    fun updateGameAudioGain(gain: Float) {
+        val clamped = gain.coerceIn(0.0f, 2.5f)
+        val updated = _configFlow.value.copy(gameAudioGain = clamped)
+        saveConfig(updated)
+    }
+
+    fun updateMicAudioGain(gain: Float) {
+        val clamped = gain.coerceIn(0.0f, 2.5f)
+        val updated = _configFlow.value.copy(micAudioGain = clamped)
+        saveConfig(updated)
+    }
+
+    fun toggleAudioDucking(enabled: Boolean) {
+        val updated = _configFlow.value.copy(audioDuckingEnabled = enabled)
+        saveConfig(updated)
+    }
+
+    fun toggleNoiseGate(enabled: Boolean) {
+        val updated = _configFlow.value.copy(noiseGateEnabled = enabled)
+        saveConfig(updated)
+    }
+
+    fun toggleFloatingVuMeter(enabled: Boolean) {
+        val updated = _configFlow.value.copy(showFloatingVuMeter = enabled)
+        saveConfig(updated)
+    }
+
+    fun toggleVtuber(enabled: Boolean) {
+        val updated = _configFlow.value.copy(showVtuber = enabled)
+        saveConfig(updated)
+    }
+
+    fun updateVtuberPreset(preset: com.example.model.VtuberPreset) {
+        val updated = _configFlow.value.copy(vtuberPreset = preset)
+        saveConfig(updated)
+    }
+
+    fun updateVtuberSize(size: com.example.model.VtuberSize) {
+        val updated = _configFlow.value.copy(vtuberSize = size)
+        saveConfig(updated)
+    }
+
+    fun updateVtuberSensitivity(sensitivity: Float) {
+        val updated = _configFlow.value.copy(vtuberSensitivity = sensitivity)
+        saveConfig(updated)
+    }
+
+    fun toggleVtuberBounce(enabled: Boolean) {
+        val updated = _configFlow.value.copy(vtuberBounceEnabled = enabled)
+        saveConfig(updated)
+    }
+
+    fun updateVtuberIdleUri(uri: String?) {
+        val updated = _configFlow.value.copy(
+            vtuberIdleImageUri = uri,
+            vtuberPreset = com.example.model.VtuberPreset.CUSTOM
+        )
+        saveConfig(updated)
+    }
+
+    fun updateVtuberTalkUri(uri: String?) {
+        val updated = _configFlow.value.copy(
+            vtuberTalkImageUri = uri,
+            vtuberPreset = com.example.model.VtuberPreset.CUSTOM
+        )
+        saveConfig(updated)
+    }
+
+    fun updateVtuberBlinkUri(uri: String?) {
+        val updated = _configFlow.value.copy(
+            vtuberBlinkImageUri = uri,
+            vtuberPreset = com.example.model.VtuberPreset.CUSTOM
+        )
+        saveConfig(updated)
+    }
+
+    fun updateVtuberBlinkTalkUri(uri: String?) {
+        val updated = _configFlow.value.copy(
+            vtuberBlinkTalkImageUri = uri,
+            vtuberPreset = com.example.model.VtuberPreset.CUSTOM
+        )
+        saveConfig(updated)
+    }
+
+    fun updateVtuberCustomImages(
+        idleUri: String?,
+        talkUri: String?,
+        blinkUri: String? = null,
+        blinkTalkUri: String? = null
+    ) {
+        val updated = _configFlow.value.copy(
+            vtuberIdleImageUri = idleUri,
+            vtuberTalkImageUri = talkUri,
+            vtuberBlinkImageUri = blinkUri,
+            vtuberBlinkTalkImageUri = blinkTalkUri,
+            vtuberPreset = com.example.model.VtuberPreset.CUSTOM
+        )
+        saveConfig(updated)
     }
 
     fun updateResolution(resolution: VideoResolution) {
@@ -420,5 +573,19 @@ class SettingsRepository(context: Context) {
         private const val KEY_SCENE_OVERLAY_TEXT = "pref_scene_overlay_text"
         private const val KEY_SCENE_OVERLAY_OPACITY = "pref_scene_overlay_opacity"
         private const val KEY_SCENE_OVERLAY_IMAGE_URI = "pref_scene_overlay_image_uri"
+        private const val KEY_SHOW_VTUBER = "pref_show_vtuber"
+        private const val KEY_VTUBER_PRESET = "pref_vtuber_preset"
+        private const val KEY_VTUBER_SIZE = "pref_vtuber_size"
+        private const val KEY_VTUBER_SENSITIVITY = "pref_vtuber_sensitivity"
+        private const val KEY_VTUBER_BOUNCE = "pref_vtuber_bounce"
+        private const val KEY_VTUBER_IDLE_URI = "pref_vtuber_idle_uri"
+        private const val KEY_VTUBER_TALK_URI = "pref_vtuber_talk_uri"
+        private const val KEY_VTUBER_BLINK_URI = "pref_vtuber_blink_uri"
+        private const val KEY_VTUBER_BLINK_TALK_URI = "pref_vtuber_blink_talk_uri"
+        private const val KEY_GAME_AUDIO_GAIN = "pref_game_audio_gain"
+        private const val KEY_MIC_AUDIO_GAIN = "pref_mic_audio_gain"
+        private const val KEY_AUDIO_DUCKING = "pref_audio_ducking"
+        private const val KEY_NOISE_GATE = "pref_noise_gate"
+        private const val KEY_SHOW_FLOATING_VU_METER = "pref_show_floating_vu_meter"
     }
 }

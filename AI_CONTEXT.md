@@ -19,7 +19,8 @@ Construir una suite de grabación de pantalla y streaming en vivo para Android l
 2. **Prohibición de Propiedades Restringidas (`persist.sys.*`):**
    - Nunca utilizar comandos `setprop persist.sys.*` ni hacks de sistema no estándar. La aplicación debe operar mediante APIs públicas de Android estándar para compatibilidad en tiendas y tiendas de terceros como Uptodown.
 
-3. **Arquitectura de Audio y Mezcla Dinámica con DSP C++:**
+3. **Arquitectura de Audio, Mezcla Dinámica con DSP C++ y Vúmetro Flotante:**
+   - **`FloatingVuMeterManager` & `VuMeterOverlayView`:** Monitoreo acústico en vivo sobre juegos con barras LED dinámicas en dB y faders táctiles independientes para regular la ganancia de audio del juego (0% - 200%) y de voz/micrófono (0% - 200%).
    - **`AudioSourceType.INTERNAL_AND_MIC`:** Modo por defecto con mezcla dual PCM procesada mediante motor C++ DSP (`obs::dsp::AudioDspEngine`). Captura `AudioPlaybackCapture` (juego) y `AudioRecord` (micrófono), aplicando **Noise Gate** para silenciar ruidos de ambiente, **Audio Ducking** (-9 dB en el juego cuando hablas) y **Soft Limiter** sin distorsión digital, permitiendo conmutar la voz en vivo (`Voz ON` / `Solo Juego`) sin reiniciar codificadores.
    - **`AudioSourceType.INTERNAL_GAME`:** Captura exclusiva del sonido generado por las aplicaciones y juegos.
    - **`AudioSourceType.MIC`:** Captura mediante micrófono con filtrado de ruido en C++ DSP.
@@ -35,18 +36,23 @@ Construir una suite de grabación de pantalla y streaming en vivo para Android l
    - **Borde RGB:** Marco animado con gradiente circular `SweepGradient` continuo.
    - **Ciclo de vida desacoplado:** Implementa un `LifecycleOwner` personalizado para CameraX (`FacecamLifecycleOwner`) dentro del contexto de `ScreenRecordService`.
 
-6. **Indicador de Toques Táctiles Animado (Touch Visualizer):**
+6. **Avatar 2D / PNGtuber Reactivo (VTuber Mode):**
+   - **`VtuberOverlayManager` & `VtuberOverlayView`:** Ventana flotante interactiva y arrastrable que sustituye el uso de cámara real.
+   - **`VtuberAudioReactor`:** Algoritmo en corrutina dedicada (`Dispatchers.Default`) que calcula la reactividad en función del nivel RMS del micrófono, aplicando decaimiento suave de apertura bucal (hold time 120ms, falloff 65ms) y parpadeos oculares probabilísticos periódicos (160ms de duración).
+   - **Presets Vectoriales & Custom PNGs:** Soporta presets nativos de alta velocidad (*Gamer Cat*, *Cyber Fox*, *Chibi Bot*) y 4 estados de imágenes personalizadas con transparencia.
+
+7. **Indicador de Toques Táctiles Animado (Touch Visualizer):**
    - **`TouchVisualizerOverlay`:** Dibuja ondas táctiles fluidas en tiempo real sobre toda la pantalla sin requerir permisos de desarrollador ni depuración USB.
    - **Colores Personalizables:** Azul Neón, Verde Gamer, Púrpura Neón, Rojo Fuego, Amarillo Eléctrico y Blanco Puro.
 
-7. **Marca de Agua / Logo Personalizado Superpuesto:**
+8. **Marca de Agua / Logo Personalizado Superpuesto:**
    - **`WatermarkOverlayManager`:** Superpone un logo propio o texto personal arrastrable (`WatermarkTouchHelper`) por el usuario sobre la pantalla con `FLAG_NOT_FOCUSABLE`.
    - Permite control total de transparencia, color y tamaño sin interferir en los botones del juego.
 
-8. **Overlays de Escena Personalizados:**
+9. **Overlays de Escena Personalizados:**
    - **`SceneOverlayManager`:** Proyecta marcos gamer cyberpunk, banners inferiores de streamer, badges "🔴 LIVE" o carteles de pausa con `FLAG_NOT_TOUCHABLE`, capturados íntegramente por `MediaProjection`.
 
-9. **Integración Nativa Segura (C++, DSP y Rust):**
+10. **Integración Nativa Segura (C++, DSP y Rust):**
    - Toda llamada a librerías nativas debe estar envuelta con protección contra `UnsatisfiedLinkError` en sus respectivos puentes (`NativeOBSBridge.kt`, `NativeAudioDSPBridge.kt`, `NativeFFmpegBridge.kt`, `NativeRustNetwork.kt`).
 
 ---
@@ -61,6 +67,11 @@ data class RecordingConfig(
     val bitrateMbps: Int = 8,
     val audioSource: AudioSourceType = AudioSourceType.INTERNAL_AND_MIC,
     val audioSampleRate: AudioSampleRate = AudioSampleRate.RATE_48000,
+    val showFloatingVuMeter: Boolean = false,
+    val gameAudioGain: Float = 1.0f,
+    val micAudioGain: Float = 1.0f,
+    val noiseGateEnabled: Boolean = false,
+    val audioDuckingEnabled: Boolean = false,
     val countdownSeconds: Int = 3,
     val isGameMode: Boolean = true,
     val showFloatingBubble: Boolean = true,
@@ -71,6 +82,14 @@ data class RecordingConfig(
     val isFrontCamera: Boolean = true,
     val beautyFilterEnabled: Boolean = false,
     val facecamRgbBorder: Boolean = false,
+    val vtuberEnabled: Boolean = false,
+    val vtuberType: VtuberType = VtuberType.PRESET,
+    val vtuberPreset: VtuberPreset = VtuberPreset.GAMER_CAT,
+    val vtuberSize: VtuberSize = VtuberSize.MEDIUM,
+    val vtuberIdleOpenEyesUri: String? = null,
+    val vtuberTalkOpenEyesUri: String? = null,
+    val vtuberIdleBlinkUri: String? = null,
+    val vtuberTalkBlinkUri: String? = null,
     val showTouchVisualizer: Boolean = false,
     val touchVisualizerColor: TouchColorOption = TouchColorOption.CYAN,
     val showWatermark: Boolean = false,

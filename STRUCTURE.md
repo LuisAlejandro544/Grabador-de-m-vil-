@@ -46,10 +46,14 @@ vortex-studio/
 │       │   │   │   └── RecordingsRepository.kt # Acceso a videos grabados en MediaStore
 │       │   │   ├── service/
 │       │   │   │   ├── ScreenRecordService.kt     # Coordinador ligero de Foreground Service y conmutación de audio
+│       │   │   │   ├── ServiceParamsExtractor.kt  # Extracción y validación modular de parámetros de inicio
 │       │   │   │   ├── ScreenCaptureEngine.kt     # Fachada orquestadora modular de captura y grabación
 │       │   │   │   ├── capture/                   # Submódulos desacoplados del motor de captura de video y audio
 │       │   │   │   │   ├── VideoEncoderModule.kt  # Codificador de hardware H.264 / AVC, Input Surface y worker de video
-│       │   │   │   │   ├── AudioPipelineModule.kt # Captura dual (juego interno + mic), DSP C++ y codificador AAC
+│       │   │   │   │   ├── AudioPipelineModule.kt # Orquestador general del pipeline de audio concurrente
+│       │   │   │   │   ├── InternalAudioWorker.kt # Captura aislada de audio interno del sistema/juego (AudioPlaybackCapture)
+│       │   │   │   │   ├── MicAudioWorker.kt      # Captura aislada de micrófono con medición de amplitud en caliente
+│       │   │   │   │   ├── AudioDspMixer.kt       # Mezclador DSP C++ (Ducking, Noise Gate) con soft-clipping fallback
 │       │   │   │   │   └── MuxerManager.kt        # Gestor sincronizado thread-safe del contenedor MP4
 │       │   │   │   ├── RecordNotificationHelper.kt# Gestión modular de notificaciones persistentes con acciones
 │       │   │   │   ├── RecordStorageHelper.kt     # Rutas seguras de archivos MP4 e indexación en MediaStore
@@ -62,23 +66,35 @@ vortex-studio/
 │       │   │   │   │   ├── FacecamRgbBorderView.kt# Vista de borde dinámico con gradiente animado RGB arcoíris
 │       │   │   │   │   ├── FacecamControlsBar.kt  # Barra inferior flotante de herramientas rápidas
 │       │   │   │   │   └── FacecamTouchDragHelper.kt# Gestor táctil de arrastre magnético y eventos táctiles
+│       │   │   │   ├── vtuber/                    # Sistema de VTuber 2D / Avatar Reactivo PNGtuber
+│       │   │   │   │   ├── VtuberState.kt         # Modelos de estado (Blink, Talking, Presets y Uri)
+│       │   │   │   │   ├── VtuberAudioReactor.kt  # Reactor asíncrono con decaimiento suave y parpadeo aleatorio
+│       │   │   │   │   ├── VtuberPresetDrawables.kt# Renderizado vectorial de avatares predeterminados (Gamer Cat, Cyber Fox, Chibi Bot)
+│       │   │   │   │   ├── VtuberOverlayView.kt   # Vista Canvas reactiva de alta eficiencia y arrastre táctil
+│       │   │   │   │   └── VtuberOverlayManager.kt# Gestor del ciclo de vida y superposición en WindowManager
 │       │   │   │   ├── TouchVisualizerOverlay.kt  # Overlay de toques táctiles animados sin opciones de desarrollador
 │       │   │   │   ├── WatermarkOverlayManager.kt # Gestor de marca de agua / logo flotante superpuesto
 │       │   │   │   ├── watermark/                 # Submódulos de marca de agua
 │       │   │   │   │   └── WatermarkTouchHelper.kt# Cálculo táctil y arrastre magnético de la marca de agua
 │       │   │   │   ├── SceneOverlayManager.kt     # Gestor de overlays de escena (Marcos Neón, Banners, Live, Pausa)
-│       │   │   │   ├── overlay/                   # Submódulos de dibujo de escena
+│       │   │   │   ├── overlay/                   # Submódulos de dibujo y coordinación de escena/overlays
+│       │   │   │   │   ├── ServiceOverlayCoordinator.kt # Coordinador modular de todos los overlays y widgets flotantes
 │       │   │   │   │   └── SceneOverlayDrawables.kt# Renderizado vectorial de marcos y banners de streamer
+│       │   │   │   ├── FloatingVuMeterManager.kt  # Gestor del Vúmetro Flotante y Mezclador OBS
+│       │   │   │   ├── vumeter/                   # Submódulos del vúmetro y mezclador de audio
+│       │   │   │   │   └── VuMeterOverlayView.kt  # Vista de medidor LED de decibelios (dB) y faders de ganancia
 │       │   │   │   ├── FloatingBubbleManager.kt   # Coordinador del ciclo de vida del widget flotante y herramientas
 │       │   │   │   ├── BubbleOverlayView.kt       # Jerarquía visual del widget flotante modular
 │       │   │   │   ├── bubble/                    # Submódulos del widget flotante
 │       │   │   │   │   ├── BubbleColors.kt        # Constantes de color y paleta visual del widget
 │       │   │   │   │   ├── BubbleDrawables.kt     # Generador de fondos, bordes redondeados y formas vectoriales
 │       │   │   │   │   ├── BubbleMainBar.kt       # Barra horizontal con led pulsante, cronómetro y acciones rápidas
-│       │   │   │   │   └── BubbleToolsSubmenu.kt  # Submenú desplegable de herramientas (Captura, Pincel, Facecam, RGB, Toques, Logo, Escenas)
+│       │   │   │   │   └── BubbleToolsSubmenu.kt  # Submenú desplegable de herramientas
 │       │   │   │   └── BubbleTouchHandler.kt      # Detección y cálculo de arrastre táctil y toques
 │       │   │   └── ui/
-│       │   │       ├── RecordViewModel.kt         # Gestión de estado (StateFlow) y lógica UI
+│       │   │       ├── RecordViewModel.kt         # Gestión reactiva de estado (StateFlow) y lógica UI
+│       │   │       ├── RecordCountdownManager.kt  # Gestor modular de la cuenta atrás y retroalimentación háptica
+│       │   │       ├── RecordServiceLauncher.kt   # Lanzador desacoplado de Foreground Service e intents de control
 │       │   │       ├── HomeScreen.kt              # Pantalla principal desacoplada (Orquestador)
 │       │   │       ├── tabs/
 │       │   │       │   ├── RecordTab.kt           # Pestaña principal de grabación, pulso y accesos directos
@@ -98,6 +114,7 @@ vortex-studio/
 │       │   │       │       ├── WatermarkSettingsCard.kt      # Configuración de logo / marca de agua, texto, opacidad y PNG
 │       │   │       │       ├── SceneOverlaySettingsCard.kt   # Selector de marcos gamer, banners streamer y alertas
 │       │   │       │       ├── FacecamSettingsCard.kt        # Configuración completa de Facecam (Lente, Formas, FPS 30-60, Belleza, RGB)
+│       │   │       │       ├── VtuberSettingsCard.kt         # Configuración completa de Avatar 2D / PNGtuber reactivo
 │       │   │       │       ├── TouchVisualizerSettingsCard.kt# Configuración y selector de color de toques táctiles
 │       │   │       │       ├── VideoQualitySettingsCard.kt   # Selectores de resolución, FPS y Bitrate personalizado (1-12 Mbps)
 │       │   │       │       ├── AudioSettingsCard.kt          # Selector de fuentes de audio y frecuencia de muestreo (32-96 kHz)
@@ -126,7 +143,7 @@ vortex-studio/
 
 ## 🧩 Responsabilidad por Capas
 
-1. **Capa de Presentación (`ui/`):**
+1. **Capa de Presentación y UI (`ui/`):**
    - Construida 100% con **Jetpack Compose (Material Design 3)**.
    - Completamente modularizada: `HomeScreen.kt` actúa como orquestador liviano delegando en `RecordTab`, `GalleryTab`, `GameLauncherCard` y `SettingsView`.
    - `SettingsView` divide su lógica en componentes específicos bajo `ui/components/settings/` (`GameModeCard`, `FacecamSettingsCard`, `TouchVisualizerSettingsCard`, etc.).
@@ -134,21 +151,19 @@ vortex-studio/
 
 2. **Capa de Negocio y Estado (`RecordViewModel.kt`):**
    - Expone un flujo reactivo inmutable `uiState: StateFlow<UiState>`.
-   - Coordina el inicio seguro del servicio de grabación en primer plano antes de la cuenta atrás para garantizar compatibilidad estricta con Android 14+.
+   - `RecordCountdownManager`: Desacopla la lógica de temporización de cuenta atrás regresiva y vibración háptica.
+   - `RecordServiceLauncher`: Desacopla la construcción y arranque del Foreground Service e intents de control (start, stop, pause, resume) para máxima compatibilidad con Android 8.0 - 15+.
 
 3. **Capa de Servicios, Captura y Overlays (`service/`):**
-   - `ScreenRecordService`: Servicio desacoplado tipo Media Projection, Microphone y Camera.
+   - `ScreenRecordService`: Coordinador liviano enfocado exclusivamente en el ciclo de vida del servicio en primer plano.
+   - `ServiceParamsExtractor`: Extracción segura y cálculo de orientación de parámetros de grabación desde el Intent.
+   - `ServiceOverlayCoordinator`: Gestor desacoplado que orquesta todos los widgets y capas visuales flotantes (Facecam, Burbuja, VTuber 2D, Toques, Marca de agua, Escenas y Vúmetro de Audio Flotante).
+   - `FloatingVuMeterManager` & `VuMeterOverlayView`: Widget flotante arrastrable de monitoreo de audio en tiempo real estilo consola OBS con medidores LED estéreo (dB) y faders de ganancia independientes para juego y voz.
+   - `VtuberOverlayManager` & `VtuberAudioReactor`: Motor de avatar 2D / PNGtuber reactivo al micrófono con animación de habla por RMS, parpadeo inteligente con decaimiento natural, soporte de presets vectoriales y PNGs personalizados de 4 estados.
    - `ScreenCaptureEngine`: Fachada que delega responsabilidades a submódulos en `service/capture/`:
      - `VideoEncoderModule`: Manejo de hardware encoder AVC/H.264 y entrega de buffers de video.
-     - `AudioPipelineModule`: Captura dual PCM, filtrado C++ DSP y encoder AAC.
+     - `AudioPipelineModule`: Orquestador concurrente del pipeline de audio con medición de amplitud en caliente.
+     - `InternalAudioWorker`: Lector aislado de audio interno del sistema (`AudioPlaybackCapture`).
+     - `MicAudioWorker`: Lector aislado de micrófono con silenciador reactivo y medidor RMS.
+     - `AudioDspMixer`: Motor de mezcla DSP C++ (Ducking, Noise Gate) con respaldo PCM soft-clipping.
      - `MuxerManager`: Empaquetado MP4 sincronizado y thread-safe con candado reentrante.
-   - `FacecamOverlayManager`: Orquestador de cámara flotante con submódulos en `service/facecam/`:
-     - `FacecamLifecycleOwner`: Ciclo de vida desacoplado para CameraX en Service.
-     - `FacecamShapeHelper`: Máscaras geométricas y cálculo métrico.
-     - `FacecamRgbBorderView`: Vista de borde dinámico con degradado RGB arcoíris animado.
-     - `FacecamControlsBar`: Barra inferior flotante de herramientas.
-     - `FacecamTouchDragHelper`: Detección táctil y arrastre magnético.
-   - `BubbleOverlayView`: Widget flotante con submódulos en `service/bubble/`:
-     - `BubbleMainBar`: Cronómetro monospace, led pulsante y botones de acción rápida.
-     - `BubbleToolsSubmenu`: Desplegable de herramientas rápidas.
-   - `TouchVisualizerOverlay`: Renderizado de ripples táctiles animados sin depuración USB.

@@ -24,6 +24,8 @@ class BubbleToolsSubmenu(
     private val onTouchToggleClicked: () -> Unit,
     private val onWatermarkToggleClicked: () -> Unit = {},
     private val onSceneOverlayToggleClicked: () -> Unit = {},
+    private val onVtuberToggleClicked: () -> Unit = {},
+    private val onVuMeterToggleClicked: () -> Unit = {},
     private val onVibrateRequested: () -> Unit
 ) {
 
@@ -31,6 +33,14 @@ class BubbleToolsSubmenu(
     val btnFacecamToggle: LinearLayout
     val iconFacecamToggle: ImageView
     val tvFacecamToggleLabel: TextView
+
+    val btnVtuberToggle: LinearLayout
+    val iconVtuberToggle: ImageView
+    val tvVtuberToggleLabel: TextView
+
+    val btnVuMeterToggle: LinearLayout
+    val iconVuMeterToggle: ImageView
+    val tvVuMeterToggleLabel: TextView
 
     val btnBeautyToggle: LinearLayout
     val iconBeautyToggle: ImageView
@@ -89,7 +99,19 @@ class BubbleToolsSubmenu(
         )
         layout.addView(btnDraw)
 
-        // 3. Facecam
+        // 3. Vúmetro / Mezclador de Audio Flotante OBS
+        btnVuMeterToggle = createBaseContainer()
+        iconVuMeterToggle = createIcon(android.R.drawable.ic_lock_silent_mode_off, Color.WHITE)
+        tvVuMeterToggleLabel = createLabel("Vúmetro", Color.WHITE)
+        btnVuMeterToggle.addView(iconVuMeterToggle)
+        btnVuMeterToggle.addView(tvVuMeterToggleLabel)
+        btnVuMeterToggle.setOnClickListener {
+            onVibrateRequested()
+            onVuMeterToggleClicked()
+        }
+        layout.addView(btnVuMeterToggle)
+
+        // 4. Facecam
         btnFacecamToggle = createBaseContainer()
         iconFacecamToggle = createIcon(android.R.drawable.ic_menu_camera, Color.WHITE)
         tvFacecamToggleLabel = createLabel("Facecam", Color.WHITE)
@@ -101,7 +123,19 @@ class BubbleToolsSubmenu(
         }
         layout.addView(btnFacecamToggle)
 
-        // 4. Belleza
+        // 5. PNGtuber / Avatar 2D
+        btnVtuberToggle = createBaseContainer()
+        iconVtuberToggle = createIcon(android.R.drawable.ic_menu_myplaces, Color.WHITE)
+        tvVtuberToggleLabel = createLabel("Avatar 2D", Color.WHITE)
+        btnVtuberToggle.addView(iconVtuberToggle)
+        btnVtuberToggle.addView(tvVtuberToggleLabel)
+        btnVtuberToggle.setOnClickListener {
+            onVibrateRequested()
+            onVtuberToggleClicked()
+        }
+        layout.addView(btnVtuberToggle)
+
+        // 5. Belleza
         btnBeautyToggle = createBaseContainer()
         iconBeautyToggle = createIcon(android.R.drawable.btn_star_big_on, Color.WHITE)
         tvBeautyToggleLabel = createLabel("Belleza", Color.WHITE)
@@ -178,6 +212,34 @@ class BubbleToolsSubmenu(
             iconFacecamToggle.setColorFilter(Color.WHITE)
             tvFacecamToggleLabel.text = "Facecam"
             tvFacecamToggleLabel.setTextColor(Color.WHITE)
+        }
+    }
+
+    fun updateVtuberStatus(active: Boolean) {
+        if (active) {
+            btnVtuberToggle.background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_TOUCH_ON_BG, dp(12))
+            iconVtuberToggle.setColorFilter(BubbleColors.COLOR_TOUCH_ON_TEXT)
+            tvVtuberToggleLabel.text = "Avatar ON"
+            tvVtuberToggleLabel.setTextColor(BubbleColors.COLOR_TOUCH_ON_TEXT)
+        } else {
+            btnVtuberToggle.background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_BTN_BG, dp(12))
+            iconVtuberToggle.setColorFilter(Color.WHITE)
+            tvVtuberToggleLabel.text = "Avatar 2D"
+            tvVtuberToggleLabel.setTextColor(Color.WHITE)
+        }
+    }
+
+    fun updateVuMeterStatus(active: Boolean) {
+        if (active) {
+            btnVuMeterToggle.background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_FACECAM_ON_BG, dp(12))
+            iconVuMeterToggle.setColorFilter(BubbleColors.COLOR_FACECAM_ON_TEXT)
+            tvVuMeterToggleLabel.text = "Vúmetro ON"
+            tvVuMeterToggleLabel.setTextColor(BubbleColors.COLOR_FACECAM_ON_TEXT)
+        } else {
+            btnVuMeterToggle.background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_BTN_BG, dp(12))
+            iconVuMeterToggle.setColorFilter(Color.WHITE)
+            tvVuMeterToggleLabel.text = "Vúmetro"
+            tvVuMeterToggleLabel.setTextColor(Color.WHITE)
         }
     }
 

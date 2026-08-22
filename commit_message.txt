@@ -1,9 +1,8 @@
-feat(settings): agregar selector de bitrate personalizado (1-12 Mbps), FPS de Facecam (30-60) y frecuencia de audio (32-96 kHz)
+feat(audio): implementar Vúmetro de Audio Flotante y Control de Ganancia Independiente estilo OBS
 
-- Añadir selector interactivo de tasa de bits (Bitrate) personalizada de 1 a 12 Mbps con slider continuo y botones rápidos de presets (1M, 2M, 4M, 6M, 8M, 10M, 12M).
-- Implementar selector de tasa de cuadros por segundo (FPS) para la cámara Facecam con opciones de 30 FPS, 45 FPS, 50 FPS y 60 FPS mediante Camera2Interop y CONTROL_AE_TARGET_FPS_RANGE en CameraX.
-- Incorporar selector de frecuencia de muestreo de audio (Sample Rate) con opciones profesionales de 32.000 Hz, 44.100 Hz (calidad CD), 48.000 Hz (estándar broadcast recomendado) y 96.000 Hz (Hi-Res).
-- Propagar dinámicamente el sampleRate en el pipeline de captura dual (AudioRecord, AudioFormat, MediaFormat y puente C++ DSP NativeAudioDSPBridge).
-- Actualizar SettingsRepository, RecordingConfig, RecordViewModel y ScreenRecordService para persistir y aplicar en tiempo real estos nuevos parámetros avanzados.
-- Actualizar las tarjetas de interfaz VideoQualitySettingsCard, FacecamSettingsCard y AudioSettingsCard con diseño Material Design 3 reactivo y accesible.
-- Actualizar la documentación técnica del proyecto (README.md, ROADMAP.md, STRUCTURE.md y AI_CONTEXT.md).
+- Integrar FloatingVuMeterManager y VuMeterOverlayView con renderizado en tiempo real de niveles RMS/Peak en decibelios (dB) con gradiente verde-amarillo-rojo estilo consola broadcast.
+- Añadir controles de faders independientes de ganancia para Audio del Juego (0% - 200%) y Micrófono/Voz (0% - 200%) en tiempo real sobre la pantalla mediante WindowManager.
+- Integrar conmutadores en caliente para filtros DSP de OBS: Puerta de Ruido (Noise Gate) y Atenuación Automática (Audio Ducking) directamente desde el vúmetro y la pestaña de Ajustes.
+- Exponer canales de métricas acústicas en C++ (audio_dsp_engine.cpp / AudioDspMixer) hacia el servicio ScreenRecordService y el coordinador ServiceOverlayCoordinator.
+- Actualizar AudioSettingsCard con controles completos de sliders de ganancia, switches de filtros DSP y toggle del vúmetro flotante.
+- Sincronizar y actualizar la documentación técnica en STRUCTURE.md, README.md, ROADMAP.md y AI_CONTEXT.md.

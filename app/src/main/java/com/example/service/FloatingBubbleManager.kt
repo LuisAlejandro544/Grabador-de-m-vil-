@@ -29,7 +29,9 @@ class FloatingBubbleManager(
     private val onRgbBorderToggleClicked: (() -> Unit)? = null,
     private val onTouchToggleClicked: (() -> Unit)? = null,
     private val onWatermarkToggleClicked: (() -> Unit)? = null,
-    private val onSceneOverlayToggleClicked: (() -> Unit)? = null
+    private val onSceneOverlayToggleClicked: (() -> Unit)? = null,
+    private val onVtuberToggleClicked: (() -> Unit)? = null,
+    private val onVuMeterToggleClicked: (() -> Unit)? = null
 ) {
 
     companion object {
@@ -116,6 +118,12 @@ class FloatingBubbleManager(
                 },
                 onSceneOverlayToggleClicked = {
                     onSceneOverlayToggleClicked?.invoke()
+                },
+                onVtuberToggleClicked = {
+                    onVtuberToggleClicked?.invoke()
+                },
+                onVuMeterToggleClicked = {
+                    onVuMeterToggleClicked?.invoke()
                 }
             )
             this.bubbleOverlayView = overlay
@@ -182,6 +190,16 @@ class FloatingBubbleManager(
     fun updateFacecamStatus(active: Boolean) {
         if (!isShowingInternal) return
         bubbleOverlayView?.updateFacecamStatus(active)
+    }
+
+    fun updateVtuberStatus(active: Boolean) {
+        if (!isShowingInternal) return
+        bubbleOverlayView?.updateVtuberStatus(active)
+    }
+
+    fun updateVuMeterStatus(active: Boolean) {
+        if (!isShowingInternal) return
+        bubbleOverlayView?.updateVuMeterStatus(active)
     }
 
     fun updateBeautyStatus(active: Boolean) {

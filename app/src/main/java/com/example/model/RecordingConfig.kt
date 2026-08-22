@@ -90,6 +90,19 @@ enum class SceneOverlayType(val label: String, val description: String) {
     CUSTOM_IMAGE("Marco PNG Personalizado", "Superposición de imagen propia con transparencia")
 }
 
+enum class VtuberPreset(val label: String, val description: String) {
+    CYBER_CAT("Gato Ciberpunk", "Gatito mecha con audífonos gamer neón"),
+    ANIME_AOI("Aoi Chibi", "Personaje anime con coletas y lazo"),
+    PIXEL_SLIME("Slime Gamer", "Slime verde retro con corona dorada"),
+    CUSTOM("Avatar Personalizado", "Tus propios archivos PNG transparentes")
+}
+
+enum class VtuberSize(val label: String, val dpSize: Int) {
+    SMALL("Pequeño (110 dp)", 110),
+    MEDIUM("Mediano (150 dp)", 150),
+    LARGE("Grande (200 dp)", 200)
+}
+
 data class RecordingConfig(
     val resolution: VideoResolution = VideoResolution.RES_1080P,
     val fps: VideoFps = VideoFps.FPS_60,
@@ -120,7 +133,21 @@ data class RecordingConfig(
     val sceneOverlayType: SceneOverlayType = SceneOverlayType.GAMER_NEON_FRAME,
     val sceneOverlayText: String = "🔴 EN VIVO | @TuCanal",
     val sceneOverlayOpacity: Float = 0.90f,
-    val sceneOverlayImageUri: String? = null
+    val sceneOverlayImageUri: String? = null,
+    val showVtuber: Boolean = false,
+    val vtuberPreset: VtuberPreset = VtuberPreset.CYBER_CAT,
+    val vtuberSize: VtuberSize = VtuberSize.MEDIUM,
+    val vtuberSensitivity: Float = 0.18f,
+    val vtuberBounceEnabled: Boolean = true,
+    val vtuberIdleImageUri: String? = null,
+    val vtuberTalkImageUri: String? = null,
+    val vtuberBlinkImageUri: String? = null,
+    val vtuberBlinkTalkImageUri: String? = null,
+    val gameAudioGain: Float = 1.0f,
+    val micAudioGain: Float = 1.25f,
+    val audioDuckingEnabled: Boolean = true,
+    val noiseGateEnabled: Boolean = true,
+    val showFloatingVuMeter: Boolean = false
 ) {
     fun getEffectiveBitrateBps(): Int = bitrateMbps * 1_000_000
 }

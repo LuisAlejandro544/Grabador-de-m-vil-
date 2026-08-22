@@ -12,10 +12,14 @@ AudioDspEngine::AudioDspEngine()
     : mGateLinearThreshold(0.01f),
       mVoiceEnvelope(0.0f),
       mCurrentDuckingGain(1.0f),
+      mGamePeakLevel(0.0f),
+      mMicPeakLevel(0.0f),
+      mMasterPeakLevel(0.0f),
       mGateAttackCoeff(0.0f),
       mGateReleaseCoeff(0.0f),
       mDuckingAttackCoeff(0.0f),
-      mDuckingReleaseCoeff(0.0f) {
+      mDuckingReleaseCoeff(0.0f),
+      mLevelDecayCoeff(0.0f) {
     initialize(48000, 2);
 }
 
@@ -24,6 +28,9 @@ void AudioDspEngine::initialize(int sampleRate, int channels) {
     mConfig.channels = channels;
     mVoiceEnvelope = 0.0f;
     mCurrentDuckingGain = 1.0f;
+    mGamePeakLevel = 0.0f;
+    mMicPeakLevel = 0.0f;
+    mMasterPeakLevel = 0.0f;
     updateCoefficients();
     LOGI("AudioDspEngine inicializado: %d Hz, %d canales", sampleRate, channels);
 }
@@ -31,6 +38,17 @@ void AudioDspEngine::initialize(int sampleRate, int channels) {
 void AudioDspEngine::setConfig(const AudioDspConfig& config) {
     mConfig = config;
     updateCoefficients();
+}
+
+void AudioDspEngine::setGains(float gameGain, float micGain) {
+    mConfig.gameGain = std::max(0.0f, std::min(3.0f, gameGain));
+    mConfig.micGain = std::max(0.0f, std::min(3.0f, micGain));
+}
+
+void AudioDspEngine::setFilters(bool noiseGateEnabled, bool duckingEnabled, bool peakLimiterEnabled) {
+    mConfig.noiseGateEnabled = noiseGateEnabled;
+    mConfig.duckingEnabled = duckingEnabled;
+    mConfig.peakLimiterEnabled = peakLimiterEnabled;
 }
 
 void AudioDspEngine::updateCoefficients() {
@@ -49,6 +67,9 @@ void AudioDspEngine::updateCoefficients() {
     // Ducking: Attack 15ms (bajada suave al hablar), Release 350ms (recuperación musical)
     mDuckingAttackCoeff = std::exp(-dt / 0.015f);
     mDuckingReleaseCoeff = std::exp(-dt / 0.350f);
+
+    // Decaimiento visual del Vúmetro (Release 120ms para respuesta suave y reactiva estilo OBS)
+    mLevelDecayCoeff = std::exp(-dt / 0.120f);
 }
 
 // Curva de Soft Limiter / Tanh saturación suave para evitar distorsión dura (clipping digital)
@@ -76,18 +97,26 @@ int AudioDspEngine::processAndMix(
     const float kNorm16 = 1.0f / 32768.0f;
     const float kDenorm16 = 32767.0f;
 
+    float batchMaxGame = 0.0f;
+    float batchMaxMic = 0.0f;
+    float batchMaxMaster = 0.0f;
+
     for (int i = 0; i < sampleCount; ++i) {
         // 1. Obtener muestra del juego normalizada
-        float gameSample = 0.0f;
+        float rawGame = 0.0f;
         if (internalPcm != nullptr) {
-            gameSample = static_cast<float>(internalPcm[i]) * kNorm16 * mConfig.gameGain;
+            rawGame = static_cast<float>(internalPcm[i]) * kNorm16;
+            float absGame = std::abs(rawGame);
+            if (absGame > batchMaxGame) batchMaxGame = absGame;
         }
+        float gameSample = rawGame * mConfig.gameGain;
 
         // 2. Procesamiento de Micrófono
         float micSample = 0.0f;
         if (micPcm != nullptr && !isMicMuted) {
             float rawMic = static_cast<float>(micPcm[i]) * kNorm16;
             float absMic = std::abs(rawMic);
+            if (absMic > batchMaxMic) batchMaxMic = absMic;
 
             // Envelope Follower para medir energía de voz
             if (absMic > mVoiceEnvelope) {
@@ -137,10 +166,18 @@ int AudioDspEngine::processAndMix(
             }
         }
 
+        float absMixed = std::abs(mixed);
+        if (absMixed > batchMaxMaster) batchMaxMaster = absMixed;
+
         // Clamp de seguridad a 16-bit PCM
         mixed = std::max(-1.0f, std::min(1.0f, mixed));
         outMixedPcm[i] = static_cast<int16_t>(mixed * kDenorm16);
     }
+
+    // Actualizar niveles visuales de vúmetro con decaimiento suave
+    mGamePeakLevel = std::max(batchMaxGame * mConfig.gameGain, mGamePeakLevel * 0.85f);
+    mMicPeakLevel = (isMicMuted) ? 0.0f : std::max(batchMaxMic * mConfig.micGain, mMicPeakLevel * 0.85f);
+    mMasterPeakLevel = std::max(batchMaxMaster, mMasterPeakLevel * 0.85f);
 
     return sampleCount * sizeof(int16_t);
 }

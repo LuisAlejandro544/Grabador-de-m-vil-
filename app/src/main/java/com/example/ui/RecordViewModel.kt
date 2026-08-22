@@ -3,9 +3,6 @@ package com.example.ui
 import android.app.Application
 import android.content.Context
 import android.content.Intent
-import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.InstalledAppItem
@@ -25,8 +22,6 @@ import com.example.model.VideoFps
 import com.example.model.VideoResolution
 import com.example.service.ScreenRecordService
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
@@ -48,15 +43,18 @@ data class UiState(
     val activeTab: Int = 0 // 0: Grabar, 1: Galería, 2: Ajustes, 3: Juegos
 )
 
+/**
+ * ViewModel modular y reactivo para la pantalla principal de Vortex Studio.
+ * Desacopla la cuenta atrás en [RecordCountdownManager] y los comandos del servicio en [RecordServiceLauncher].
+ */
 class RecordViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = RecordingsRepository(application)
     private val gamesHelper = InstalledGamesHelper(application)
     private val settingsRepository = SettingsRepository(application)
+    private val countdownManager = RecordCountdownManager(application, viewModelScope)
 
     private val _config = MutableStateFlow(settingsRepository.getConfig())
-    private val _countdownNumber = MutableStateFlow(0)
-    private val _isCountingDown = MutableStateFlow(false)
     private val _videos = MutableStateFlow<List<RecordedVideo>>(emptyList())
     private val _isLoadingVideos = MutableStateFlow(false)
     private val _selectedVideoForPlay = MutableStateFlow<RecordedVideo?>(null)
@@ -65,14 +63,13 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     private val _activeTab = MutableStateFlow(0)
     private val _infoMessage = MutableStateFlow<String?>(null)
 
-    private var countdownJob: Job? = null
     private var pendingLaunchGamePackage: String? = null
 
     val uiState = combine(
-        combine(_config, ScreenRecordService.recordingState, ScreenRecordService.elapsedSeconds, _countdownNumber) { config, state, elapsed, cd ->
+        combine(_config, ScreenRecordService.recordingState, ScreenRecordService.elapsedSeconds, countdownManager.countdownNumber) { config, state, elapsed, cd ->
             Quadruple(config, state, elapsed, cd)
         },
-        combine(_isCountingDown, _videos, _isLoadingVideos, _selectedVideoForPlay) { isCd, vids, loadingVids, selectedVid ->
+        combine(countdownManager.isCountingDown, _videos, _isLoadingVideos, _selectedVideoForPlay) { isCd, vids, loadingVids, selectedVid ->
             Quadruple(isCd, vids, loadingVids, selectedVid)
         },
         combine(_installedGames, _isLoadingGames, ScreenRecordService.errorMessage, combine(_infoMessage, _activeTab) { info, tab -> Pair(info, tab) }) { games, loadingGames, err, infoTab ->
@@ -133,8 +130,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             _isLoadingVideos.value = true
             try {
                 _videos.value = repository.loadSavedRecordings()
-            } catch (e: Exception) {
-                // Ignore
+            } catch (_: Exception) {
             } finally {
                 _isLoadingVideos.value = false
             }
@@ -146,8 +142,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             _isLoadingGames.value = true
             try {
                 _installedGames.value = gamesHelper.getInstalledGamesAndApps()
-            } catch (e: Exception) {
-                // Ignore
+            } catch (_: Exception) {
             } finally {
                 _isLoadingGames.value = false
             }
@@ -180,6 +175,26 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateAudioSource(source: AudioSourceType) {
         settingsRepository.updateAudioSource(source)
+    }
+
+    fun toggleFloatingVuMeter(enabled: Boolean) {
+        settingsRepository.toggleFloatingVuMeter(enabled)
+    }
+
+    fun updateGameAudioGain(gain: Float) {
+        settingsRepository.updateGameAudioGain(gain)
+    }
+
+    fun updateMicAudioGain(gain: Float) {
+        settingsRepository.updateMicAudioGain(gain)
+    }
+
+    fun toggleNoiseGate(enabled: Boolean) {
+        settingsRepository.toggleNoiseGate(enabled)
+    }
+
+    fun toggleAudioDucking(enabled: Boolean) {
+        settingsRepository.toggleAudioDucking(enabled)
     }
 
     fun updateCountdown(seconds: Int) {
@@ -270,6 +285,42 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         settingsRepository.updateSceneOverlayImageUri(uri)
     }
 
+    fun toggleVtuber(enabled: Boolean) {
+        settingsRepository.toggleVtuber(enabled)
+    }
+
+    fun updateVtuberPreset(preset: com.example.model.VtuberPreset) {
+        settingsRepository.updateVtuberPreset(preset)
+    }
+
+    fun updateVtuberSize(size: com.example.model.VtuberSize) {
+        settingsRepository.updateVtuberSize(size)
+    }
+
+    fun updateVtuberSensitivity(sensitivity: Float) {
+        settingsRepository.updateVtuberSensitivity(sensitivity)
+    }
+
+    fun toggleVtuberBounce(enabled: Boolean) {
+        settingsRepository.toggleVtuberBounce(enabled)
+    }
+
+    fun updateVtuberIdleImage(uri: String?) {
+        settingsRepository.updateVtuberIdleUri(uri)
+    }
+
+    fun updateVtuberTalkImage(uri: String?) {
+        settingsRepository.updateVtuberTalkUri(uri)
+    }
+
+    fun updateVtuberBlinkImage(uri: String?) {
+        settingsRepository.updateVtuberBlinkUri(uri)
+    }
+
+    fun updateVtuberBlinkTalkImage(uri: String?) {
+        settingsRepository.updateVtuberBlinkTalkUri(uri)
+    }
+
     fun toggleGameMode(enabled: Boolean) {
         settingsRepository.toggleGameMode(enabled)
     }
@@ -284,30 +335,20 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         pendingLaunchGamePackage = targetGamePackage
 
         // Iniciar el Foreground Service de inmediato mientras la Activity está en primer plano
-        // para garantizar compatibilidad total con Android 14 y evitar ForegroundServiceStartNotAllowedException
-        triggerStartService(resultCode, resultData)
+        RecordServiceLauncher.startService(
+            context = getApplication(),
+            resultCode = resultCode,
+            resultData = resultData,
+            config = config
+        )
 
-        if (countdown > 0) {
-            countdownJob?.cancel()
-            _isCountingDown.value = true
-            countdownJob = viewModelScope.launch {
-                for (i in countdown downTo 1) {
-                    _countdownNumber.value = i
-                    vibrateQuick()
-                    delay(1000)
-                }
-                _isCountingDown.value = false
-                launchPendingGame()
-            }
-        } else {
+        countdownManager.startCountdown(countdown) {
             launchPendingGame()
         }
     }
 
     fun cancelCountdown() {
-        countdownJob?.cancel()
-        _isCountingDown.value = false
-        _countdownNumber.value = 0
+        countdownManager.cancelCountdown()
         pendingLaunchGamePackage = null
         stopRecording()
     }
@@ -319,54 +360,16 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private fun triggerStartService(resultCode: Int, resultData: Intent) {
-        val context = getApplication<Application>()
-        val config = _config.value
-        val (width, height) = config.resolution.getDimensions(isPortrait = true)
-
-        val serviceIntent = Intent(context, ScreenRecordService::class.java).apply {
-            action = ScreenRecordService.ACTION_START
-            putExtra(ScreenRecordService.EXTRA_RESULT_CODE, resultCode)
-            putExtra(ScreenRecordService.EXTRA_RESULT_DATA, resultData)
-            putExtra(ScreenRecordService.EXTRA_RES_WIDTH, width)
-            putExtra(ScreenRecordService.EXTRA_RES_HEIGHT, height)
-            putExtra(ScreenRecordService.EXTRA_FPS, config.fps.fps)
-            putExtra(ScreenRecordService.EXTRA_BITRATE, config.getEffectiveBitrateBps())
-            putExtra(ScreenRecordService.EXTRA_AUDIO_SOURCE, config.audioSource.name)
-            putExtra(ScreenRecordService.EXTRA_SAMPLE_RATE, config.audioSampleRate.sampleRate)
-            putExtra(ScreenRecordService.EXTRA_SHOW_FLOATING_BUBBLE, config.showFloatingBubble)
-            putExtra(ScreenRecordService.EXTRA_SHOW_FACECAM, config.showFacecam)
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(serviceIntent)
-        } else {
-            context.startService(serviceIntent)
-        }
-    }
-
     fun stopRecording() {
-        val context = getApplication<Application>()
-        val intent = Intent(context, ScreenRecordService::class.java).apply {
-            action = ScreenRecordService.ACTION_STOP
-        }
-        context.startService(intent)
+        RecordServiceLauncher.sendAction(getApplication(), ScreenRecordService.ACTION_STOP)
     }
 
     fun pauseRecording() {
-        val context = getApplication<Application>()
-        val intent = Intent(context, ScreenRecordService::class.java).apply {
-            action = ScreenRecordService.ACTION_PAUSE
-        }
-        context.startService(intent)
+        RecordServiceLauncher.sendAction(getApplication(), ScreenRecordService.ACTION_PAUSE)
     }
 
     fun resumeRecording() {
-        val context = getApplication<Application>()
-        val intent = Intent(context, ScreenRecordService::class.java).apply {
-            action = ScreenRecordService.ACTION_RESUME
-        }
-        context.startService(intent)
+        RecordServiceLauncher.sendAction(getApplication(), ScreenRecordService.ACTION_RESUME)
     }
 
     fun deleteVideo(video: RecordedVideo) {
@@ -414,20 +417,6 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     fun clearInfoMessage() {
         _infoMessage.value = null
-    }
-
-    private fun vibrateQuick() {
-        try {
-            val vibrator = getApplication<Application>().getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator?.vibrate(VibrationEffect.createOneShot(50, VibrationEffect.DEFAULT_AMPLITUDE))
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator?.vibrate(50)
-            }
-        } catch (e: Exception) {
-            // Ignore
-        }
     }
 }
 

@@ -66,6 +66,18 @@ class ScreenCaptureEngine(private val context: Context) {
         audioPipelineModule?.setMicMuted(muted)
     }
 
+    fun setAudioGains(gameGain: Float, micGain: Float) {
+        audioPipelineModule?.setAudioGains(gameGain, micGain)
+    }
+
+    fun setAudioFilters(noiseGate: Boolean, ducking: Boolean) {
+        audioPipelineModule?.setAudioFilters(noiseGate, ducking)
+    }
+
+    fun getAudioLevels(): FloatArray {
+        return audioPipelineModule?.getAudioLevels() ?: floatArrayOf(0f, 0f, 0f, 1f)
+    }
+
     /**
      * Inicia la captura de pantalla por hardware, codificación H.264 / AAC y guardado en MP4.
      */
@@ -80,6 +92,7 @@ class ScreenCaptureEngine(private val context: Context) {
         audioSource: String = AudioSourceType.INTERNAL_AND_MIC.name,
         sampleRate: Int = 48000,
         outputFile: File? = null,
+        onAudioAmplitude: ((Float) -> Unit)? = null,
         onError: ((String) -> Unit)? = null,
         onSystemStop: (() -> Unit)? = null
     ): Boolean {
@@ -145,7 +158,8 @@ class ScreenCaptureEngine(private val context: Context) {
                 muxerManager = muxer,
                 sampleRate = sampleRate,
                 isRecordingProvider = { isRecordingInternal.get() },
-                isPausedProvider = { isPausedInternal.get() }
+                isPausedProvider = { isPausedInternal.get() },
+                onAmplitudeMeasured = onAudioAmplitude
             )
             aPipeline.initialize()
             this.audioPipelineModule = aPipeline

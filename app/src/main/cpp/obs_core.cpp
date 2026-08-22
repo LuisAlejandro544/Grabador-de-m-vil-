@@ -292,6 +292,51 @@ Java_com_example_nativecore_NativeAudioDSPBridge_nativeConfigureAudioDsp(
     gAudioDspEngine->setConfig(config);
 }
 
+JNIEXPORT void JNICALL
+Java_com_example_nativecore_NativeAudioDSPBridge_nativeSetGains(
+    JNIEnv* /* env */,
+    jobject /* this */,
+    jfloat gameGain,
+    jfloat micGain
+) {
+    if (gAudioDspEngine) {
+        gAudioDspEngine->setGains(gameGain, micGain);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_example_nativecore_NativeAudioDSPBridge_nativeSetFilters(
+    JNIEnv* /* env */,
+    jobject /* this */,
+    jboolean noiseGate,
+    jboolean ducking,
+    jboolean limiter
+) {
+    if (gAudioDspEngine) {
+        gAudioDspEngine->setFilters(noiseGate, ducking, limiter);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_example_nativecore_NativeAudioDSPBridge_nativeGetAudioLevels(
+    JNIEnv* env,
+    jobject /* this */,
+    jfloatArray outArray
+) {
+    if (!gAudioDspEngine || !outArray) return;
+    
+    jsize len = env->GetArrayLength(outArray);
+    if (len < 4) return;
+
+    jfloat buf[4];
+    buf[0] = gAudioDspEngine->getGameLevel();
+    buf[1] = gAudioDspEngine->getMicLevel();
+    buf[2] = gAudioDspEngine->getMasterLevel();
+    buf[3] = gAudioDspEngine->getDuckingLevel();
+
+    env->SetFloatArrayRegion(outArray, 0, 4, buf);
+}
+
 JNIEXPORT jint JNICALL
 Java_com_example_nativecore_NativeAudioDSPBridge_nativeProcessAndMixAudio(
     JNIEnv* env,
