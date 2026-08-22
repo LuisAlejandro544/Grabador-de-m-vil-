@@ -53,6 +53,7 @@ class ScreenRecordService : Service() {
         const val EXTRA_FPS = "extra_fps"
         const val EXTRA_BITRATE = "extra_bitrate"
         const val EXTRA_AUDIO_SOURCE = "extra_audio_source"
+        const val EXTRA_SAMPLE_RATE = "extra_sample_rate"
         const val EXTRA_SHOW_FLOATING_BUBBLE = "extra_show_floating_bubble"
         const val EXTRA_SHOW_FACECAM = "extra_show_facecam"
 
@@ -126,6 +127,7 @@ class ScreenRecordService : Service() {
                 if (facecamOverlayManager?.isShowing == true) {
                     facecamOverlayManager?.setShape(config.facecamShape)
                     facecamOverlayManager?.setSize(config.facecamSize)
+                    facecamOverlayManager?.setFacecamFps(config.facecamFps)
                     facecamOverlayManager?.setBeautyFilter(config.beautyFilterEnabled)
                     facecamOverlayManager?.setRgbBorder(config.facecamRgbBorder)
                 }
@@ -170,8 +172,9 @@ class ScreenRecordService : Service() {
         val width = intent.getIntExtra(EXTRA_RES_WIDTH, defaultDims.first)
         val height = intent.getIntExtra(EXTRA_RES_HEIGHT, defaultDims.second)
         val fps = intent.getIntExtra(EXTRA_FPS, savedConfig.fps.fps)
-        val bitrate = intent.getIntExtra(EXTRA_BITRATE, savedConfig.bitrate.bps)
+        val bitrate = intent.getIntExtra(EXTRA_BITRATE, savedConfig.getEffectiveBitrateBps())
         val audioSource = intent.getStringExtra(EXTRA_AUDIO_SOURCE) ?: savedConfig.audioSource.name
+        val sampleRate = intent.getIntExtra(EXTRA_SAMPLE_RATE, savedConfig.audioSampleRate.sampleRate)
         val showFloatingBubble = intent.getBooleanExtra(EXTRA_SHOW_FLOATING_BUBBLE, savedConfig.showFloatingBubble)
         val showFacecam = intent.getBooleanExtra(EXTRA_SHOW_FACECAM, savedConfig.showFacecam)
 
@@ -235,6 +238,7 @@ class ScreenRecordService : Service() {
             fps = fps,
             bitrate = bitrate,
             audioSource = audioSource,
+            sampleRate = sampleRate,
             outputFile = outputFile,
             onError = { errorMsg ->
                 Log.e(TAG, "Error en captura: $errorMsg")
@@ -321,6 +325,7 @@ class ScreenRecordService : Service() {
             context = this,
             shape = config.facecamShape,
             size = config.facecamSize,
+            fps = config.facecamFps,
             isFrontCamera = config.isFrontCamera,
             beautyFilterEnabled = config.beautyFilterEnabled,
             rgbBorderEnabled = config.facecamRgbBorder,

@@ -12,7 +12,9 @@ import com.example.data.InstalledAppItem
 import com.example.data.InstalledGamesHelper
 import com.example.data.RecordingsRepository
 import com.example.data.SettingsRepository
+import com.example.model.AudioSampleRate
 import com.example.model.AudioSourceType
+import com.example.model.FacecamFps
 import com.example.model.FacecamShape
 import com.example.model.FacecamSize
 import com.example.model.RecordedVideo
@@ -162,6 +164,18 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateBitrate(bitrate: VideoBitrate) {
         settingsRepository.updateBitrate(bitrate)
+    }
+
+    fun updateBitrateMbps(mbps: Int) {
+        settingsRepository.updateBitrateMbps(mbps)
+    }
+
+    fun updateFacecamFps(fps: FacecamFps) {
+        settingsRepository.updateFacecamFps(fps)
+    }
+
+    fun updateAudioSampleRate(sampleRate: AudioSampleRate) {
+        settingsRepository.updateAudioSampleRate(sampleRate)
     }
 
     fun updateAudioSource(source: AudioSourceType) {
@@ -317,8 +331,9 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             putExtra(ScreenRecordService.EXTRA_RES_WIDTH, width)
             putExtra(ScreenRecordService.EXTRA_RES_HEIGHT, height)
             putExtra(ScreenRecordService.EXTRA_FPS, config.fps.fps)
-            putExtra(ScreenRecordService.EXTRA_BITRATE, config.bitrate.bps)
+            putExtra(ScreenRecordService.EXTRA_BITRATE, config.getEffectiveBitrateBps())
             putExtra(ScreenRecordService.EXTRA_AUDIO_SOURCE, config.audioSource.name)
+            putExtra(ScreenRecordService.EXTRA_SAMPLE_RATE, config.audioSampleRate.sampleRate)
             putExtra(ScreenRecordService.EXTRA_SHOW_FLOATING_BUBBLE, config.showFloatingBubble)
             putExtra(ScreenRecordService.EXTRA_SHOW_FACECAM, config.showFacecam)
         }

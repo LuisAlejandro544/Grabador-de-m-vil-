@@ -6,7 +6,7 @@ Este documento detalla las fases de evolución del proyecto para transformar la 
 
 ## 📍 Fase 1: Motor Base y Grabación Móvil (Completada ✅)
 - [x] Captura de pantalla nativa con `MediaProjection` y `VirtualDisplay`.
-- [x] Configuración de resolución (1080p, 720p, 480p), FPS (60 / 30) y tasa de bits (12M, 8M, 4M).
+- [x] Configuración de resolución (1080p, 720p, 480p), FPS (60 / 30) y tasa de bits personalizada (1 a 12 Mbps) con slider continuo y accesos directos (1M, 2M, 4M, 6M, 8M, 10M, 12M).
 - [x] Servicio en primer plano (`ScreenRecordService`) con notificación persistente para control durante el juego.
 - [x] Lanzador de juegos integrado y galería con reproductor interno.
 - [x] Cimientos nativos: Módulos C++ (NDK/CMake) y Rust (Cargo/JNI) configurados con carga segura.
@@ -15,6 +15,7 @@ Este documento detalla las fases de evolución del proyecto para transformar la 
 
 ## 📍 Fase 2: Control de Audio, Perfiles y Widget Flotante con Herramientas (Completada ✅)
 - [x] Selector, mezcla y procesamiento de audio pro:
+  - **Frecuencia de Muestreo (Sample Rate):** Selección entre 32.000 Hz, 44.100 Hz (CD), 48.000 Hz (broadcast gamer) y 96.000 Hz (Hi-Res).
   - **Motor DSP en C++ Nativo:** Puerta de ruido (Noise Gate), Audio Ducking automático inteligente (-9 dB) y Soft Limiter / Saturation shaper anti-clipping.
   - **Juego + Micrófono Conmutables (Dinámico):** Mezcla dual PCM en tiempo real con conmutador en vivo (`Voz ON` / `Solo Juego`) sin reiniciar la grabación.
   - **Solo Audio del Juego (Interno):** Captura exclusiva del sonido de aplicaciones sin voz externa.
@@ -30,8 +31,9 @@ Este documento detalla las fases de evolución del proyecto para transformar la 
 ---
 
 ## 📍 Fase 3: Composición de Escenas, Facecam y Efectos Visuales (Completada ✅)
-- [x] **Facecam Flotante con Diseños Geométricos (CameraX & WindowManager):**
+- [x] **Facecam Flotante con FPS Configurable (30 - 60 FPS) y Diseños Geométricos (CameraX & WindowManager):**
   - Superposición flotante arrastrable con cámara frontal y trasera en tiempo real.
+  - Tasa de cuadros por segundo de cámara seleccionable (30, 45, 50 y 60 FPS) vía `Camera2Interop`.
   - Diseños configurables con clip nativo: Circular 1:1, Cuadrado redondeado, Cuadrado y Rectangular 16:9.
   - Control de activación/desactivación dinámica desde la burbuja flotante del grabador y persistencia de estado.
 - [x] **Filtro de Belleza Facial y Suavizado de Piel:**

@@ -25,6 +25,20 @@ enum class VideoBitrate(val label: String, val bps: Int) {
     BITRATE_4M("4 Mbps (Ahorro de Espacio)", 4_000_000)
 }
 
+enum class FacecamFps(val label: String, val fps: Int) {
+    FPS_30("30 FPS (Estándar / Fluido)", 30),
+    FPS_45("45 FPS (Dinámico)", 45),
+    FPS_50("50 FPS (PAL / Alta Tasa)", 50),
+    FPS_60("60 FPS (Ultra Pro)", 60)
+}
+
+enum class AudioSampleRate(val label: String, val sampleRate: Int) {
+    RATE_32000("32.0 kHz (Baja Latencia / Ahorro)", 32000),
+    RATE_44100("44.1 kHz (CD Audio / Música)", 44100),
+    RATE_48000("48.0 kHz (Estudio Pro / Broadcast)", 48000),
+    RATE_96000("96.0 kHz (Hi-Res Master)", 96000)
+}
+
 enum class AudioSourceType(val label: String) {
     INTERNAL_AND_MIC("Juego + Micrófono (Voz Dinámica)"),
     INTERNAL_GAME("Solo Audio del Juego (Interno)"),
@@ -80,6 +94,9 @@ data class RecordingConfig(
     val resolution: VideoResolution = VideoResolution.RES_1080P,
     val fps: VideoFps = VideoFps.FPS_60,
     val bitrate: VideoBitrate = VideoBitrate.BITRATE_8M,
+    val bitrateMbps: Int = 8,
+    val facecamFps: FacecamFps = FacecamFps.FPS_30,
+    val audioSampleRate: AudioSampleRate = AudioSampleRate.RATE_48000,
     val audioSource: AudioSourceType = AudioSourceType.INTERNAL_AND_MIC,
     val countdownSeconds: Int = 3,
     val isGameMode: Boolean = true,
@@ -104,7 +121,9 @@ data class RecordingConfig(
     val sceneOverlayText: String = "🔴 EN VIVO | @TuCanal",
     val sceneOverlayOpacity: Float = 0.90f,
     val sceneOverlayImageUri: String? = null
-)
+) {
+    fun getEffectiveBitrateBps(): Int = bitrateMbps * 1_000_000
+}
 
 enum class RecordingStatus {
     IDLE,
@@ -114,3 +133,4 @@ enum class RecordingStatus {
     SAVING,
     ERROR
 }
+

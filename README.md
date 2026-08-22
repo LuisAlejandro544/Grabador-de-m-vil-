@@ -7,12 +7,18 @@
 ## 🚀 Características Principales
 
 - **🎮 Modo Optimizado para Juegos:** Configuración instantánea a 1080p Full HD, 60 FPS y 12 Mbps con un solo toque.
+- **⚡ Tasa de Bits Personalizada (1 - 12 Mbps):** Control milimétrico de bitrate mediante un deslizador interactivo con saltos enteros y botones de acceso rápido (1M, 2M, 4M, 6M, 8M, 10M, 12M) para balancear a la perfección calidad de imagen y peso de archivo.
 - **✨ Filtro de Belleza & Suavizado de Piel:**
   - Capa de post-procesado facial que atenúa imperfecciones, suaviza texturas y balancea la luminosidad del rostro.
   - Conmutable y configurable tanto en la pestaña de **Ajustes** como en tiempo real desde la **Burbuja Flotante** o controles del Facecam.
 - **🌈 Borde RGB / Arcoíris Gamer Animado:**
   - Marco con gradiente `SweepGradient` rotativo continuo que bordea la ventana flotante del Facecam adaptándose automáticamente a su forma (Circular, Cuadrado redondeado o Rectangular).
   - Control de activación inmediata desde los Ajustes y el submenú de la Burbuja Flotante.
+- **📹 Facecam / Cámara Flotante con FPS Configurable (30 - 60 FPS):**
+  - Superposición de cámara en tiempo real mediante **CameraX** y `WindowManager` sin cortes de fluidez.
+  - **Tasa de Cuadros de Cámara Ajustable:** Selección directa de 30 FPS (estándar de ahorro), 45 FPS, 50 FPS y 60 FPS (máxima fluidez) configurada por hardware mediante `Camera2Interop` (`CONTROL_AE_TARGET_FPS_RANGE`).
+  - **Múltiples Diseños Geométricos:** Selector de formas con un solo toque (Circular 1:1, Cuadrado Redondeado Moderno, Cuadrado Clásico 1:1 y Rectangular Panorámico 16:9 estilo webcam streamer).
+  - **Dimensiones y Lentes:** Tamaños configurables (Pequeño 100dp, Mediano 140dp, Grande 180dp) y conmutación instantánea entre cámara frontal (selfie) y trasera.
 - **👆 Indicador de Toques Táctiles Animado (Touch Visualizer):**
   - Ondas y ripples dinámicos de alta respuesta que se renderizan sobre la pantalla mediante overlay `WindowManager` transparente.
   - **Sin opciones de desarrollador:** Funciona directamente sin requerir activar "Mostrar toques" en el sistema operativo.
@@ -25,8 +31,9 @@
   - **Presets Gamer Integrados:** Marco Neón Cyberpunk para bordes de pantalla, Banner de Redes Sociales inferior, Badge animado "🔴 EN VIVO" y Cartel de Pausa ("⏸️ STANDBY").
   - **Soporte de PNG Personalizado:** Carga de imágenes PNG transparentes completas desde la galería.
   - **Control de Opacidad:** Ajuste fino de transparencia para no obstruir el gameplay, conmutable en caliente desde la Burbuja Flotante.
-- **🔊 Captura, Mezcla y Procesamiento de Audio Pro en C++ (DSP):**
-  - **🎛️ Motor Nativo de Audio DSP (C++):** Procesamiento de señales a 48 kHz estéreo con **Noise Gate** (puerta de ruido para atenuar respiración y ventiladores), **Audio Ducking Automático** (atenúa el juego -9 dB cuando hablas para dar prioridad a tu voz) y **Soft Limiter / Saturation Shaper** para prevenir distorsión y saturación digital al mezclar.
+- **🔊 Captura, Mezcla, Frecuencia Ajustable y DSP en C++:**
+  - **🎛️ Frecuencia de Muestreo (Sample Rate):** Selección de tasa de muestreo entre 32.000 Hz, 44.100 Hz (calidad CD), 48.000 Hz (estándar broadcast recomendado) y 96.000 Hz (Hi-Res para alta fidelidad acústica).
+  - **🎛️ Motor Nativo de Audio DSP (C++):** Procesamiento de señales estéreo con **Noise Gate** (puerta de ruido para atenuar respiración y ventiladores), **Audio Ducking Automático** (atenúa el juego -9 dB cuando hablas para dar prioridad a tu voz) y **Soft Limiter / Saturation Shaper** para prevenir distorsión y saturación digital al mezclar.
   - **🎙️ Conmutador Dinámico de Voz en Vivo:** Graba el audio del juego y conmuta con un toque desde la burbuja flotante o la notificación si deseas grabar tu voz (`Voz ON`) o dejar únicamente el sonido limpio del juego (`Solo Juego`), mezclando audio PCM en tiempo real sin cortar el video ni reiniciar codificadores.
   - **Solo Audio del Juego (Interno):** Graba música y efectos del juego sin capturar tu voz ni ruidos del entorno.
   - **Micrófono:** Captura tu voz y comentarios en vivo con reducción de ruido en caliente.

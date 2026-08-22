@@ -78,6 +78,7 @@ class ScreenCaptureEngine(private val context: Context) {
         fps: Int = VideoFps.FPS_60.fps,
         bitrate: Int = VideoBitrate.BITRATE_8M.bps,
         audioSource: String = AudioSourceType.INTERNAL_AND_MIC.name,
+        sampleRate: Int = 48000,
         outputFile: File? = null,
         onError: ((String) -> Unit)? = null,
         onSystemStop: (() -> Unit)? = null
@@ -142,6 +143,7 @@ class ScreenCaptureEngine(private val context: Context) {
                 audioSource = audioSource,
                 mediaProjection = proj,
                 muxerManager = muxer,
+                sampleRate = sampleRate,
                 isRecordingProvider = { isRecordingInternal.get() },
                 isPausedProvider = { isPausedInternal.get() }
             )

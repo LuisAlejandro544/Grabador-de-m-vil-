@@ -1,11 +1,9 @@
-refactor(core): modularización completa de módulos y renombrado oficial de la aplicación a Vortex Studio
+feat(settings): agregar selector de bitrate personalizado (1-12 Mbps), FPS de Facecam (30-60) y frecuencia de audio (32-96 kHz)
 
-- Renombrar la aplicación a "Vortex Studio" de forma consistente en metadata.json, strings.xml, settings.gradle.kts, interfaz de usuario (RecordTopBar) y documentación técnica (README.md, ROADMAP.md, STRUCTURE.md, AI_CONTEXT.md, AGENTS.md).
-- Modularizar SettingsView creando el paquete ui/components/settings/ con tarjetas desacopladas (GameModeCard, FloatingBubbleSettingsCard, FacecamSettingsCard, TouchVisualizerSettingsCard, VideoQualitySettingsCard, AudioSettingsCard, CountdownSettingsCard, NativeModulesStatusCard y base SettingsCard).
-- Modularizar BubbleOverlayView creando el paquete service/bubble/ con componentes especializados (BubbleColors, BubbleDrawables, BubbleMainBar y BubbleToolsSubmenu).
-- Modularizar FacecamOverlayManager creando el paquete service/facecam/ con utilidades y vistas independientes (FacecamLifecycleOwner, FacecamShapeHelper, FacecamRgbBorderView, FacecamControlsBar y FacecamTouchDragHelper).
-- Modularizar ScreenCaptureEngine creando el paquete service/capture/ separando responsabilidades críticas (VideoEncoderModule para H.264 por hardware, AudioPipelineModule para mezcla dual y DSP C++, y MuxerManager para empaquetado MP4 thread-safe).
-- Añadir Marca de Agua / Logo Personalizado Superpuesto (WatermarkOverlayManager y WatermarkTouchHelper) con soporte de texto estilizado, logos PNG, arrastre libre en pantalla, control de opacidad, colores y conmutador rápido desde la burbuja flotante.
-- Añadir Overlays de Escena Personalizados (SceneOverlayManager y SceneOverlayDrawables) con presets gamer de marco neón, banner de redes streamer, badge de 'EN VIVO', cartel de pausa y soporte de marcos PNG transparentes.
-- Crear las tarjetas modulares WatermarkSettingsCard y SceneOverlaySettingsCard en SettingsView para configuración reactiva con vistas previas en tiempo real.
-- Actualizar STRUCTURE.md con el árbol de archivos y descripción de capas resultante.
+- Añadir selector interactivo de tasa de bits (Bitrate) personalizada de 1 a 12 Mbps con slider continuo y botones rápidos de presets (1M, 2M, 4M, 6M, 8M, 10M, 12M).
+- Implementar selector de tasa de cuadros por segundo (FPS) para la cámara Facecam con opciones de 30 FPS, 45 FPS, 50 FPS y 60 FPS mediante Camera2Interop y CONTROL_AE_TARGET_FPS_RANGE en CameraX.
+- Incorporar selector de frecuencia de muestreo de audio (Sample Rate) con opciones profesionales de 32.000 Hz, 44.100 Hz (calidad CD), 48.000 Hz (estándar broadcast recomendado) y 96.000 Hz (Hi-Res).
+- Propagar dinámicamente el sampleRate en el pipeline de captura dual (AudioRecord, AudioFormat, MediaFormat y puente C++ DSP NativeAudioDSPBridge).
+- Actualizar SettingsRepository, RecordingConfig, RecordViewModel y ScreenRecordService para persistir y aplicar en tiempo real estos nuevos parámetros avanzados.
+- Actualizar las tarjetas de interfaz VideoQualitySettingsCard, FacecamSettingsCard y AudioSettingsCard con diseño Material Design 3 reactivo y accesible.
+- Actualizar la documentación técnica del proyecto (README.md, ROADMAP.md, STRUCTURE.md y AI_CONTEXT.md).

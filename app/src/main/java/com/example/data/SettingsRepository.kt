@@ -50,6 +50,22 @@ class SettingsRepository(context: Context) {
             VideoBitrate.BITRATE_8M
         }
 
+        val bitrateMbps = prefs.getInt(KEY_BITRATE_MBPS, 8).coerceIn(1, 12)
+
+        val facecamFpsName = prefs.getString(KEY_FACECAM_FPS, com.example.model.FacecamFps.FPS_30.name)
+        val facecamFps = try {
+            com.example.model.FacecamFps.valueOf(facecamFpsName ?: com.example.model.FacecamFps.FPS_30.name)
+        } catch (e: Exception) {
+            com.example.model.FacecamFps.FPS_30
+        }
+
+        val audioRateName = prefs.getString(KEY_AUDIO_SAMPLE_RATE, com.example.model.AudioSampleRate.RATE_48000.name)
+        val audioSampleRate = try {
+            com.example.model.AudioSampleRate.valueOf(audioRateName ?: com.example.model.AudioSampleRate.RATE_48000.name)
+        } catch (e: Exception) {
+            com.example.model.AudioSampleRate.RATE_48000
+        }
+
         val audioName = prefs.getString(KEY_AUDIO_SOURCE, AudioSourceType.INTERNAL_AND_MIC.name)
         val audioSource = try {
             AudioSourceType.valueOf(audioName ?: AudioSourceType.INTERNAL_AND_MIC.name)
@@ -125,6 +141,9 @@ class SettingsRepository(context: Context) {
             resolution = resolution,
             fps = fps,
             bitrate = bitrate,
+            bitrateMbps = bitrateMbps,
+            facecamFps = facecamFps,
+            audioSampleRate = audioSampleRate,
             audioSource = audioSource,
             countdownSeconds = countdown,
             isGameMode = isGameMode,
@@ -157,6 +176,9 @@ class SettingsRepository(context: Context) {
             putString(KEY_RESOLUTION, config.resolution.name)
             putString(KEY_FPS, config.fps.name)
             putString(KEY_BITRATE, config.bitrate.name)
+            putInt(KEY_BITRATE_MBPS, config.bitrateMbps)
+            putString(KEY_FACECAM_FPS, config.facecamFps.name)
+            putString(KEY_AUDIO_SAMPLE_RATE, config.audioSampleRate.name)
             putString(KEY_AUDIO_SOURCE, config.audioSource.name)
             putInt(KEY_COUNTDOWN, config.countdownSeconds)
             putBoolean(KEY_GAME_MODE, config.isGameMode)
@@ -197,7 +219,33 @@ class SettingsRepository(context: Context) {
     }
 
     fun updateBitrate(bitrate: VideoBitrate) {
-        val updated = _configFlow.value.copy(bitrate = bitrate)
+        val mbps = when (bitrate) {
+            VideoBitrate.BITRATE_12M -> 12
+            VideoBitrate.BITRATE_8M -> 8
+            VideoBitrate.BITRATE_4M -> 4
+        }
+        val updated = _configFlow.value.copy(bitrate = bitrate, bitrateMbps = mbps)
+        saveConfig(updated)
+    }
+
+    fun updateBitrateMbps(mbps: Int) {
+        val clamped = mbps.coerceIn(1, 12)
+        val legacy = when {
+            clamped >= 12 -> VideoBitrate.BITRATE_12M
+            clamped >= 8 -> VideoBitrate.BITRATE_8M
+            else -> VideoBitrate.BITRATE_4M
+        }
+        val updated = _configFlow.value.copy(bitrateMbps = clamped, bitrate = legacy)
+        saveConfig(updated)
+    }
+
+    fun updateFacecamFps(fps: com.example.model.FacecamFps) {
+        val updated = _configFlow.value.copy(facecamFps = fps)
+        saveConfig(updated)
+    }
+
+    fun updateAudioSampleRate(sampleRate: com.example.model.AudioSampleRate) {
+        val updated = _configFlow.value.copy(audioSampleRate = sampleRate)
         saveConfig(updated)
     }
 
@@ -345,6 +393,9 @@ class SettingsRepository(context: Context) {
         private const val KEY_RESOLUTION = "pref_resolution"
         private const val KEY_FPS = "pref_fps"
         private const val KEY_BITRATE = "pref_bitrate"
+        private const val KEY_BITRATE_MBPS = "pref_bitrate_mbps"
+        private const val KEY_FACECAM_FPS = "pref_facecam_fps"
+        private const val KEY_AUDIO_SAMPLE_RATE = "pref_audio_sample_rate"
         private const val KEY_AUDIO_SOURCE = "pref_audio_source"
         private const val KEY_COUNTDOWN = "pref_countdown"
         private const val KEY_GAME_MODE = "pref_game_mode"

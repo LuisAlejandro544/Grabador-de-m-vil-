@@ -15,7 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.model.AudioSampleRate
 import com.example.model.AudioSourceType
+import com.example.model.FacecamFps
 import com.example.model.FacecamShape
 import com.example.model.FacecamSize
 import com.example.model.RecordingConfig
@@ -47,13 +49,16 @@ fun SettingsView(
     onUpdateResolution: (VideoResolution) -> Unit,
     onUpdateFps: (VideoFps) -> Unit,
     onUpdateBitrate: (VideoBitrate) -> Unit,
+    onUpdateBitrateMbps: (Int) -> Unit = {},
     onUpdateAudioSource: (AudioSourceType) -> Unit,
+    onUpdateAudioSampleRate: (AudioSampleRate) -> Unit = {},
     onUpdateCountdown: (Int) -> Unit,
     onToggleGameMode: (Boolean) -> Unit,
     onToggleFloatingBubble: (Boolean) -> Unit = {},
     onToggleFacecam: (Boolean) -> Unit = {},
     onUpdateFacecamShape: (FacecamShape) -> Unit = {},
     onUpdateFacecamSize: (FacecamSize) -> Unit = {},
+    onUpdateFacecamFps: (FacecamFps) -> Unit = {},
     onToggleFacecamCamera: () -> Unit = {},
     onToggleBeautyFilter: (Boolean) -> Unit = {},
     onToggleFacecamRgbBorder: (Boolean) -> Unit = {},
@@ -129,12 +134,14 @@ fun SettingsView(
             facecamRgbBorder = config.facecamRgbBorder,
             facecamShape = config.facecamShape,
             facecamSize = config.facecamSize,
+            facecamFps = config.facecamFps,
             onToggleFacecam = onToggleFacecam,
             onToggleFacecamCamera = onToggleFacecamCamera,
             onToggleBeautyFilter = onToggleBeautyFilter,
             onToggleFacecamRgbBorder = onToggleFacecamRgbBorder,
             onUpdateFacecamShape = onUpdateFacecamShape,
-            onUpdateFacecamSize = onUpdateFacecamSize
+            onUpdateFacecamSize = onUpdateFacecamSize,
+            onUpdateFacecamFps = onUpdateFacecamFps
         )
 
         // Visualizador de Toques Táctiles
@@ -145,20 +152,24 @@ fun SettingsView(
             onUpdateTouchVisualizerColor = onUpdateTouchVisualizerColor
         )
 
-        // Calidad de Video (Resolución, FPS, Bitrate)
+        // Calidad de Video (Resolución, FPS, Bitrate Personalizado de 1 a 12 Mbps)
         VideoQualitySettingsCard(
             resolution = config.resolution,
             fps = config.fps,
             bitrate = config.bitrate,
+            bitrateMbps = config.bitrateMbps,
             onUpdateResolution = onUpdateResolution,
             onUpdateFps = onUpdateFps,
-            onUpdateBitrate = onUpdateBitrate
+            onUpdateBitrate = onUpdateBitrate,
+            onUpdateBitrateMbps = onUpdateBitrateMbps
         )
 
-        // Fuente de Audio
+        // Fuente de Audio y Frecuencia de Muestreo (Sample Rate)
         AudioSettingsCard(
             audioSource = config.audioSource,
-            onUpdateAudioSource = onUpdateAudioSource
+            audioSampleRate = config.audioSampleRate,
+            onUpdateAudioSource = onUpdateAudioSource,
+            onUpdateAudioSampleRate = onUpdateAudioSampleRate
         )
 
         // Cuenta Atrás

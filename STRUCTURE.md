@@ -97,10 +97,10 @@ vortex-studio/
 │       │   │       │       ├── FloatingBubbleSettingsCard.kt # Control de burbuja y estado de permiso de superposición
 │       │   │       │       ├── WatermarkSettingsCard.kt      # Configuración de logo / marca de agua, texto, opacidad y PNG
 │       │   │       │       ├── SceneOverlaySettingsCard.kt   # Selector de marcos gamer, banners streamer y alertas
-│       │   │       │       ├── FacecamSettingsCard.kt        # Configuración completa de Facecam (Lente, Formas, Belleza, RGB)
+│       │   │       │       ├── FacecamSettingsCard.kt        # Configuración completa de Facecam (Lente, Formas, FPS 30-60, Belleza, RGB)
 │       │   │       │       ├── TouchVisualizerSettingsCard.kt# Configuración y selector de color de toques táctiles
-│       │   │       │       ├── VideoQualitySettingsCard.kt   # Selectores de resolución, FPS y bitrate
-│       │   │       │       ├── AudioSettingsCard.kt          # Selector de fuentes de audio (Juego, Mic, Dual, Silencio)
+│       │   │       │       ├── VideoQualitySettingsCard.kt   # Selectores de resolución, FPS y Bitrate personalizado (1-12 Mbps)
+│       │   │       │       ├── AudioSettingsCard.kt          # Selector de fuentes de audio y frecuencia de muestreo (32-96 kHz)
 │       │   │       │       ├── CountdownSettingsCard.kt      # Configuración de cuenta atrás antes de grabar
 │       │   │       │       └── NativeModulesStatusCard.kt    # Monitor de estado de motores C++ GLES3, Rust y DSP
 │       │   │       └── theme/

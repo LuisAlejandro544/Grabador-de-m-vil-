@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.CameraFront
 import androidx.compose.material.icons.filled.CameraRear
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.FlipCameraAndroid
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -35,6 +36,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.model.FacecamFps
 import com.example.model.FacecamShape
 import com.example.model.FacecamSize
 
@@ -46,12 +48,14 @@ fun FacecamSettingsCard(
     facecamRgbBorder: Boolean,
     facecamShape: FacecamShape,
     facecamSize: FacecamSize,
+    facecamFps: FacecamFps,
     onToggleFacecam: (Boolean) -> Unit,
     onToggleFacecamCamera: () -> Unit,
     onToggleBeautyFilter: (Boolean) -> Unit,
     onToggleFacecamRgbBorder: (Boolean) -> Unit,
     onUpdateFacecamShape: (FacecamShape) -> Unit,
     onUpdateFacecamSize: (FacecamSize) -> Unit,
+    onUpdateFacecamFps: (FacecamFps) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -282,6 +286,30 @@ fun FacecamSettingsCard(
                         selected = facecamSize == size,
                         onClick = { onUpdateFacecamSize(size) },
                         testTag = "facecam_size_${size.name}"
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = "Tasa de Cuadros de Facecam (FPS)",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                FacecamFps.values().forEach { fFps ->
+                    SettingsRadioItem(
+                        title = fFps.label,
+                        description = when (fFps) {
+                            FacecamFps.FPS_30 -> "30 FPS - Estándar estable y eficiente en batería"
+                            FacecamFps.FPS_45 -> "45 FPS - Mayor fluidez intermedia"
+                            FacecamFps.FPS_50 -> "50 FPS - Alta fluidez cinematográfica"
+                            FacecamFps.FPS_60 -> "60 FPS - Máxima fluidez profesional y sincronización perfecta"
+                        },
+                        selected = facecamFps == fFps,
+                        onClick = { onUpdateFacecamFps(fFps) },
+                        testTag = "facecam_fps_${fFps.name}"
                     )
                 }
             }

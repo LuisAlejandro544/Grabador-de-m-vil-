@@ -13,11 +13,15 @@ import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
+import android.hardware.camera2.CaptureRequest
+import android.util.Range
+import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import com.example.model.FacecamFps
 import com.example.model.FacecamShape
 import com.example.model.FacecamSize
 import com.example.service.facecam.FacecamControlsBar
@@ -35,6 +39,7 @@ class FacecamOverlayManager(
     private val context: Context,
     shape: FacecamShape = FacecamShape.CIRCLE,
     size: FacecamSize = FacecamSize.MEDIUM,
+    fps: FacecamFps = FacecamFps.FPS_30,
     isFrontCamera: Boolean = true,
     beautyFilterEnabled: Boolean = false,
     rgbBorderEnabled: Boolean = false,
@@ -66,6 +71,7 @@ class FacecamOverlayManager(
     private var isShowingInternal = false
     private var currentShapeInternal: FacecamShape = shape
     private var currentSizeInternal: FacecamSize = size
+    private var currentFpsInternal: FacecamFps = fps
     private var isFrontCameraInternal: Boolean = isFrontCamera
     private var beautyFilterEnabledInternal: Boolean = beautyFilterEnabled
     private var rgbBorderEnabledInternal: Boolean = rgbBorderEnabled
@@ -74,6 +80,7 @@ class FacecamOverlayManager(
     val isFrontFacing: Boolean get() = isFrontCameraInternal
     val currentShape: FacecamShape get() = currentShapeInternal
     val currentSize: FacecamSize get() = currentSizeInternal
+    val currentFps: FacecamFps get() = currentFpsInternal
     val isBeautyFilterEnabled: Boolean get() = beautyFilterEnabledInternal
     val isRgbBorderEnabled: Boolean get() = rgbBorderEnabledInternal
 
@@ -215,19 +222,42 @@ class FacecamOverlayManager(
                         CameraSelector.DEFAULT_BACK_CAMERA
                     }
 
-                    val previewUseCase = Preview.Builder().build()
+                    val previewBuilder = Preview.Builder()
+                    try {
+                        val targetFps = currentFpsInternal.fps
+                        val fpsRange = Range(targetFps, targetFps)
+                        val camera2Extender = Camera2Interop.Extender(previewBuilder)
+                        camera2Extender.setCaptureRequestOption(
+                            CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
+                            fpsRange
+                        )
+                    } catch (e: Exception) {
+                        Log.w(TAG, "No se pudo configurar target FPS range en Facecam: ${e.message}")
+                    }
+
+                    val previewUseCase = previewBuilder.build()
                     previewUseCase.setSurfaceProvider(preview.surfaceProvider)
 
                     provider.unbindAll()
                     provider.bindToLifecycle(customLifecycleOwner, cameraSelector, previewUseCase)
 
-                    Log.d(TAG, "CameraX vinculada correctamente al Surface de Facecam (Frontal: $isFrontCameraInternal)")
+                    Log.d(TAG, "CameraX vinculada correctamente al Surface de Facecam (Frontal: $isFrontCameraInternal, FPS: ${currentFpsInternal.fps})")
                 } catch (e: Exception) {
                     Log.e(TAG, "Fallo al vincular cámara en Facecam: ${e.message}", e)
                 }
             }, ContextCompat.getMainExecutor(context))
         } catch (e: Exception) {
             Log.e(TAG, "Error en ProcessCameraProvider: ${e.message}", e)
+        }
+    }
+
+    fun setFacecamFps(fps: FacecamFps) {
+        if (currentFpsInternal == fps) return
+        currentFpsInternal = fps
+        if (isShowingInternal) {
+            mainHandler.post {
+                startCameraPreview()
+            }
         }
     }
 

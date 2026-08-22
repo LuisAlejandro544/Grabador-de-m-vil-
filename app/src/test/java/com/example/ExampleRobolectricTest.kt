@@ -134,5 +134,15 @@ class ExampleRobolectricTest {
     repository.updateFacecamShape(com.example.model.FacecamShape.ROUNDED_SQUARE)
     assertEquals(com.example.model.FacecamShape.ROUNDED_SQUARE, repository.loadConfig().facecamShape)
   }
+
+  @Test
+  fun `audio pipeline state and mic toggle functioning correctly`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val engine = com.example.service.ScreenCaptureEngine(context)
+    // Initially not recording, mic toggle behaves safely
+    val toggled = engine.toggleMicrophoneMuted()
+    assertEquals(false, toggled)
+  }
 }
+
 

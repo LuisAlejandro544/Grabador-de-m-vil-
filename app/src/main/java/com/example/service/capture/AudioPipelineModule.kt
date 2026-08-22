@@ -15,31 +15,42 @@ import android.os.SystemClock
 import android.util.Log
 import com.example.model.AudioSourceType
 import com.example.nativecore.NativeAudioDSPBridge
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Módulo de captura, procesamiento DSP en C++ (Noise Gate, Ducking automático, Soft Limiter)
  * y codificación AAC de audio para juegos y voz.
+ * Implementa lectura concurrente y desacoplada para audio interno y micrófono, permitiendo
+ * alternar en tiempo real ("Voz ON" vs "Solo Juego") sin bloqueos ni pérdida de sincronización.
  */
 class AudioPipelineModule(
     private val audioSource: String,
     private val mediaProjection: MediaProjection?,
     private val muxerManager: MuxerManager,
+    private val sampleRate: Int = 48000,
     private val isRecordingProvider: () -> Boolean,
     private val isPausedProvider: () -> Boolean
 ) {
 
     companion object {
         private const val TAG = "AudioPipelineModule"
-        private const val AUDIO_SAMPLE_RATE = 48000
         private const val AUDIO_BIT_RATE = 192000
         private const val TIMEOUT_USEC = 10000L
+        private const val BUFFER_SIZE = 4096
+        private const val MAX_QUEUE_CAPACITY = 20
     }
 
     private var internalAudioRecord: AudioRecord? = null
     private var micAudioRecord: AudioRecord? = null
     private var audioEncoder: MediaCodec? = null
-    private var audioThread: Thread? = null
+
+    private var internalAudioThread: Thread? = null
+    private var micAudioThread: Thread? = null
+    private var encoderWorkerThread: Thread? = null
+
+    private val internalAudioQueue = ConcurrentLinkedQueue<ByteArray>()
+    private val micAudioQueue = ConcurrentLinkedQueue<ByteArray>()
 
     private val isMicMutedInternal = AtomicBoolean(false)
     var hasAudio: Boolean = false
@@ -49,13 +60,15 @@ class AudioPipelineModule(
 
     fun setMicMuted(muted: Boolean) {
         isMicMutedInternal.set(muted)
-        Log.d(TAG, "Estado de captura de micrófono actualizado: ${if (muted) "SILENCIADO" else "ACTIVO"}")
+        if (muted) {
+            micAudioQueue.clear()
+        }
+        Log.d(TAG, "Estado de captura de micrófono actualizado: ${if (muted) "SILENCIADO (Solo Juego)" else "ACTIVO (Juego + Voz)"}")
     }
 
     fun toggleMicMute(): Boolean {
         val newState = !isMicMutedInternal.get()
-        isMicMutedInternal.set(newState)
-        Log.d(TAG, "Micrófono alternado: ${if (newState) "SILENCIADO" else "ACTIVO"}")
+        setMicMuted(newState)
         return newState
     }
 
@@ -69,7 +82,7 @@ class AudioPipelineModule(
         val channelConfig = AudioFormat.CHANNEL_IN_STEREO
         val audioEncoding = AudioFormat.ENCODING_PCM_16BIT
         val channelCount = 2
-        val minBufferSize = maxOf(AudioRecord.getMinBufferSize(AUDIO_SAMPLE_RATE, channelConfig, audioEncoding), 4096)
+        val minBufferSize = maxOf(AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioEncoding), BUFFER_SIZE * 2)
 
         // 1. Audio Interno del Juego (Android 10+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
@@ -86,7 +99,7 @@ class AudioPipelineModule(
 
                     val format = AudioFormat.Builder()
                         .setEncoding(audioEncoding)
-                        .setSampleRate(AUDIO_SAMPLE_RATE)
+                        .setSampleRate(sampleRate)
                         .setChannelMask(channelConfig)
                         .build()
 
@@ -98,7 +111,7 @@ class AudioPipelineModule(
 
                     if (record.state == AudioRecord.STATE_INITIALIZED) {
                         internalAudioRecord = record
-                        Log.i(TAG, "AudioPlaybackCapture inicializado para audio interno del juego")
+                        Log.i(TAG, "AudioPlaybackCapture inicializado para audio interno del juego a ${sampleRate}Hz")
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Fallo al inicializar captura de audio interno: ${e.message}", e)
@@ -106,24 +119,33 @@ class AudioPipelineModule(
             }
         }
 
-        // 2. Micrófono / Voz
-        if (audioSource == AudioSourceType.MIC.name || audioSource == AudioSourceType.INTERNAL_AND_MIC.name) {
+        // 2. Micrófono / Voz (Inicializar siempre si audio != NONE para permitir conmutación dinámica en caliente)
+        if (audioSource == AudioSourceType.MIC.name ||
+            audioSource == AudioSourceType.INTERNAL_AND_MIC.name ||
+            audioSource == AudioSourceType.INTERNAL_GAME.name
+        ) {
             try {
                 val micRecord = AudioRecord(
                     MediaRecorder.AudioSource.MIC,
-                    AUDIO_SAMPLE_RATE,
+                    sampleRate,
                     channelConfig,
                     audioEncoding,
                     minBufferSize * 2
                 )
                 if (micRecord.state == AudioRecord.STATE_INITIALIZED) {
                     micAudioRecord = micRecord
-                    isMicMutedInternal.set(false)
-                    Log.i(TAG, "AudioRecord para MIC inicializado")
+                    Log.i(TAG, "AudioRecord para MIC inicializado correctamente a ${sampleRate}Hz")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Fallo al inicializar AudioRecord MIC: ${e.message}", e)
             }
+        }
+
+        // Configurar estado inicial de silenciamiento según la fuente seleccionada
+        if (audioSource == AudioSourceType.INTERNAL_GAME.name) {
+            isMicMutedInternal.set(true)
+        } else {
+            isMicMutedInternal.set(false)
         }
 
         // Fallback a MIC si el audio interno falló
@@ -131,7 +153,7 @@ class AudioPipelineModule(
             try {
                 val fallback = AudioRecord(
                     MediaRecorder.AudioSource.MIC,
-                    AUDIO_SAMPLE_RATE,
+                    sampleRate,
                     channelConfig,
                     audioEncoding,
                     minBufferSize * 2
@@ -149,7 +171,7 @@ class AudioPipelineModule(
                 (micAudioRecord != null && micAudioRecord?.state == AudioRecord.STATE_INITIALIZED)
 
         if (hasAnyAudioRecord) {
-            val aFormat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, AUDIO_SAMPLE_RATE, channelCount).apply {
+            val aFormat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, sampleRate, channelCount).apply {
                 setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
                 setInteger(MediaFormat.KEY_BIT_RATE, AUDIO_BIT_RATE)
                 setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16384)
@@ -162,7 +184,7 @@ class AudioPipelineModule(
             hasAudio = true
 
             // Inicializar DSP C++
-            NativeAudioDSPBridge.initAudioDsp(AUDIO_SAMPLE_RATE, channelCount)
+            NativeAudioDSPBridge.initAudioDsp(sampleRate, channelCount)
             NativeAudioDSPBridge.configureAudioDsp(
                 noiseGateThresholdDb = -38.0f,
                 duckingAttenuation = 0.35f,
@@ -179,105 +201,169 @@ class AudioPipelineModule(
     }
 
     fun startWorker() {
-        audioThread = Thread({
-            val intRec = internalAudioRecord
-            val micRec = micAudioRecord
-            val encoder = audioEncoder ?: return@Thread
+        val intRec = internalAudioRecord
+        val micRec = micAudioRecord
+        val encoder = audioEncoder ?: return
+
+        internalAudioQueue.clear()
+        micAudioQueue.clear()
+
+        // 1. Hilo productor de Audio Interno (Juego / App)
+        if (intRec != null) {
+            internalAudioThread = Thread({
+                try {
+                    intRec.startRecording()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error iniciando internalAudioRecord: ${e.message}")
+                }
+
+                val buf = ByteArray(BUFFER_SIZE)
+                while (isRecordingProvider()) {
+                    if (isPausedProvider()) {
+                        SystemClock.sleep(20)
+                        continue
+                    }
+                    try {
+                        val readBytes = intRec.read(buf, 0, BUFFER_SIZE)
+                        if (readBytes > 0) {
+                            val data = buf.copyOf(readBytes)
+                            if (internalAudioQueue.size >= MAX_QUEUE_CAPACITY) {
+                                internalAudioQueue.poll() // Dropear buffer más antiguo para evitar lag
+                            }
+                            internalAudioQueue.offer(data)
+                        } else {
+                            SystemClock.sleep(5)
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Excepción leyendo internal audio: ${e.message}")
+                        break
+                    }
+                }
+
+                try {
+                    intRec.stop()
+                } catch (_: Exception) {}
+            }, "OBS_InternalAudioReader").apply { start() }
+        }
+
+        // 2. Hilo productor de Micrófono (Voz)
+        if (micRec != null) {
+            micAudioThread = Thread({
+                try {
+                    micRec.startRecording()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error iniciando micAudioRecord: ${e.message}")
+                }
+
+                val buf = ByteArray(BUFFER_SIZE)
+                while (isRecordingProvider()) {
+                    if (isPausedProvider()) {
+                        SystemClock.sleep(20)
+                        continue
+                    }
+                    try {
+                        val readBytes = micRec.read(buf, 0, BUFFER_SIZE)
+                        if (readBytes > 0) {
+                            if (!isMicMutedInternal.get()) {
+                                val data = buf.copyOf(readBytes)
+                                if (micAudioQueue.size >= MAX_QUEUE_CAPACITY) {
+                                    micAudioQueue.poll() // Dropear buffer más antiguo
+                                }
+                                micAudioQueue.offer(data)
+                            }
+                        } else {
+                            SystemClock.sleep(5)
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Excepción leyendo mic audio: ${e.message}")
+                        break
+                    }
+                }
+
+                try {
+                    micRec.stop()
+                } catch (_: Exception) {}
+            }, "OBS_MicAudioReader").apply { start() }
+        }
+
+        // 3. Hilo consumidor y mezclador DSP hacia el MediaCodec AAC
+        encoderWorkerThread = Thread({
             val bufferInfo = MediaCodec.BufferInfo()
-
-            try {
-                intRec?.startRecording()
-            } catch (e: Exception) {
-                Log.w(TAG, "Error iniciando internalAudioRecord: ${e.message}")
-            }
-            try {
-                micRec?.startRecording()
-            } catch (e: Exception) {
-                Log.w(TAG, "Error iniciando micAudioRecord: ${e.message}")
-            }
-
-            val bufferSize = 4096
-            val internalBuf = ByteArray(bufferSize)
-            val micBuf = ByteArray(bufferSize)
-            val mixBuf = ByteArray(bufferSize)
+            val mixBuf = ByteArray(BUFFER_SIZE)
 
             while (isRecordingProvider()) {
                 if (isPausedProvider()) {
                     SystemClock.sleep(20)
+                    internalAudioQueue.clear()
+                    micAudioQueue.clear()
                     continue
                 }
 
                 try {
-                    val readInternal = intRec?.read(internalBuf, 0, bufferSize) ?: -1
-                    val readMic = micRec?.read(micBuf, 0, bufferSize) ?: -1
+                    val isMicMuted = isMicMutedInternal.get()
+                    val internalData = internalAudioQueue.poll()
+                    val micData = if (!isMicMuted) micAudioQueue.poll() else null
+
+                    if (internalData == null && micData == null) {
+                        SystemClock.sleep(5)
+                        continue
+                    }
 
                     var finalBytes: ByteArray? = null
                     var finalSize = 0
 
-                    if (intRec != null && micRec != null) {
-                        if (readInternal > 0) {
-                            finalSize = readInternal
-                            val isMicMuted = isMicMutedInternal.get()
+                    if (internalData != null && micData != null) {
+                        val pcmCount = minOf(internalData.size, micData.size)
+                        finalSize = maxOf(internalData.size, micData.size)
 
-                            val processedBytes = if (NativeAudioDSPBridge.isNativeReady()) {
-                                val pcmCount = if (readMic > 0 && !isMicMuted) minOf(readInternal, readMic) else readInternal
-                                NativeAudioDSPBridge.processAndMixAudio(
-                                    internalAudio = internalBuf,
-                                    micAudio = if (readMic > 0 && !isMicMuted) micBuf else null,
-                                    outputMix = mixBuf,
-                                    byteCount = pcmCount,
-                                    isMicMuted = isMicMuted
-                                )
-                            } else 0
+                        val processedBytes = if (NativeAudioDSPBridge.isNativeReady()) {
+                            NativeAudioDSPBridge.processAndMixAudio(
+                                internalAudio = internalData,
+                                micAudio = micData,
+                                outputMix = mixBuf,
+                                byteCount = pcmCount,
+                                isMicMuted = false
+                            )
+                        } else 0
 
-                            if (processedBytes > 0) {
-                                if (readInternal > processedBytes) {
-                                    System.arraycopy(internalBuf, processedBytes, mixBuf, processedBytes, readInternal - processedBytes)
-                                }
-                                finalBytes = mixBuf
-                            } else if (!isMicMuted && readMic > 0) {
-                                val sampleCount = minOf(readInternal, readMic) / 2
-                                for (i in 0 until sampleCount) {
-                                    val idx = i * 2
-                                    val sInternal = (internalBuf[idx].toInt() and 0xFF) or (internalBuf[idx + 1].toInt() shl 8)
-                                    val sMic = (micBuf[idx].toInt() and 0xFF) or (micBuf[idx + 1].toInt() shl 8)
-                                    val mixed = (sInternal.toShort() + sMic.toShort()).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
-                                    mixBuf[idx] = (mixed and 0xFF).toByte()
-                                    mixBuf[idx + 1] = ((mixed shr 8) and 0xFF).toByte()
-                                }
-                                if (readInternal > readMic) {
-                                    System.arraycopy(internalBuf, readMic, mixBuf, readMic, readInternal - readMic)
-                                }
-                                finalBytes = mixBuf
-                            } else {
-                                finalBytes = internalBuf
+                        if (processedBytes > 0) {
+                            if (internalData.size > processedBytes) {
+                                System.arraycopy(internalData, processedBytes, mixBuf, processedBytes, internalData.size - processedBytes)
                             }
-                        }
-                    } else if (intRec != null) {
-                        if (readInternal > 0) {
-                            finalSize = readInternal
-                            finalBytes = internalBuf
-                        }
-                    } else if (micRec != null) {
-                        if (readMic > 0) {
-                            finalSize = readMic
-                            if (isMicMutedInternal.get()) {
-                                micBuf.fill(0)
-                                finalBytes = micBuf
-                            } else {
-                                val processed = if (NativeAudioDSPBridge.isNativeReady()) {
-                                    NativeAudioDSPBridge.processAndMixAudio(
-                                        internalAudio = null,
-                                        micAudio = micBuf,
-                                        outputMix = mixBuf,
-                                        byteCount = readMic,
-                                        isMicMuted = false
-                                    )
-                                } else 0
-
-                                finalBytes = if (processed > 0) mixBuf else micBuf
+                            finalBytes = mixBuf
+                        } else {
+                            // Mezclador PCM 16-bit con soft clipping
+                            val sampleCount = pcmCount / 2
+                            for (i in 0 until sampleCount) {
+                                val idx = i * 2
+                                val sInternal = (internalData[idx].toInt() and 0xFF) or (internalData[idx + 1].toInt() shl 8)
+                                val sMic = (micData[idx].toInt() and 0xFF) or (micData[idx + 1].toInt() shl 8)
+                                val mixed = (sInternal.toShort() + sMic.toShort()).coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+                                mixBuf[idx] = (mixed and 0xFF).toByte()
+                                mixBuf[idx + 1] = ((mixed shr 8) and 0xFF).toByte()
                             }
+                            if (internalData.size > micData.size) {
+                                System.arraycopy(internalData, pcmCount, mixBuf, pcmCount, internalData.size - pcmCount)
+                            } else if (micData.size > internalData.size) {
+                                System.arraycopy(micData, pcmCount, mixBuf, pcmCount, micData.size - pcmCount)
+                            }
+                            finalBytes = mixBuf
                         }
+                    } else if (internalData != null) {
+                        finalBytes = internalData
+                        finalSize = internalData.size
+                    } else if (micData != null) {
+                        finalSize = micData.size
+                        val processed = if (NativeAudioDSPBridge.isNativeReady()) {
+                            NativeAudioDSPBridge.processAndMixAudio(
+                                internalAudio = null,
+                                micAudio = micData,
+                                outputMix = mixBuf,
+                                byteCount = finalSize,
+                                isMicMuted = false
+                            )
+                        } else 0
+                        finalBytes = if (processed > 0) mixBuf else micData
                     }
 
                     if (finalBytes != null && finalSize > 0 && !isPausedProvider()) {
@@ -315,28 +401,29 @@ class AudioPipelineModule(
                     break
                 }
             }
-
-            try {
-                intRec?.stop()
-            } catch (e: Exception) {
-                Log.w(TAG, "Error deteniendo internalAudioRecord: ${e.message}")
-            }
-            try {
-                micRec?.stop()
-            } catch (e: Exception) {
-                Log.w(TAG, "Error deteniendo micAudioRecord: ${e.message}")
-            }
-        }, "OBS_AudioWorker").apply { start() }
+        }, "OBS_AudioEncoderWorker").apply { start() }
     }
 
     fun stopWorker() {
         try {
-            audioThread?.join(500)
+            internalAudioThread?.join(300)
         } catch (_: Exception) {}
-        audioThread = null
+        internalAudioThread = null
+
+        try {
+            micAudioThread?.join(300)
+        } catch (_: Exception) {}
+        micAudioThread = null
+
+        try {
+            encoderWorkerThread?.join(500)
+        } catch (_: Exception) {}
+        encoderWorkerThread = null
     }
 
     fun release() {
+        stopWorker()
+
         try {
             internalAudioRecord?.release()
         } catch (e: Exception) {
@@ -362,3 +449,4 @@ class AudioPipelineModule(
         NativeAudioDSPBridge.releaseAudioDsp()
     }
 }
+
