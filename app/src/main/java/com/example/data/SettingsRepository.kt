@@ -87,6 +87,40 @@ class SettingsRepository(context: Context) {
             com.example.model.TouchColorOption.CYAN
         }
 
+        val showWatermark = prefs.getBoolean(KEY_SHOW_WATERMARK, false)
+        val wmTypeName = prefs.getString(KEY_WATERMARK_TYPE, com.example.model.WatermarkType.TEXT.name)
+        val watermarkType = try {
+            com.example.model.WatermarkType.valueOf(wmTypeName ?: com.example.model.WatermarkType.TEXT.name)
+        } catch (e: Exception) {
+            com.example.model.WatermarkType.TEXT
+        }
+        val watermarkText = prefs.getString(KEY_WATERMARK_TEXT, "🌪️ Vortex Studio") ?: "🌪️ Vortex Studio"
+        val watermarkOpacity = prefs.getFloat(KEY_WATERMARK_OPACITY, 0.85f)
+        val wmSizeName = prefs.getString(KEY_WATERMARK_SIZE, com.example.model.WatermarkSize.MEDIUM.name)
+        val watermarkSize = try {
+            com.example.model.WatermarkSize.valueOf(wmSizeName ?: com.example.model.WatermarkSize.MEDIUM.name)
+        } catch (e: Exception) {
+            com.example.model.WatermarkSize.MEDIUM
+        }
+        val wmColorName = prefs.getString(KEY_WATERMARK_COLOR, com.example.model.TouchColorOption.CYAN.name)
+        val watermarkColor = try {
+            com.example.model.TouchColorOption.valueOf(wmColorName ?: com.example.model.TouchColorOption.CYAN.name)
+        } catch (e: Exception) {
+            com.example.model.TouchColorOption.CYAN
+        }
+        val watermarkCustomImageUri = prefs.getString(KEY_WATERMARK_IMAGE_URI, null)
+
+        val showSceneOverlay = prefs.getBoolean(KEY_SHOW_SCENE_OVERLAY, false)
+        val sceneTypeName = prefs.getString(KEY_SCENE_OVERLAY_TYPE, com.example.model.SceneOverlayType.GAMER_NEON_FRAME.name)
+        val sceneOverlayType = try {
+            com.example.model.SceneOverlayType.valueOf(sceneTypeName ?: com.example.model.SceneOverlayType.GAMER_NEON_FRAME.name)
+        } catch (e: Exception) {
+            com.example.model.SceneOverlayType.GAMER_NEON_FRAME
+        }
+        val sceneOverlayText = prefs.getString(KEY_SCENE_OVERLAY_TEXT, "🔴 EN VIVO | @TuCanal") ?: "🔴 EN VIVO | @TuCanal"
+        val sceneOverlayOpacity = prefs.getFloat(KEY_SCENE_OVERLAY_OPACITY, 0.90f)
+        val sceneOverlayImageUri = prefs.getString(KEY_SCENE_OVERLAY_IMAGE_URI, null)
+
         return RecordingConfig(
             resolution = resolution,
             fps = fps,
@@ -102,7 +136,19 @@ class SettingsRepository(context: Context) {
             beautyFilterEnabled = beautyFilter,
             facecamRgbBorder = facecamRgbBorder,
             showTouchVisualizer = showTouchVisualizer,
-            touchVisualizerColor = touchColor
+            touchVisualizerColor = touchColor,
+            showWatermark = showWatermark,
+            watermarkType = watermarkType,
+            watermarkText = watermarkText,
+            watermarkOpacity = watermarkOpacity,
+            watermarkSize = watermarkSize,
+            watermarkColor = watermarkColor,
+            watermarkCustomImageUri = watermarkCustomImageUri,
+            showSceneOverlay = showSceneOverlay,
+            sceneOverlayType = sceneOverlayType,
+            sceneOverlayText = sceneOverlayText,
+            sceneOverlayOpacity = sceneOverlayOpacity,
+            sceneOverlayImageUri = sceneOverlayImageUri
         )
     }
 
@@ -123,6 +169,18 @@ class SettingsRepository(context: Context) {
             putBoolean(KEY_FACECAM_RGB, config.facecamRgbBorder)
             putBoolean(KEY_SHOW_TOUCH_VISUALIZER, config.showTouchVisualizer)
             putString(KEY_TOUCH_COLOR, config.touchVisualizerColor.name)
+            putBoolean(KEY_SHOW_WATERMARK, config.showWatermark)
+            putString(KEY_WATERMARK_TYPE, config.watermarkType.name)
+            putString(KEY_WATERMARK_TEXT, config.watermarkText)
+            putFloat(KEY_WATERMARK_OPACITY, config.watermarkOpacity)
+            putString(KEY_WATERMARK_SIZE, config.watermarkSize.name)
+            putString(KEY_WATERMARK_COLOR, config.watermarkColor.name)
+            putString(KEY_WATERMARK_IMAGE_URI, config.watermarkCustomImageUri)
+            putBoolean(KEY_SHOW_SCENE_OVERLAY, config.showSceneOverlay)
+            putString(KEY_SCENE_OVERLAY_TYPE, config.sceneOverlayType.name)
+            putString(KEY_SCENE_OVERLAY_TEXT, config.sceneOverlayText)
+            putFloat(KEY_SCENE_OVERLAY_OPACITY, config.sceneOverlayOpacity)
+            putString(KEY_SCENE_OVERLAY_IMAGE_URI, config.sceneOverlayImageUri)
             apply()
         }
         _configFlow.value = config
@@ -204,6 +262,66 @@ class SettingsRepository(context: Context) {
         saveConfig(updated)
     }
 
+    fun toggleWatermark(enabled: Boolean) {
+        val updated = _configFlow.value.copy(showWatermark = enabled)
+        saveConfig(updated)
+    }
+
+    fun updateWatermarkType(type: com.example.model.WatermarkType) {
+        val updated = _configFlow.value.copy(watermarkType = type)
+        saveConfig(updated)
+    }
+
+    fun updateWatermarkText(text: String) {
+        val updated = _configFlow.value.copy(watermarkText = text)
+        saveConfig(updated)
+    }
+
+    fun updateWatermarkOpacity(opacity: Float) {
+        val updated = _configFlow.value.copy(watermarkOpacity = opacity)
+        saveConfig(updated)
+    }
+
+    fun updateWatermarkSize(size: com.example.model.WatermarkSize) {
+        val updated = _configFlow.value.copy(watermarkSize = size)
+        saveConfig(updated)
+    }
+
+    fun updateWatermarkColor(color: com.example.model.TouchColorOption) {
+        val updated = _configFlow.value.copy(watermarkColor = color)
+        saveConfig(updated)
+    }
+
+    fun updateWatermarkImageUri(uri: String?) {
+        val updated = _configFlow.value.copy(watermarkCustomImageUri = uri)
+        saveConfig(updated)
+    }
+
+    fun toggleSceneOverlay(enabled: Boolean) {
+        val updated = _configFlow.value.copy(showSceneOverlay = enabled)
+        saveConfig(updated)
+    }
+
+    fun updateSceneOverlayType(type: com.example.model.SceneOverlayType) {
+        val updated = _configFlow.value.copy(sceneOverlayType = type)
+        saveConfig(updated)
+    }
+
+    fun updateSceneOverlayText(text: String) {
+        val updated = _configFlow.value.copy(sceneOverlayText = text)
+        saveConfig(updated)
+    }
+
+    fun updateSceneOverlayOpacity(opacity: Float) {
+        val updated = _configFlow.value.copy(sceneOverlayOpacity = opacity)
+        saveConfig(updated)
+    }
+
+    fun updateSceneOverlayImageUri(uri: String?) {
+        val updated = _configFlow.value.copy(sceneOverlayImageUri = uri)
+        saveConfig(updated)
+    }
+
     fun toggleGameMode(enabled: Boolean) {
         val current = _configFlow.value
         val updated = if (enabled) {
@@ -239,5 +357,17 @@ class SettingsRepository(context: Context) {
         private const val KEY_FACECAM_RGB = "pref_facecam_rgb"
         private const val KEY_SHOW_TOUCH_VISUALIZER = "pref_show_touch_visualizer"
         private const val KEY_TOUCH_COLOR = "pref_touch_color"
+        private const val KEY_SHOW_WATERMARK = "pref_show_watermark"
+        private const val KEY_WATERMARK_TYPE = "pref_watermark_type"
+        private const val KEY_WATERMARK_TEXT = "pref_watermark_text"
+        private const val KEY_WATERMARK_OPACITY = "pref_watermark_opacity"
+        private const val KEY_WATERMARK_SIZE = "pref_watermark_size"
+        private const val KEY_WATERMARK_COLOR = "pref_watermark_color"
+        private const val KEY_WATERMARK_IMAGE_URI = "pref_watermark_image_uri"
+        private const val KEY_SHOW_SCENE_OVERLAY = "pref_show_scene_overlay"
+        private const val KEY_SCENE_OVERLAY_TYPE = "pref_scene_overlay_type"
+        private const val KEY_SCENE_OVERLAY_TEXT = "pref_scene_overlay_text"
+        private const val KEY_SCENE_OVERLAY_OPACITY = "pref_scene_overlay_opacity"
+        private const val KEY_SCENE_OVERLAY_IMAGE_URI = "pref_scene_overlay_image_uri"
     }
 }

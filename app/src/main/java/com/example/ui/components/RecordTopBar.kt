@@ -63,7 +63,7 @@ fun RecordTopBar(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Grabador de Pantalla",
+                        text = "Vortex Studio",
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface

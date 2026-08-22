@@ -208,6 +208,54 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         settingsRepository.updateTouchVisualizerColor(color)
     }
 
+    fun toggleWatermark(enabled: Boolean) {
+        settingsRepository.toggleWatermark(enabled)
+    }
+
+    fun updateWatermarkType(type: com.example.model.WatermarkType) {
+        settingsRepository.updateWatermarkType(type)
+    }
+
+    fun updateWatermarkText(text: String) {
+        settingsRepository.updateWatermarkText(text)
+    }
+
+    fun updateWatermarkOpacity(opacity: Float) {
+        settingsRepository.updateWatermarkOpacity(opacity)
+    }
+
+    fun updateWatermarkSize(size: com.example.model.WatermarkSize) {
+        settingsRepository.updateWatermarkSize(size)
+    }
+
+    fun updateWatermarkColor(color: com.example.model.TouchColorOption) {
+        settingsRepository.updateWatermarkColor(color)
+    }
+
+    fun updateWatermarkImageUri(uri: String?) {
+        settingsRepository.updateWatermarkImageUri(uri)
+    }
+
+    fun toggleSceneOverlay(enabled: Boolean) {
+        settingsRepository.toggleSceneOverlay(enabled)
+    }
+
+    fun updateSceneOverlayType(type: com.example.model.SceneOverlayType) {
+        settingsRepository.updateSceneOverlayType(type)
+    }
+
+    fun updateSceneOverlayText(text: String) {
+        settingsRepository.updateSceneOverlayText(text)
+    }
+
+    fun updateSceneOverlayOpacity(opacity: Float) {
+        settingsRepository.updateSceneOverlayOpacity(opacity)
+    }
+
+    fun updateSceneOverlayImageUri(uri: String?) {
+        settingsRepository.updateSceneOverlayImageUri(uri)
+    }
+
     fun toggleGameMode(enabled: Boolean) {
         settingsRepository.toggleGameMode(enabled)
     }

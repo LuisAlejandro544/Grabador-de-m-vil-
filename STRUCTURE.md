@@ -1,13 +1,13 @@
 # 🏛️ Estructura del Proyecto (Architecture & File Tree)
 
-Este archivo describe la organización de directorios, módulos y capas del proyecto **OBS Mobile**.
+Este archivo describe la organización de directorios, módulos y capas del proyecto **Vortex Studio** (Grabador de Pantalla & Streaming OBS).
 
 ---
 
 ## 🌳 Árbol de Archivos
 
 ```
-obs-mobile/
+vortex-studio/
 ├── .github/
 │   └── workflows/
 │       ├── build-apk.yml                    # Compilación automatizada de APK Debug con caché y keystore
@@ -46,15 +46,36 @@ obs-mobile/
 │       │   │   │   └── RecordingsRepository.kt # Acceso a videos grabados en MediaStore
 │       │   │   ├── service/
 │       │   │   │   ├── ScreenRecordService.kt     # Coordinador ligero de Foreground Service y conmutación de audio
-│       │   │   │   ├── ScreenCaptureEngine.kt     # Motor modular de captura (MediaProjection, MediaRecorder y mezclador PCM dual de audio)
-│       │   │   │   ├── RecordNotificationHelper.kt# Gestión modular de notificaciones persistentes con acciones (Pausa, Stop, Toggle Voz)
+│       │   │   │   ├── ScreenCaptureEngine.kt     # Fachada orquestadora modular de captura y grabación
+│       │   │   │   ├── capture/                   # Submódulos desacoplados del motor de captura de video y audio
+│       │   │   │   │   ├── VideoEncoderModule.kt  # Codificador de hardware H.264 / AVC, Input Surface y worker de video
+│       │   │   │   │   ├── AudioPipelineModule.kt # Captura dual (juego interno + mic), DSP C++ y codificador AAC
+│       │   │   │   │   └── MuxerManager.kt        # Gestor sincronizado thread-safe del contenedor MP4
+│       │   │   │   ├── RecordNotificationHelper.kt# Gestión modular de notificaciones persistentes con acciones
 │       │   │   │   ├── RecordStorageHelper.kt     # Rutas seguras de archivos MP4 e indexación en MediaStore
 │       │   │   │   ├── ScreenshotHelper.kt        # Captura instantánea de pantalla y extracción de fotogramas
-│       │   │   │   ├── ScreenDrawingOverlay.kt    # Lienzo interactivo y pincel de dibujo en tiempo real sobre la pantalla
-│       │   │   │   ├── FacecamOverlayManager.kt   # Gestor de Facecam flotante con Filtro de Belleza y Borde RGB animado
+│       │   │   │   ├── ScreenDrawingOverlay.kt    # Lienzo interactivo y pincel de dibujo en tiempo real
+│       │   │   │   ├── FacecamOverlayManager.kt   # Gestor de Facecam flotante desacoplado
+│       │   │   │   ├── facecam/                   # Submódulos del sistema de Facecam superpuesto
+│       │   │   │   │   ├── FacecamLifecycleOwner.kt# LifecycleOwner desacoplado para vincular CameraX en Service
+│       │   │   │   │   ├── FacecamShapeHelper.kt  # Utilidades de dimensiones y recorte geométrico
+│       │   │   │   │   ├── FacecamRgbBorderView.kt# Vista de borde dinámico con gradiente animado RGB arcoíris
+│       │   │   │   │   ├── FacecamControlsBar.kt  # Barra inferior flotante de herramientas rápidas
+│       │   │   │   │   └── FacecamTouchDragHelper.kt# Gestor táctil de arrastre magnético y eventos táctiles
 │       │   │   │   ├── TouchVisualizerOverlay.kt  # Overlay de toques táctiles animados sin opciones de desarrollador
+│       │   │   │   ├── WatermarkOverlayManager.kt # Gestor de marca de agua / logo flotante superpuesto
+│       │   │   │   ├── watermark/                 # Submódulos de marca de agua
+│       │   │   │   │   └── WatermarkTouchHelper.kt# Cálculo táctil y arrastre magnético de la marca de agua
+│       │   │   │   ├── SceneOverlayManager.kt     # Gestor de overlays de escena (Marcos Neón, Banners, Live, Pausa)
+│       │   │   │   ├── overlay/                   # Submódulos de dibujo de escena
+│       │   │   │   │   └── SceneOverlayDrawables.kt# Renderizado vectorial de marcos y banners de streamer
 │       │   │   │   ├── FloatingBubbleManager.kt   # Coordinador del ciclo de vida del widget flotante y herramientas
-│       │   │   │   ├── BubbleOverlayView.kt       # Jerarquía visual del widget con submenús de herramientas, Facecam y toques
+│       │   │   │   ├── BubbleOverlayView.kt       # Jerarquía visual del widget flotante modular
+│       │   │   │   ├── bubble/                    # Submódulos del widget flotante
+│       │   │   │   │   ├── BubbleColors.kt        # Constantes de color y paleta visual del widget
+│       │   │   │   │   ├── BubbleDrawables.kt     # Generador de fondos, bordes redondeados y formas vectoriales
+│       │   │   │   │   ├── BubbleMainBar.kt       # Barra horizontal con led pulsante, cronómetro y acciones rápidas
+│       │   │   │   │   └── BubbleToolsSubmenu.kt  # Submenú desplegable de herramientas (Captura, Pincel, Facecam, RGB, Toques, Logo, Escenas)
 │       │   │   │   └── BubbleTouchHandler.kt      # Detección y cálculo de arrastre táctil y toques
 │       │   │   └── ui/
 │       │   │       ├── RecordViewModel.kt         # Gestión de estado (StateFlow) y lógica UI
@@ -69,7 +90,19 @@ obs-mobile/
 │       │   │       │   ├── GameLauncherCard.kt    # Pestaña y tarjetas de acceso rápido a juegos
 │       │   │       │   ├── VideoItemCard.kt       # Elemento individual de video en galería
 │       │   │       │   ├── VideoPlayerDialog.kt   # Reproductor de video nativo integrado
-│       │   │       │   └── SettingsView.kt        # Ajustes de calidad, audio, Facecam, Belleza, RGB y Toques
+│       │   │       │   ├── SettingsView.kt        # Orquestador modular de ajustes
+│       │   │       │   └── settings/              # Tarjetas de configuración especializadas y desacopladas
+│       │   │       │       ├── SettingsCard.kt    # Componentes base reutilizables de tarjeta y radio items
+│       │   │       │       ├── GameModeCard.kt    # Switch maestro de optimización gamer a 60 FPS
+│       │   │       │       ├── FloatingBubbleSettingsCard.kt # Control de burbuja y estado de permiso de superposición
+│       │   │       │       ├── WatermarkSettingsCard.kt      # Configuración de logo / marca de agua, texto, opacidad y PNG
+│       │   │       │       ├── SceneOverlaySettingsCard.kt   # Selector de marcos gamer, banners streamer y alertas
+│       │   │       │       ├── FacecamSettingsCard.kt        # Configuración completa de Facecam (Lente, Formas, Belleza, RGB)
+│       │   │       │       ├── TouchVisualizerSettingsCard.kt# Configuración y selector de color de toques táctiles
+│       │   │       │       ├── VideoQualitySettingsCard.kt   # Selectores de resolución, FPS y bitrate
+│       │   │       │       ├── AudioSettingsCard.kt          # Selector de fuentes de audio (Juego, Mic, Dual, Silencio)
+│       │   │       │       ├── CountdownSettingsCard.kt      # Configuración de cuenta atrás antes de grabar
+│       │   │       │       └── NativeModulesStatusCard.kt    # Monitor de estado de motores C++ GLES3, Rust y DSP
 │       │   │       └── theme/
 │       │   │           ├── Color.kt               # Paleta de colores M3
 │       │   │           ├── Theme.kt               # Configuración de tema claro/oscuro
@@ -96,14 +129,26 @@ obs-mobile/
 1. **Capa de Presentación (`ui/`):**
    - Construida 100% con **Jetpack Compose (Material Design 3)**.
    - Completamente modularizada: `HomeScreen.kt` actúa como orquestador liviano delegando en `RecordTab`, `GalleryTab`, `GameLauncherCard` y `SettingsView`.
+   - `SettingsView` divide su lógica en componentes específicos bajo `ui/components/settings/` (`GameModeCard`, `FacecamSettingsCard`, `TouchVisualizerSettingsCard`, etc.).
    - Implementa `testTag` en todos los componentes interactivos.
 
 2. **Capa de Negocio y Estado (`RecordViewModel.kt`):**
    - Expone un flujo reactivo inmutable `uiState: StateFlow<UiState>`.
    - Coordina el inicio seguro del servicio de grabación en primer plano antes de la cuenta atrás para garantizar compatibilidad estricta con Android 14+.
 
-3. **Capa de Servicios y Overlays (`service/`):**
+3. **Capa de Servicios, Captura y Overlays (`service/`):**
    - `ScreenRecordService`: Servicio desacoplado tipo Media Projection, Microphone y Camera.
-   - `FacecamOverlayManager`: Ventana flotante de cámara con máscaras geométricas, Filtro de Belleza y Borde RGB animado.
-   - `TouchVisualizerOverlay`: Renderizado de ripples y retroalimentación táctil de alta velocidad en pantalla completa sin requerir depuración USB ni opciones de desarrollador.
-   - `FloatingBubbleManager`: Controlador de widget flotante con submenú interactivo para alternar herramientas, voz y efectos en vivo.
+   - `ScreenCaptureEngine`: Fachada que delega responsabilidades a submódulos en `service/capture/`:
+     - `VideoEncoderModule`: Manejo de hardware encoder AVC/H.264 y entrega de buffers de video.
+     - `AudioPipelineModule`: Captura dual PCM, filtrado C++ DSP y encoder AAC.
+     - `MuxerManager`: Empaquetado MP4 sincronizado y thread-safe con candado reentrante.
+   - `FacecamOverlayManager`: Orquestador de cámara flotante con submódulos en `service/facecam/`:
+     - `FacecamLifecycleOwner`: Ciclo de vida desacoplado para CameraX en Service.
+     - `FacecamShapeHelper`: Máscaras geométricas y cálculo métrico.
+     - `FacecamRgbBorderView`: Vista de borde dinámico con degradado RGB arcoíris animado.
+     - `FacecamControlsBar`: Barra inferior flotante de herramientas.
+     - `FacecamTouchDragHelper`: Detección táctil y arrastre magnético.
+   - `BubbleOverlayView`: Widget flotante con submódulos en `service/bubble/`:
+     - `BubbleMainBar`: Cronómetro monospace, led pulsante y botones de acción rápida.
+     - `BubbleToolsSubmenu`: Desplegable de herramientas rápidas.
+   - `TouchVisualizerOverlay`: Renderizado de ripples táctiles animados sin depuración USB.

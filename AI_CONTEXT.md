@@ -1,11 +1,11 @@
-# 🧠 AI Context & Domain Knowledge (OBS Mobile)
+# 🧠 AI Context & Domain Knowledge (Vortex Studio)
 
 Este documento provee el contexto de dominio y las restricciones técnicas fundamentales para cualquier asistente o modelo de IA que trabaje en esta base de código.
 
 ---
 
 ## 🎯 Propósito del Proyecto
-Construir una suite de grabación de pantalla y streaming en vivo para Android equivalente a **OBS Studio**, optimizada específicamente para teléfonos móviles, sesiones de videojuegos a 60 FPS, herramientas de anotación en tiempo real, efectos visuales (Filtro de Belleza, Borde RGB, Toques Táctiles) y consumo térmico eficiente.
+Construir una suite de grabación de pantalla y streaming en vivo para Android llamada **Vortex Studio** (estilo OBS Studio), optimizada específicamente para teléfonos móviles, sesiones de videojuegos a 60 FPS, herramientas de anotación en tiempo real, efectos visuales (Filtro de Belleza, Borde RGB, Toques Táctiles) y consumo térmico eficiente.
 
 ---
 
@@ -39,7 +39,14 @@ Construir una suite de grabación de pantalla y streaming en vivo para Android e
    - **`TouchVisualizerOverlay`:** Dibuja ondas táctiles fluidas en tiempo real sobre toda la pantalla sin requerir permisos de desarrollador ni depuración USB.
    - **Colores Personalizables:** Azul Neón, Verde Gamer, Púrpura Neón, Rojo Fuego, Amarillo Eléctrico y Blanco Puro.
 
-7. **Integración Nativa Segura (C++, DSP y Rust):**
+7. **Marca de Agua / Logo Personalizado Superpuesto:**
+   - **`WatermarkOverlayManager`:** Superpone un logo propio o texto personal arrastrable (`WatermarkTouchHelper`) por el usuario sobre la pantalla con `FLAG_NOT_FOCUSABLE`.
+   - Permite control total de transparencia, color y tamaño sin interferir en los botones del juego.
+
+8. **Overlays de Escena Personalizados:**
+   - **`SceneOverlayManager`:** Proyecta marcos gamer cyberpunk, banners inferiores de streamer, badges "🔴 LIVE" o carteles de pausa con `FLAG_NOT_TOUCHABLE`, capturados íntegramente por `MediaProjection`.
+
+9. **Integración Nativa Segura (C++, DSP y Rust):**
    - Toda llamada a librerías nativas debe estar envuelta con protección contra `UnsatisfiedLinkError` en sus respectivos puentes (`NativeOBSBridge.kt`, `NativeAudioDSPBridge.kt`, `NativeFFmpegBridge.kt`, `NativeRustNetwork.kt`).
 
 ---
@@ -62,7 +69,19 @@ data class RecordingConfig(
     val beautyFilterEnabled: Boolean = false,
     val facecamRgbBorder: Boolean = false,
     val showTouchVisualizer: Boolean = false,
-    val touchVisualizerColor: TouchColorOption = TouchColorOption.CYAN
+    val touchVisualizerColor: TouchColorOption = TouchColorOption.CYAN,
+    val showWatermark: Boolean = false,
+    val watermarkType: WatermarkType = WatermarkType.TEXT,
+    val watermarkText: String = "🌪️ Vortex Studio",
+    val watermarkOpacity: Float = 0.85f,
+    val watermarkSize: WatermarkSize = WatermarkSize.MEDIUM,
+    val watermarkColor: TouchColorOption = TouchColorOption.CYAN,
+    val watermarkCustomImageUri: String? = null,
+    val showSceneOverlay: Boolean = false,
+    val sceneOverlayType: SceneOverlayType = SceneOverlayType.GAMER_NEON_FRAME,
+    val sceneOverlayText: String = "🔴 EN VIVO | @TuCanal",
+    val sceneOverlayOpacity: Float = 0.90f,
+    val sceneOverlayImageUri: String? = null
 )
 
 data class RecordedVideo(

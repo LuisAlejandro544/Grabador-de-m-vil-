@@ -56,6 +56,26 @@ enum class TouchColorOption(val label: String, val hexColor: String, val primary
     val colorInt: Int get() = primaryArgb.toInt()
 }
 
+enum class WatermarkType(val label: String) {
+    TEXT("Texto Personalizado"),
+    IMAGE("Logo / Imagen PNG")
+}
+
+enum class WatermarkSize(val label: String, val textSizeSp: Float, val iconSizeDp: Int) {
+    SMALL("Pequeño", 13f, 42),
+    MEDIUM("Mediano", 17f, 60),
+    LARGE("Grande", 22f, 84)
+}
+
+enum class SceneOverlayType(val label: String, val description: String) {
+    NONE("Ninguno", "Sin marco superpuesto"),
+    GAMER_NEON_FRAME("Marco Neón Gamer", "Biseles ciberpunk en bordes de pantalla"),
+    STREAMER_BANNER("Banner de Redes Sociales", "Barra inferior con nombre y redes"),
+    LIVE_BADGE("Badge '🔴 EN VIVO'", "Insignia de streaming en esquina superior"),
+    STANDBY_PAUSE("Cartel 'Volvemos en Breve'", "Alerta translúcida para pausas"),
+    CUSTOM_IMAGE("Marco PNG Personalizado", "Superposición de imagen propia con transparencia")
+}
+
 data class RecordingConfig(
     val resolution: VideoResolution = VideoResolution.RES_1080P,
     val fps: VideoFps = VideoFps.FPS_60,
@@ -71,7 +91,19 @@ data class RecordingConfig(
     val beautyFilterEnabled: Boolean = false,
     val facecamRgbBorder: Boolean = false,
     val showTouchVisualizer: Boolean = false,
-    val touchVisualizerColor: TouchColorOption = TouchColorOption.CYAN
+    val touchVisualizerColor: TouchColorOption = TouchColorOption.CYAN,
+    val showWatermark: Boolean = false,
+    val watermarkType: WatermarkType = WatermarkType.TEXT,
+    val watermarkText: String = "🌪️ Vortex Studio",
+    val watermarkOpacity: Float = 0.85f,
+    val watermarkSize: WatermarkSize = WatermarkSize.MEDIUM,
+    val watermarkColor: TouchColorOption = TouchColorOption.CYAN,
+    val watermarkCustomImageUri: String? = null,
+    val showSceneOverlay: Boolean = false,
+    val sceneOverlayType: SceneOverlayType = SceneOverlayType.GAMER_NEON_FRAME,
+    val sceneOverlayText: String = "🔴 EN VIVO | @TuCanal",
+    val sceneOverlayOpacity: Float = 0.90f,
+    val sceneOverlayImageUri: String? = null
 )
 
 enum class RecordingStatus {

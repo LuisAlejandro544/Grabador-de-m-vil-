@@ -1,6 +1,6 @@
-# OBS Mobile & Game Recorder
+# 🌪️ Vortex Studio & Game Recorder
 
-> **OBS Mobile** es una plataforma de grabación de pantalla de alto rendimiento y transmisión en vivo para Android, diseñada para capturar partidas de videojuegos a 60 FPS con audio interno exclusivo, overlays visuales, herramientas en vivo (captura de pantalla y pincel/anotaciones en tiempo real), **Filtro de Belleza facial**, **Borde RGB Arcoíris animado**, **Indicador de Toques Táctiles animado (sin opciones de desarrollador)** y cimientos nativos en **C++ (OpenGL ES 3.0)** y **Rust (RTMP/SRT)**.
+> **Vortex Studio** es una plataforma de grabación de pantalla de alto rendimiento y transmisión en vivo para Android, diseñada para capturar partidas de videojuegos a 60 FPS con audio interno exclusivo, overlays visuales, herramientas en vivo (captura de pantalla y pincel/anotaciones en tiempo real), **Filtro de Belleza facial**, **Borde RGB Arcoíris animado**, **Indicador de Toques Táctiles animado (sin opciones de desarrollador)** y cimientos nativos en **C++ (OpenGL ES 3.0)** y **Rust (RTMP/SRT)**.
 
 ---
 
@@ -17,6 +17,14 @@
   - Ondas y ripples dinámicos de alta respuesta que se renderizan sobre la pantalla mediante overlay `WindowManager` transparente.
   - **Sin opciones de desarrollador:** Funciona directamente sin requerir activar "Mostrar toques" en el sistema operativo.
   - **Paleta de Colores Personalizable:** Azul Neón, Verde Gamer, Púrpura Neón, Rojo Fuego, Amarillo Eléctrico y Blanco Puro, configurable en Ajustes y conmutable en caliente desde la Burbuja Flotante.
+- **🏷️ Marca de Agua / Logo Personalizado Superpuesto:**
+  - **Texto o Logo PNG:** Superpone tu marca personal, tag de streamer o logo en pantalla con posición libre (arrastrable con el dedo).
+  - **Personalización Completa:** Selector de texto, fuente, tamaño (Pequeño, Mediano, Grande), paleta de colores neón y control de opacidad/transparencia (15% - 100%).
+  - **Conmutador Rápido:** Configurable desde la pestaña de Ajustes y activable/desactivable en tiempo real desde el menú de la Burbuja Flotante.
+- **🖼️ Overlays de Escena Personalizados (Marcos PNG y Banners de Streamer):**
+  - **Presets Gamer Integrados:** Marco Neón Cyberpunk para bordes de pantalla, Banner de Redes Sociales inferior, Badge animado "🔴 EN VIVO" y Cartel de Pausa ("⏸️ STANDBY").
+  - **Soporte de PNG Personalizado:** Carga de imágenes PNG transparentes completas desde la galería.
+  - **Control de Opacidad:** Ajuste fino de transparencia para no obstruir el gameplay, conmutable en caliente desde la Burbuja Flotante.
 - **🔊 Captura, Mezcla y Procesamiento de Audio Pro en C++ (DSP):**
   - **🎛️ Motor Nativo de Audio DSP (C++):** Procesamiento de señales a 48 kHz estéreo con **Noise Gate** (puerta de ruido para atenuar respiración y ventiladores), **Audio Ducking Automático** (atenúa el juego -9 dB cuando hablas para dar prioridad a tu voz) y **Soft Limiter / Saturation Shaper** para prevenir distorsión y saturación digital al mezclar.
   - **🎙️ Conmutador Dinámico de Voz en Vivo:** Graba el audio del juego y conmuta con un toque desde la burbuja flotante o la notificación si deseas grabar tu voz (`Voz ON`) o dejar únicamente el sonido limpio del juego (`Solo Juego`), mezclando audio PCM en tiempo real sin cortar el video ni reiniciar codificadores.

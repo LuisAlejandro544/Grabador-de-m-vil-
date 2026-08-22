@@ -27,7 +27,9 @@ class FloatingBubbleManager(
     private val onFacecamToggleClicked: (() -> Unit)? = null,
     private val onBeautyToggleClicked: (() -> Unit)? = null,
     private val onRgbBorderToggleClicked: (() -> Unit)? = null,
-    private val onTouchToggleClicked: (() -> Unit)? = null
+    private val onTouchToggleClicked: (() -> Unit)? = null,
+    private val onWatermarkToggleClicked: (() -> Unit)? = null,
+    private val onSceneOverlayToggleClicked: (() -> Unit)? = null
 ) {
 
     companion object {
@@ -108,6 +110,12 @@ class FloatingBubbleManager(
                 },
                 onTouchToggleClicked = {
                     onTouchToggleClicked?.invoke()
+                },
+                onWatermarkToggleClicked = {
+                    onWatermarkToggleClicked?.invoke()
+                },
+                onSceneOverlayToggleClicked = {
+                    onSceneOverlayToggleClicked?.invoke()
                 }
             )
             this.bubbleOverlayView = overlay
@@ -189,6 +197,16 @@ class FloatingBubbleManager(
     fun updateTouchStatus(active: Boolean) {
         if (!isShowingInternal) return
         bubbleOverlayView?.updateTouchStatus(active)
+    }
+
+    fun updateWatermarkStatus(active: Boolean) {
+        if (!isShowingInternal) return
+        bubbleOverlayView?.updateWatermarkStatus(active)
+    }
+
+    fun updateSceneOverlayStatus(active: Boolean) {
+        if (!isShowingInternal) return
+        bubbleOverlayView?.updateSceneOverlayStatus(active)
     }
 
     /**

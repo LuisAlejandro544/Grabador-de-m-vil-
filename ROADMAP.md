@@ -1,6 +1,6 @@
-# 🗺️ Roadmap: De Grabador de Pantalla a OBS Studio para Android
+# 🗺️ Roadmap: De Grabador de Pantalla a Vortex Studio (OBS para Android)
 
-Este documento detalla las fases de evolución del proyecto para transformar la aplicación en una suite completa de producción de video y transmisión en vivo móvil estilo OBS Studio.
+Este documento detalla las fases de evolución del proyecto para transformar la aplicación en una suite completa de producción de video y transmisión en vivo móvil llamada **Vortex Studio**.
 
 ---
 
@@ -43,6 +43,12 @@ Este documento detalla las fases de evolución del proyecto para transformar la 
 - [x] **Indicador de Toques Táctiles Animado (Touch Visualizer):**
   - Ondas de feedback táctil sobre pantalla completa sin necesidad de habilitar opciones de desarrollador.
   - 6 variantes de color neón/gamer configurables en Ajustes y conmutable en caliente desde la burbuja flotante.
+- [x] **Marca de Agua / Logo Personalizado Superpuesto:**
+  - Capa overlay arrastrable en tiempo real con soporte de texto estilizado, fuentes, paleta de colores y logos PNG.
+  - Ajuste de opacidad / transparencia y conmutador rápido desde el submenú de la burbuja flotante.
+- [x] **Overlays de Escena Personalizados (Marcos PNG y Alertas Estáticas):**
+  - Marcos Neón Gamer, Banners de Streamer, Badges "🔴 LIVE", Carteles de Pausa ("⏸️ STANDBY") e importación de marcos PNG transparentes.
+  - Integración completa en el servicio en primer plano y control en tiempo real desde la burbuja.
 - [x] **Motor Gráfico C++ con OpenGL ES 3.0 & EGL:**
   - Contexto EGL nativo y renderizado acelerado por GPU a 60 FPS.
   - Soporte de múltiples capas (*z-order*): Juego, Facecam, Overlays, Texto.

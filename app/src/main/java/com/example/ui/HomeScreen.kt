@@ -215,7 +215,19 @@ fun HomeScreen(
                     onToggleBeautyFilter = { viewModel.toggleBeautyFilter(it) },
                     onToggleFacecamRgbBorder = { viewModel.toggleFacecamRgbBorder(it) },
                     onToggleTouchVisualizer = { viewModel.toggleTouchVisualizer(it) },
-                    onUpdateTouchVisualizerColor = { viewModel.updateTouchVisualizerColor(it) }
+                    onUpdateTouchVisualizerColor = { viewModel.updateTouchVisualizerColor(it) },
+                    onToggleWatermark = { viewModel.toggleWatermark(it) },
+                    onUpdateWatermarkType = { viewModel.updateWatermarkType(it) },
+                    onUpdateWatermarkText = { viewModel.updateWatermarkText(it) },
+                    onUpdateWatermarkOpacity = { viewModel.updateWatermarkOpacity(it) },
+                    onUpdateWatermarkSize = { viewModel.updateWatermarkSize(it) },
+                    onUpdateWatermarkColor = { viewModel.updateWatermarkColor(it) },
+                    onUpdateWatermarkImageUri = { viewModel.updateWatermarkImageUri(it) },
+                    onToggleSceneOverlay = { viewModel.toggleSceneOverlay(it) },
+                    onUpdateSceneOverlayType = { viewModel.updateSceneOverlayType(it) },
+                    onUpdateSceneOverlayText = { viewModel.updateSceneOverlayText(it) },
+                    onUpdateSceneOverlayOpacity = { viewModel.updateSceneOverlayOpacity(it) },
+                    onUpdateSceneOverlayImageUri = { viewModel.updateSceneOverlayImageUri(it) }
                 )
             }
         }

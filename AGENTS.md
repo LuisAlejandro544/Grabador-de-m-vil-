@@ -1,4 +1,4 @@
-# 🤖 Guía de Flujo de Trabajo para Agentes (OBS Mobile)
+# 🤖 Guía de Flujo de Trabajo para Agentes (Vortex Studio)
 
 Este documento define el protocolo y los roles que los asistentes de IA deben adoptar durante el ciclo de vida de desarrollo del proyecto.
 

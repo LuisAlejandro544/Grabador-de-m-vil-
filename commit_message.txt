@@ -1,9 +1,11 @@
-feat(effects): agregar filtro de belleza, borde rgb animado y visualizador de toques tactiles
+refactor(core): modularización completa de módulos y renombrado oficial de la aplicación a Vortex Studio
 
-- Implementar Filtro de Belleza / Suavizado de Piel para Facecam con atenuación de imperfecciones y luminosidad facial optimizada.
-- Implementar Borde RGB / Arcoíris Gamer animado para Facecam con gradiente rotativo SweepGradient continuo y aceleración por hardware.
-- Implementar Indicador de Toques Táctiles Animado (TouchVisualizerOverlay) con ondas y ripples fluidos que funciona sin necesidad de activar las opciones de desarrollador.
-- Añadir selector interactivo de colores para toques táctiles: Azul Neón, Verde Gamer, Púrpura Neón, Rojo Fuego, Amarillo Eléctrico y Blanco Puro.
-- Integrar conmutadores rápidos para Filtro de Belleza, Borde RGB y Toques Táctiles dentro del submenú de la Burbuja Flotante y en la pantalla de Ajustes.
-- Ampliar RecordingConfig y SettingsRepository para persistir las preferencias de belleza, borde RGB y visualizador táctil.
-- Actualizar la documentación técnica del proyecto (README.md, ROADMAP.md, STRUCTURE.md y AI_CONTEXT.md).
+- Renombrar la aplicación a "Vortex Studio" de forma consistente en metadata.json, strings.xml, settings.gradle.kts, interfaz de usuario (RecordTopBar) y documentación técnica (README.md, ROADMAP.md, STRUCTURE.md, AI_CONTEXT.md, AGENTS.md).
+- Modularizar SettingsView creando el paquete ui/components/settings/ con tarjetas desacopladas (GameModeCard, FloatingBubbleSettingsCard, FacecamSettingsCard, TouchVisualizerSettingsCard, VideoQualitySettingsCard, AudioSettingsCard, CountdownSettingsCard, NativeModulesStatusCard y base SettingsCard).
+- Modularizar BubbleOverlayView creando el paquete service/bubble/ con componentes especializados (BubbleColors, BubbleDrawables, BubbleMainBar y BubbleToolsSubmenu).
+- Modularizar FacecamOverlayManager creando el paquete service/facecam/ con utilidades y vistas independientes (FacecamLifecycleOwner, FacecamShapeHelper, FacecamRgbBorderView, FacecamControlsBar y FacecamTouchDragHelper).
+- Modularizar ScreenCaptureEngine creando el paquete service/capture/ separando responsabilidades críticas (VideoEncoderModule para H.264 por hardware, AudioPipelineModule para mezcla dual y DSP C++, y MuxerManager para empaquetado MP4 thread-safe).
+- Añadir Marca de Agua / Logo Personalizado Superpuesto (WatermarkOverlayManager y WatermarkTouchHelper) con soporte de texto estilizado, logos PNG, arrastre libre en pantalla, control de opacidad, colores y conmutador rápido desde la burbuja flotante.
+- Añadir Overlays de Escena Personalizados (SceneOverlayManager y SceneOverlayDrawables) con presets gamer de marco neón, banner de redes streamer, badge de 'EN VIVO', cartel de pausa y soporte de marcos PNG transparentes.
+- Crear las tarjetas modulares WatermarkSettingsCard y SceneOverlaySettingsCard en SettingsView para configuración reactiva con vistas previas en tiempo real.
+- Actualizar STRUCTURE.md con el árbol de archivos y descripción de capas resultante.

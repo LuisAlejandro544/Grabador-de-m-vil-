@@ -1,6 +1,6 @@
 {
-  "name": "Grabador de Pantalla",
-  "description": "Aplicación para grabar pantalla y partidas de videojuegos con controles rápidos y galería integrada.",
+  "name": "Vortex Studio",
+  "description": "Estudio profesional de grabación de pantalla y streaming para partidas de videojuegos a 60 FPS con herramientas en vivo, Facecam y audio pro.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

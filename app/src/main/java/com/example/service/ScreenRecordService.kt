@@ -43,6 +43,8 @@ class ScreenRecordService : Service() {
         const val ACTION_TOGGLE_BEAUTY = "com.example.service.TOGGLE_BEAUTY"
         const val ACTION_TOGGLE_RGB = "com.example.service.TOGGLE_RGB"
         const val ACTION_TOGGLE_TOUCH = "com.example.service.TOGGLE_TOUCH"
+        const val ACTION_TOGGLE_WATERMARK = "com.example.service.TOGGLE_WATERMARK"
+        const val ACTION_TOGGLE_SCENE_OVERLAY = "com.example.service.TOGGLE_SCENE_OVERLAY"
 
         const val EXTRA_RESULT_CODE = "extra_result_code"
         const val EXTRA_RESULT_DATA = "extra_result_data"
@@ -75,6 +77,12 @@ class ScreenRecordService : Service() {
         private val _isTouchActive = MutableStateFlow(false)
         val isTouchActive = _isTouchActive.asStateFlow()
 
+        private val _isWatermarkActive = MutableStateFlow(false)
+        val isWatermarkActive = _isWatermarkActive.asStateFlow()
+
+        private val _isSceneOverlayActive = MutableStateFlow(false)
+        val isSceneOverlayActive = _isSceneOverlayActive.asStateFlow()
+
         private val _lastSavedFilePath = MutableStateFlow<String?>(null)
         val lastSavedFilePath = _lastSavedFilePath.asStateFlow()
 
@@ -92,6 +100,8 @@ class ScreenRecordService : Service() {
     private var floatingBubbleManager: FloatingBubbleManager? = null
     private var facecamOverlayManager: FacecamOverlayManager? = null
     private var touchVisualizerOverlay: TouchVisualizerOverlay? = null
+    private var watermarkOverlayManager: WatermarkOverlayManager? = null
+    private var sceneOverlayManager: SceneOverlayManager? = null
 
     private var timerJob: Job? = null
     private val serviceScope = CoroutineScope(Dispatchers.Main)
@@ -120,6 +130,8 @@ class ScreenRecordService : Service() {
                     facecamOverlayManager?.setRgbBorder(config.facecamRgbBorder)
                 }
                 touchVisualizerOverlay?.updateColor(config.touchVisualizerColor)
+                watermarkOverlayManager?.updateConfig(config)
+                sceneOverlayManager?.updateConfig(config)
             }
         }
     }
@@ -136,6 +148,8 @@ class ScreenRecordService : Service() {
             ACTION_TOGGLE_BEAUTY -> handleToggleBeautyAction()
             ACTION_TOGGLE_RGB -> handleToggleRgbBorderAction()
             ACTION_TOGGLE_TOUCH -> handleToggleTouchVisualizerAction()
+            ACTION_TOGGLE_WATERMARK -> handleToggleWatermarkAction()
+            ACTION_TOGGLE_SCENE_OVERLAY -> handleToggleSceneOverlayAction()
         }
         return START_NOT_STICKY
     }
@@ -242,6 +256,8 @@ class ScreenRecordService : Service() {
             _isBeautyActive.value = savedConfig.beautyFilterEnabled
             _isRgbActive.value = savedConfig.facecamRgbBorder
             _isTouchActive.value = savedConfig.showTouchVisualizer
+            _isWatermarkActive.value = savedConfig.showWatermark
+            _isSceneOverlayActive.value = savedConfig.showSceneOverlay
 
             // 4. Activar Facecam si estaba solicitado
             if (showFacecam) {
@@ -255,7 +271,17 @@ class ScreenRecordService : Service() {
                 launchTouchVisualizer(savedConfig)
             }
 
-            // 6. Activar burbuja flotante opcional con submenú de herramientas
+            // 6. Activar Marca de Agua / Logo si estaba configurado
+            if (savedConfig.showWatermark) {
+                launchWatermark(savedConfig)
+            }
+
+            // 7. Activar Overlays de Escena si estaba configurado
+            if (savedConfig.showSceneOverlay) {
+                launchSceneOverlay(savedConfig)
+            }
+
+            // 8. Activar burbuja flotante opcional con submenú de herramientas
             if (showFloatingBubble) {
                 floatingBubbleManager?.dismiss()
                 floatingBubbleManager = FloatingBubbleManager(
@@ -268,7 +294,9 @@ class ScreenRecordService : Service() {
                     onFacecamToggleClicked = { handleToggleFacecamAction() },
                     onBeautyToggleClicked = { handleToggleBeautyAction() },
                     onRgbBorderToggleClicked = { handleToggleRgbBorderAction() },
-                    onTouchToggleClicked = { handleToggleTouchVisualizerAction() }
+                    onTouchToggleClicked = { handleToggleTouchVisualizerAction() },
+                    onWatermarkToggleClicked = { handleToggleWatermarkAction() },
+                    onSceneOverlayToggleClicked = { handleToggleSceneOverlayAction() }
                 ).apply {
                     show()
                     updateMicStatus(captureEngine.isMicrophoneMuted)
@@ -276,6 +304,8 @@ class ScreenRecordService : Service() {
                     updateBeautyStatus(_isBeautyActive.value)
                     updateRgbStatus(_isRgbActive.value)
                     updateTouchStatus(_isTouchActive.value)
+                    updateWatermarkStatus(_isWatermarkActive.value)
+                    updateSceneOverlayStatus(_isSceneOverlayActive.value)
                 }
             }
 
@@ -334,6 +364,35 @@ class ScreenRecordService : Service() {
         floatingBubbleManager?.updateTouchStatus(_isTouchActive.value)
     }
 
+    private fun launchWatermark(config: com.example.model.RecordingConfig) {
+        watermarkOverlayManager?.dismiss()
+        watermarkOverlayManager = WatermarkOverlayManager(
+            context = this,
+            config = config,
+            onCloseClicked = {
+                _isWatermarkActive.value = false
+                floatingBubbleManager?.updateWatermarkStatus(false)
+                SettingsRepository(this).toggleWatermark(false)
+            }
+        ).apply {
+            show()
+        }
+        _isWatermarkActive.value = watermarkOverlayManager?.isShowing == true
+        floatingBubbleManager?.updateWatermarkStatus(_isWatermarkActive.value)
+    }
+
+    private fun launchSceneOverlay(config: com.example.model.RecordingConfig) {
+        sceneOverlayManager?.dismiss()
+        sceneOverlayManager = SceneOverlayManager(
+            context = this,
+            config = config
+        ).apply {
+            show()
+        }
+        _isSceneOverlayActive.value = sceneOverlayManager?.isShowing == true
+        floatingBubbleManager?.updateSceneOverlayStatus(_isSceneOverlayActive.value)
+    }
+
     private fun handleToggleFacecamAction() {
         if (facecamOverlayManager?.isShowing == true) {
             facecamOverlayManager?.dismiss()
@@ -383,6 +442,38 @@ class ScreenRecordService : Service() {
             SettingsRepository(this).toggleTouchVisualizer(true)
             launchTouchVisualizer(config)
             Log.i(TAG, "Touch Visualizer activado")
+        }
+    }
+
+    private fun handleToggleWatermarkAction() {
+        if (watermarkOverlayManager?.isShowing == true) {
+            watermarkOverlayManager?.dismiss()
+            watermarkOverlayManager = null
+            _isWatermarkActive.value = false
+            floatingBubbleManager?.updateWatermarkStatus(false)
+            SettingsRepository(this).toggleWatermark(false)
+            Log.i(TAG, "Marca de Agua desactivada")
+        } else {
+            val config = SettingsRepository(this).getConfig()
+            SettingsRepository(this).toggleWatermark(true)
+            launchWatermark(config)
+            Log.i(TAG, "Marca de Agua activada")
+        }
+    }
+
+    private fun handleToggleSceneOverlayAction() {
+        if (sceneOverlayManager?.isShowing == true) {
+            sceneOverlayManager?.dismiss()
+            sceneOverlayManager = null
+            _isSceneOverlayActive.value = false
+            floatingBubbleManager?.updateSceneOverlayStatus(false)
+            SettingsRepository(this).toggleSceneOverlay(false)
+            Log.i(TAG, "Scene Overlay desactivado")
+        } else {
+            val config = SettingsRepository(this).getConfig()
+            SettingsRepository(this).toggleSceneOverlay(true)
+            launchSceneOverlay(config)
+            Log.i(TAG, "Scene Overlay activado")
         }
     }
 
@@ -505,10 +596,16 @@ class ScreenRecordService : Service() {
         facecamOverlayManager = null
         touchVisualizerOverlay?.dismiss()
         touchVisualizerOverlay = null
+        watermarkOverlayManager?.dismiss()
+        watermarkOverlayManager = null
+        sceneOverlayManager?.dismiss()
+        sceneOverlayManager = null
         _isFacecamActive.value = false
         _isBeautyActive.value = false
         _isRgbActive.value = false
         _isTouchActive.value = false
+        _isWatermarkActive.value = false
+        _isSceneOverlayActive.value = false
         captureEngine.release()
         _recordingState.value = RecordingStatus.IDLE
         stopForeground(STOP_FOREGROUND_REMOVE)

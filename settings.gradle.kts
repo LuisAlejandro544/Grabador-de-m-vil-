@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Grabador de Pantalla"
+rootProject.name = "Vortex Studio"
 
 include(":app")
