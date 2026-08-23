@@ -103,6 +103,12 @@ enum class VtuberSize(val label: String, val dpSize: Int) {
     LARGE("Grande (200 dp)", 200)
 }
 
+enum class ImageFormatOption(val label: String, val extension: String, val description: String) {
+    PNG("PNG", "png", "Sin pérdida de calidad (Máxima nitidez, mayor tamaño)"),
+    JPEG("JPG / JPEG", "jpg", "Compresión estándar (Ahorro de espacio configurable)"),
+    WEBP("WebP", "webp", "Formato moderno y ligero (Ultra eficiente en tamaño)")
+}
+
 data class RecordingConfig(
     val resolution: VideoResolution = VideoResolution.RES_1080P,
     val fps: VideoFps = VideoFps.FPS_60,
@@ -147,7 +153,10 @@ data class RecordingConfig(
     val micAudioGain: Float = 1.25f,
     val audioDuckingEnabled: Boolean = true,
     val noiseGateEnabled: Boolean = true,
-    val showFloatingVuMeter: Boolean = false
+    val showFloatingVuMeter: Boolean = false,
+    val imageFormat: ImageFormatOption = ImageFormatOption.PNG,
+    val imageQuality: Int = 80,
+    val imageWebpLossless: Boolean = false
 ) {
     fun getEffectiveBitrateBps(): Int = bitrateMbps * 1_000_000
 }

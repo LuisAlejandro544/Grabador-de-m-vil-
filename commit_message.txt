@@ -1,14 +1,34 @@
-feat(editor): implementar Conversor de Aspect Ratio 1-Toque (TikTok 9:16/Shorts/Reels) y Herramienta de División (Split Tool)
+feat(capture): implementar Protección contra Corrupción de Archivo (Graceful Finalize) y Monitor de Espacio en Disco en Tiempo Real
 
-- Añadir Conversor de Relación de Aspecto (1-Tap Aspect Ratio Converter) en el VideoEditorManager y VideoEditorDialog:
-  * Soporte para formatos 9:16 (TikTok/Reels/Shorts), 16:9 (YouTube/Landscape), 1:1 (Instagram Feed), 4:5 (Portrait) y 4:3 (Classic/Tablet).
-  * Modos de encuadre y ajuste seleccionables: Desenfoque de fondo Blur cinemático, Llenar pantalla (Crop central) y Barras negras (Letterbox).
-  * Monitor de previsualización en tiempo real adaptable según el aspect ratio activo con renderizado y exportación acelerada por hardware.
-- Implementar Herramienta de División de Video (Split Tool):
-  * Permite cortar y separar el video en 2 archivos MP4 independientes en la posición exacta del cabezal de reproducción (Playhead).
-  * División ultra-rápida mediante Lossless Stream-Copy a nivel de contenedor MP4 (MediaMuxer y NDK FFmpeg) sin recodificar ni perder calidad de frames a 60 FPS.
-  * Diálogo de confirmación y resumen de duración de ambas partes antes de procesar.
-- Ampliar el motor nativo en C++ (ffmpeg_engine.hpp / ffmpeg_engine.cpp / obs_core.cpp) y Rust (lib.rs / NativeRustNetwork.kt):
-  * Puentes JNI para `nativeSplitVideo` y `nativeConvertAspectRatio`.
-  * Algoritmo en Rust `rustCalculateTargetDimensions` para empaquetado y cálculo seguro de dimensiones de video.
-- Actualizar la interfaz de usuario en Compose VideoEditorDialog con barra de chips táctiles de Aspect Ratio, selector de modo de fondo Blur y botón de acción directa "Dividir ✂️".
+- Implementar Protección contra Corrupción de Archivo (Graceful Finalize):
+  * Cierre seguro y sincronizado de MediaMuxer en MuxerManager garantizando la escritura adecuada del encabezado/átomo 'moov' y evitando archivos MP4 dañados.
+  * Añadir salvaguarda automática ante eventos críticos del sistema en ScreenRecordService:
+    - BroadcastReceiver para `Intent.ACTION_BATTERY_LOW` (batería crítica) y `Intent.ACTION_DEVICE_STORAGE_LOW` (almacenamiento lleno).
+    - Manejador de `onTaskRemoved` para finalizar y guardar la grabación activa si el usuario cierra la aplicación desde la vista de multitarea / recientes.
+    - Manejador de `onTrimMemory` ante presión extrema de memoria RAM en el dispositivo.
+    - Registro de JVM Shutdown Hook en ScreenCaptureEngine como salvaguarda final ante detención forzada del proceso.
+  * Validación de integridad del archivo MP4 resultante y escaneo automático en MediaStore.
+
+- Integrar Monitor de Espacio en Disco en Tiempo Real:
+  * Crear `StorageMonitorHelper` y modelo `StorageSpaceInfo`:
+    - Detección precisa de bytes disponibles, bytes totales y porcentaje de ocupación en el volumen de almacenamiento de grabaciones.
+    - Cálculo dinámico del tiempo estimado de grabación restante en horas/minutos según la tasa de bits (bitrate) configurada.
+    - Definición de umbrales preventivos: Advertencia de espacio bajo (< 1 GB) y Parada de Emergencia (< 150 MB).
+  * Verificación periódica activa cada 4 segundos dentro del bucle del cronómetro de grabación en ScreenRecordService.
+  * Crear componente Material 3 `DiskStorageMonitorCard`:
+    - Barra de progreso reactiva con código de colores según nivel de ocupación (Verde estándar, Ámbar advertencia, Rojo crítico).
+    - Chips informativos con tiempo restante estimado (`~ Xh Ym`) y distintivo de Protección Anti-Corrupción Activa.
+    - Botón de actualización rápida y panel de alerta animado ante espacio reducido.
+  * Conexión reactiva en `RecordViewModel`, `RecordTab` y `HomeScreen`.
+
+- Añadir Selector de Formato y Compresión de Imagen (Screenshots / Capturas):
+  * Crear modelo `ImageFormatOption` (PNG sin pérdida, JPEG con calidad configurable 10-100%, WebP lossy/lossless).
+  * Crear componente Material 3 `ImageFormatSettingsCard` con slider interactivo de calidad %, presets rápidos (50%, 70%, 80% recomendado, 90%, 100%), switch de WebP Lossless y resumen de ventajas de compresión.
+  * Actualizar `ScreenshotHelper` y `SettingsRepository` para guardar instantáneas con el formato, compresión y extensión especificada (`.png`, `.jpg`, `.webp`) y emitir feedback detallado al usuario.
+  * Integrar controles reactivos en `SettingsView`, `HomeScreen` y `RecordViewModel`.
+
+- Configurar Despliegue Automatizado a Telegram en CI/CD (GitHub Actions):
+  * Modificar `.github/workflows/build-apk.yml` para sustituir la subida como artefacto por el empaquetado en archivo `.7z` Ultra Comprimido (LZMA2 nivel 9) y su envío directo a Telegram vía Bot API (`sendDocument`).
+  * Optimización máxima de transferencia para conexiones lentas o móviles, reportando tamaño original vs tamaño comprimido y guía de extracción.
+  * Soporte de almacenamiento de hasta 2 GB por archivo y notificación automática con formato HTML (nombre del archivo, hash/mensaje del commit y fecha de compilación).
+

@@ -50,8 +50,23 @@ class ScreenCaptureEngine(private val context: Context) {
     val hasAudioTrack: Boolean get() = audioPipelineModule?.hasAudio ?: false
     val activeProjection: MediaProjection? get() = mediaProjection
 
+    private val stopLock = Any()
+    private val shutdownHook = Thread {
+        try {
+            if (isRecordingInternal.get()) {
+                Log.w(TAG, "JVM Shutdown hook activado: ejecutando salvaguarda y cierre ordenado de grabación MP4...")
+                stopCapture()
+            }
+        } catch (t: Throwable) {
+            Log.e(TAG, "Error en shutdown hook de ScreenCaptureEngine: ${t.message}")
+        }
+    }
+
     init {
         mediaProjectionManager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as? MediaProjectionManager
+        try {
+            Runtime.getRuntime().addShutdownHook(shutdownHook)
+        } catch (_: Exception) {}
     }
 
     fun toggleMicMute(): Boolean {
@@ -260,24 +275,32 @@ class ScreenCaptureEngine(private val context: Context) {
         )
     }
 
-    fun stopCapture(): File? {
+    fun stopCapture(): File? = synchronized(stopLock) {
         val savedFile = currentOutputFile
         try {
+            if (!isRecordingInternal.get() && virtualDisplay == null && videoEncoderModule == null) {
+                return savedFile
+            }
             isRecordingInternal.set(false)
             isPausedInternal.set(false)
 
             videoEncoderModule?.stopWorker()
             audioPipelineModule?.stopWorker()
             muxerManager?.stopAndRelease()
+            Log.i(TAG, "Captura detenida con éxito. Archivo de salida: ${savedFile?.absolutePath}")
         } catch (e: Exception) {
-            Log.e(TAG, "Error deteniendo captura: ${e.message}", e)
+            Log.e(TAG, "Error durante el cierre ordenado de captura: ${e.message}", e)
         } finally {
-            release()
+            releaseInternal()
         }
         return savedFile
     }
 
-    fun release() {
+    fun release() = synchronized(stopLock) {
+        releaseInternal()
+    }
+
+    private fun releaseInternal() {
         isRecordingInternal.set(false)
         isPausedInternal.set(false)
 

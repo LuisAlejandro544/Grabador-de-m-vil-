@@ -160,6 +160,7 @@ fun HomeScreen(
                     status = uiState.status,
                     elapsedSeconds = uiState.elapsedSeconds,
                     countdownNumber = uiState.countdownNumber,
+                    storageInfo = uiState.storageInfo,
                     videos = uiState.videos,
                     onStartClick = { requestStartRecording() },
                     onStopClick = { viewModel.stopRecording() },
@@ -167,6 +168,7 @@ fun HomeScreen(
                     onResumeClick = { viewModel.resumeRecording() },
                     onCancelCountdown = { viewModel.cancelCountdown() },
                     onToggleGameMode = { viewModel.toggleGameMode(it) },
+                    onRefreshStorage = { viewModel.refreshStorageInfo() },
                     onViewAllVideos = {
                         viewModel.setActiveTab(1)
                         viewModel.loadVideos()
@@ -203,6 +205,9 @@ fun HomeScreen(
                     onUpdateFps = { viewModel.updateFps(it) },
                     onUpdateBitrate = { viewModel.updateBitrate(it) },
                     onUpdateBitrateMbps = { viewModel.updateBitrateMbps(it) },
+                    onUpdateImageFormat = { viewModel.updateImageFormat(it) },
+                    onUpdateImageQuality = { viewModel.updateImageQuality(it) },
+                    onToggleImageWebpLossless = { viewModel.toggleWebpLossless(it) },
                     onUpdateAudioSource = { viewModel.updateAudioSource(it) },
                     onUpdateAudioSampleRate = { viewModel.updateAudioSampleRate(it) },
                     onToggleFloatingVuMeter = { viewModel.toggleFloatingVuMeter(it) },

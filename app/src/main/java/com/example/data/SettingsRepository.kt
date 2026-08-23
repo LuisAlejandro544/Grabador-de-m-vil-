@@ -162,6 +162,15 @@ class SettingsRepository(context: Context) {
         val noiseGate = prefs.getBoolean(KEY_NOISE_GATE, true)
         val showVuMeter = prefs.getBoolean(KEY_SHOW_FLOATING_VU_METER, false)
 
+        val imgFormatName = prefs.getString(KEY_IMAGE_FORMAT, com.example.model.ImageFormatOption.PNG.name)
+        val imageFormat = try {
+            com.example.model.ImageFormatOption.valueOf(imgFormatName ?: com.example.model.ImageFormatOption.PNG.name)
+        } catch (e: Exception) {
+            com.example.model.ImageFormatOption.PNG
+        }
+        val imageQuality = prefs.getInt(KEY_IMAGE_QUALITY, 80).coerceIn(10, 100)
+        val imageWebpLossless = prefs.getBoolean(KEY_IMAGE_WEBP_LOSSLESS, false)
+
         return RecordingConfig(
             resolution = resolution,
             fps = fps,
@@ -206,7 +215,10 @@ class SettingsRepository(context: Context) {
             micAudioGain = micGain,
             audioDuckingEnabled = audioDucking,
             noiseGateEnabled = noiseGate,
-            showFloatingVuMeter = showVuMeter
+            showFloatingVuMeter = showVuMeter,
+            imageFormat = imageFormat,
+            imageQuality = imageQuality,
+            imageWebpLossless = imageWebpLossless
         )
     }
 
@@ -256,9 +268,28 @@ class SettingsRepository(context: Context) {
             putBoolean(KEY_AUDIO_DUCKING, config.audioDuckingEnabled)
             putBoolean(KEY_NOISE_GATE, config.noiseGateEnabled)
             putBoolean(KEY_SHOW_FLOATING_VU_METER, config.showFloatingVuMeter)
+            putString(KEY_IMAGE_FORMAT, config.imageFormat.name)
+            putInt(KEY_IMAGE_QUALITY, config.imageQuality)
+            putBoolean(KEY_IMAGE_WEBP_LOSSLESS, config.imageWebpLossless)
             apply()
         }
         _configFlow.value = config
+    }
+
+    fun updateImageFormat(format: com.example.model.ImageFormatOption) {
+        val updated = _configFlow.value.copy(imageFormat = format)
+        saveConfig(updated)
+    }
+
+    fun updateImageQuality(quality: Int) {
+        val clamped = quality.coerceIn(10, 100)
+        val updated = _configFlow.value.copy(imageQuality = clamped)
+        saveConfig(updated)
+    }
+
+    fun toggleImageWebpLossless(lossless: Boolean) {
+        val updated = _configFlow.value.copy(imageWebpLossless = lossless)
+        saveConfig(updated)
     }
 
     fun updateGameAudioGain(gain: Float) {
@@ -587,5 +618,8 @@ class SettingsRepository(context: Context) {
         private const val KEY_AUDIO_DUCKING = "pref_audio_ducking"
         private const val KEY_NOISE_GATE = "pref_noise_gate"
         private const val KEY_SHOW_FLOATING_VU_METER = "pref_show_floating_vu_meter"
+        private const val KEY_IMAGE_FORMAT = "pref_image_format"
+        private const val KEY_IMAGE_QUALITY = "pref_image_quality"
+        private const val KEY_IMAGE_WEBP_LOSSLESS = "pref_image_webp_lossless"
     }
 }

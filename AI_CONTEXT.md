@@ -36,7 +36,10 @@ Este documento mantiene el estado de desarrollo, decisiones de arquitectura y ma
   * Función `rustCalculateTargetDimensions` para empaquetado seguro y cálculo de resoluciones de aspect ratio de video.
 
 ### 4. Overlays Flotantes y Servicios en Segundo Plano
-- `ScreenRecordService.kt`: Servicio principal en primer plano para captura mediante `MediaProjection`.
+- `ScreenRecordService.kt`: Servicio principal en primer plano para captura mediante `MediaProjection`. Posee salvaguardas reactivas contra batería baja (`ACTION_BATTERY_LOW`), almacenamiento lleno (`ACTION_DEVICE_STORAGE_LOW`), `onTaskRemoved` y `onTrimMemory`.
+- `ScreenCaptureEngine.kt` & `MuxerManager.kt`: Coordinación de codificadores con **Protección contra Corrupción de Archivo (Graceful Finalize)**, asegurando la escritura del átomo `moov` y cierre de pistas en contenedores MP4 con JVM Shutdown Hook.
+- `StorageMonitorHelper.kt` & `DiskStorageMonitorCard.kt`: Monitorización de espacio en disco en tiempo real con estimación de tiempo de grabación restante según la tasa de bits y alerta visual interactiva.
+- `ScreenshotHelper.kt` & `ImageFormatSettingsCard.kt`: Selector y motor de compresión multiformato para capturas de pantalla (PNG sin pérdida, JPEG 10-100% configurable, WebP lossy y WebP lossless), integrado en `SettingsRepository`.
 - `FacecamOverlayManager.kt`: Cámara frontal/trasera con CameraX, FPS configurable (30-60 FPS), marco RGB animado y filtro de belleza.
 - `VtuberOverlayManager.kt`: Avatar 2D reactivo a voz y parpadeo ocular automático.
 - `FloatingVuMeterManager.kt`: Vúmetro LED en vivo y mezclador de volumen flotante con control de ganancia.
@@ -46,6 +49,7 @@ Este documento mantiene el estado de desarrollo, decisiones de arquitectura y ma
 ---
 
 ## 🎯 Reglas de Calidad y Rendimiento
+- **Protección Anti-Corrupción Garantizada:** Ninguna interrupción de batería, espacio o cierre de multitarea deja un archivo MP4 corrupto o ilegible.
 - **60 FPS constantes:** Interfaz Jetpack Compose reactiva con `StateFlow` y sin bloqueos en el hilo principal.
 - **Independencia:** Cero dependencias de Google Play Services para permitir distribución en Uptodown y tiendas de terceros.
 - **Almacenamiento Público:** Los videos recortados, divididos y miniaturas se registran automáticamente en `MediaStore` / `MediaScannerConnection`.

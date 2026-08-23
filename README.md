@@ -24,6 +24,18 @@
   - Tira dinámica de fotogramas (*Filmstrip*) generada en segundo plano con marcadores táctiles de entrada/salida (*Dual RangeSlider*) y cursor de tiempo en tiempo real.
 
 ### 🎮 Grabación y Rendimiento Gamer
+- **🖼️ Selector y Compresor de Imagen (PNG / JPG % / WebP):**
+  - Configura el formato exacto de las capturas de pantalla tomadas durante el juego o desde el menú de la app.
+  - **PNG:** Calidad máxima sin pérdida fotograma a fotograma.
+  - **JPEG Personalizable (10% - 100%):** Ahorra hasta un 70% de espacio eligiendo compresiones equilibradas (como 80% recomendado).
+  - **WebP:** Formato de última generación con soporte para compresión con pérdida y compresión pura sin pérdida (*WebP Lossless*).
+- **🛡️ Protección contra Corrupción de Archivo (Graceful Finalize):**
+  - Cierre seguro del contenedor MP4 y escritura garantizada del átomo `moov` ante batería baja, falta de almacenamiento, cierre de la app desde multitarea (`onTaskRemoved`) o presión extrema de memoria RAM.
+  - Salvaguarda mediante JVM Shutdown Hook para evitar la pérdida o corrupción de videos de partidas largas.
+- **💾 Monitor de Espacio en Disco en Tiempo Real:**
+  - Tarjeta de almacenamiento con barra de progreso reactiva en colores (Verde / Ámbar / Rojo).
+  - Cálculo dinámico de horas/minutos restantes de grabación según el bitrate de video configurado.
+  - Salvaguarda automática preventiva si el espacio restante desciende del umbral de seguridad (150 MB).
 - **🎮 Modo Optimizado para Juegos:** Configuración instantánea a 1080p Full HD, 60 FPS y 12 Mbps con un solo toque.
 - **⚡ Tasa de Bits Personalizada (1 - 12 Mbps):** Control milimétrico de bitrate mediante un deslizador interactivo con saltos enteros y botones de acceso rápido (1M, 2M, 4M, 6M, 8M, 10M, 12M).
 - **✨ Filtro de Belleza & Suavizado de Piel:** Capa de post-procesado facial que atenúa imperfecciones, suaviza texturas y balancea la luminosidad del rostro.
@@ -66,3 +78,22 @@ vortex-studio/
 - **100% Autónomo y Autosuficiente:** No depende de Google Play Services ni servicios propietarios, ideal para distribución directa en APK, Uptodown o tiendas de terceros.
 - **Jetpack Compose + Material Design 3:** Interfaz fluida a 60 FPS.
 - **Android 8.0 (API 26) o superior.**
+
+---
+
+## 🤖 CI/CD y Despliegue Automatizado a Telegram (Ultra Comprimido .7z)
+
+El proyecto cuenta con un workflow de GitHub Actions (`.github/workflows/build-apk.yml`) que compila de forma nativa todo el código C++ (NDK), Rust (Cargo NDK) y Kotlin, empaqueta el APK en un archivo `.7z` con **Compresión Ultra LZMA2 (Nivel 9)** para ahorrar hasta 50-70% de datos en la descarga móvil, y lo envía directamente a un chat o canal de **Telegram** (con capacidad de hasta 2 GB por archivo).
+
+### 🔑 Secretos requeridos en el repositorio de GitHub:
+Para activar el envío a Telegram, añade las siguientes variables en **Settings -> Secrets and variables -> Actions**:
+| Secreto | Descripción | Ejemplo |
+|---|---|---|
+| `TELEGRAM_BOT_TOKEN` | Token de acceso de tu Bot de Telegram creado con [@BotFather](https://t.me/BotFather) | `123456789:ABCdefGhIJKlmNoPQRstuVWXyz` |
+| `TELEGRAM_CHAT_ID` | ID numérico de tu chat privado, grupo o canal donde se entregará el APK | `987654321` o `-100123456789` |
+
+### 📱 Cómo instalar desde tu teléfono:
+1. Descarga el archivo `Vortex-Studio-Debug-UltraCompressed.7z` adjunto en tu chat de Telegram.
+2. Ábrelo con **ZArchiver** (o el explorador de archivos integrado de tu teléfono).
+3. Extrae e instala el archivo APK con 1 toque.
+

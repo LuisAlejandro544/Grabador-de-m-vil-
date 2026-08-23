@@ -148,11 +148,70 @@ jobs:
           echo "=== APKs generados con éxito ==="
           ls -la app/build/outputs/apk/debug/
 
-      - name: 🚀 Subir APK como Artefacto descargable
-        uses: actions/upload-artifact@v4
-        with:
-          name: Vortex-Studio-Debug-APK
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-          retention-days: 30
+      - name: 🗜️ Comprimir APK en formato 7z Ultra (Máxima Compresión LZMA2)
+        run: |
+          echo "=== Instalando 7z y comprimiendo APK con nivel máximo ==="
+          sudo apt-get update -y && sudo apt-get install -y p7zip-full
+          
+          APK_PATH=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+          if [ -z "$APK_PATH" ] || [ ! -f "$APK_PATH" ]; then
+            echo "❌ Error: No se encontró ningún archivo APK generado en app/build/outputs/apk/debug/"
+            exit 1
+          fi
+
+          APK_ORIGINAL_SIZE=$(du -h "$APK_PATH" | cut -f1)
+          echo "APK Original ($APK_ORIGINAL_SIZE): $APK_PATH"
+
+          # Compresión Ultra LZMA2
+          ARCHIVE_NAME="Vortex-Studio-Debug-UltraCompressed.7z"
+          7z a -t7z -m0=lzma2 -mx=9 -mfb=64 -md=64m -ms=on "$ARCHIVE_NAME" "$APK_PATH"
+
+          ARCHIVE_SIZE=$(du -h "$ARCHIVE_NAME" | cut -f1)
+          echo "=== Archivo 7z Ultra Comprimido generado: $ARCHIVE_NAME ($ARCHIVE_SIZE) ==="
+          ls -lh "$ARCHIVE_NAME"
+
+      - name: ✈️ Enviar 7z Ultra Comprimido a Telegram (Bot API - Ahorro de Datos)
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          echo "=== Preparando envío de 7z a Telegram ==="
+          ARCHIVE_PATH="Vortex-Studio-Debug-UltraCompressed.7z"
+          APK_PATH=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+
+          if [ ! -f "$ARCHIVE_PATH" ]; then
+            echo "❌ Error: No se encontró el archivo $ARCHIVE_PATH"
+            exit 1
+          fi
+
+          APK_NAME=$(basename "$APK_PATH")
+          ORIGINAL_SIZE=$(du -h "$APK_PATH" | cut -f1)
+          ARCHIVE_SIZE=$(du -h "$ARCHIVE_PATH" | cut -f1)
+          COMMIT_MSG=$(git log -1 --pretty=%B | head -n 1)
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "⚠️ Advertencia: TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID no están configurados en los GitHub Secrets."
+            echo "Por favor agrega estos secretos en Settings -> Secrets and variables -> Actions de tu repositorio."
+            exit 1
+          fi
+
+          CAPTION="🚀 <b>Vortex Studio - Nueva Compilación Debug</b>%0A%0A📦 <b>Paquete Ultra Comprimido:</b> <code>$ARCHIVE_PATH</code>%0A📱 <b>APK Interno:</b> <code>$APK_NAME</code>%0A🗜️ <b>Tamaño 7z:</b> <b>${ARCHIVE_SIZE}</b> <i>(Original: ${ORIGINAL_SIZE})</i>%0A🔖 <b>Commit:</b> <code>$COMMIT_HASH</code> - $COMMIT_MSG%0A🕒 <b>Fecha:</b> $(date '+%Y-%m-%d %H:%M:%S UTC')%0A%0A💡 <i>Descomprime el archivo .7z en tu teléfono usando ZArchiver o tu gestor de archivos favorito e instala el APK.</i>"
+
+          echo "Enviando archivo 7z a Telegram..."
+          RESPONSE=$(curl -s -v -F chat_id="$TELEGRAM_CHAT_ID" \
+               -F document=@"$ARCHIVE_PATH" \
+               -F caption="$CAPTION" \
+               -F parse_mode="HTML" \
+               "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument")
+
+          echo "Respuesta de Telegram API: $RESPONSE"
+
+          if echo "$RESPONSE" | grep -q '"ok":true'; then
+            echo "✅ Archivo 7z enviado exitosamente a Telegram."
+          else
+            echo "❌ Error al enviar el archivo a Telegram. Revisa el token y el chat_id."
+            exit 1
+          fi
+
 

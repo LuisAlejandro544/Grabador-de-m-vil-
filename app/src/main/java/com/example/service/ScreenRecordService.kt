@@ -1,12 +1,16 @@
 package com.example.service
 
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import com.example.data.SettingsRepository
+import com.example.data.StorageMonitorHelper
 import com.example.model.AudioSourceType
 import com.example.model.RecordingStatus
 import com.example.service.overlay.ServiceOverlayCoordinator
@@ -24,6 +28,7 @@ import java.io.File
  * Servicio en primer plano modular y desacoplado para la grabación de pantalla.
  * Coordina [ScreenCaptureEngine], [RecordNotificationHelper], [RecordStorageHelper]
  * y delega el ciclo de vida de interfaces flotantes a [ServiceOverlayCoordinator].
+ * Cuenta con Protección contra Corrupción de Archivo (Graceful Finalize) ante batería baja o falta de espacio.
  */
 class ScreenRecordService : Service() {
 
@@ -112,6 +117,24 @@ class ScreenRecordService : Service() {
     private var currentRecWidth = 1080
     private var currentRecHeight = 1920
     private var currentDensityDpi = 480
+    private var isReceiverRegistered = false
+
+    private val emergencyBroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                Intent.ACTION_BATTERY_LOW -> {
+                    Log.w(TAG, "Alerta del sistema: Batería crítica baja. Ejecutando Graceful Finalize de grabación...")
+                    _errorMessage.value = "Grabación salvaguardada por batería baja del dispositivo."
+                    handleStopAction()
+                }
+                Intent.ACTION_DEVICE_STORAGE_LOW -> {
+                    Log.w(TAG, "Alerta del sistema: Almacenamiento casi lleno. Ejecutando Graceful Finalize de grabación...")
+                    _errorMessage.value = "Grabación salvaguardada por falta de espacio en almacenamiento."
+                    handleStopAction()
+                }
+            }
+        }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -146,6 +169,31 @@ class ScreenRecordService : Service() {
         )
 
         observeSettingsChanges()
+        registerEmergencyReceivers()
+    }
+
+    private fun registerEmergencyReceivers() {
+        if (!isReceiverRegistered) {
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_BATTERY_LOW)
+                addAction(Intent.ACTION_DEVICE_STORAGE_LOW)
+            }
+            try {
+                registerReceiver(emergencyBroadcastReceiver, filter)
+                isReceiverRegistered = true
+            } catch (e: Exception) {
+                Log.w(TAG, "No se pudo registrar emergency receiver: ${e.message}")
+            }
+        }
+    }
+
+    private fun unregisterEmergencyReceivers() {
+        if (isReceiverRegistered) {
+            try {
+                unregisterReceiver(emergencyBroadcastReceiver)
+            } catch (_: Exception) {}
+            isReceiverRegistered = false
+        }
     }
 
     private fun observeSettingsChanges() {
@@ -402,6 +450,7 @@ class ScreenRecordService : Service() {
     private fun startChronometerTimer() {
         timerJob?.cancel()
         timerJob = serviceScope.launch {
+            var checkStorageCounter = 0
             while (isActive) {
                 delay(1000)
                 if (captureEngine.isRecording && !captureEngine.isPaused) {
@@ -413,13 +462,37 @@ class ScreenRecordService : Service() {
                         isPaused = false,
                         isMicrophoneEnabled = !captureEngine.isMicrophoneMuted
                     )
+
+                    // Monitor de espacio en disco en tiempo real durante la grabación activa
+                    checkStorageCounter++
+                    if (checkStorageCounter >= 4) {
+                        checkStorageCounter = 0
+                        checkDiskSpaceSafeguard()
+                    }
                 }
             }
         }
     }
 
+    private fun checkDiskSpaceSafeguard() {
+        try {
+            val storageInfo = StorageMonitorHelper.queryStorageInfo(
+                context = this,
+                bitrateBps = settingsRepository.getConfig().bitrate.bps
+            )
+            if (storageInfo.availableBytes <= StorageMonitorHelper.EMERGENCY_STOP_THRESHOLD_BYTES) {
+                Log.w(TAG, "¡EMERGENCIA! Espacio crítico alcanzado (${storageInfo.formattedAvailable}). Salvaguardando MP4...")
+                _errorMessage.value = "Grabación salvada: Espacio en disco casi lleno (${storageInfo.formattedAvailable} restantes)."
+                handleStopAction()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error verificando espacio en disco: ${e.message}")
+        }
+    }
+
     private fun cleanupAndStop() {
         timerJob?.cancel()
+        unregisterEmergencyReceivers()
         if (::overlayCoordinator.isInitialized) {
             overlayCoordinator.dismissAll()
         }
@@ -431,8 +504,28 @@ class ScreenRecordService : Service() {
         stopSelf()
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        Log.w(TAG, "onTaskRemoved invocado: verificando y salvaguardando grabación activa...")
+        if (isRecording()) {
+            handleStopAction()
+        }
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL) {
+            Log.w(TAG, "onTrimMemory crítico ($level): protegiendo búferes de grabación")
+        }
+    }
+
     override fun onDestroy() {
-        cleanupAndStop()
+        unregisterEmergencyReceivers()
+        if (isRecording()) {
+            handleStopAction()
+        } else {
+            cleanupAndStop()
+        }
         super.onDestroy()
     }
 }

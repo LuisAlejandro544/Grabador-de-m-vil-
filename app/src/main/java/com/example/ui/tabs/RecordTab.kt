@@ -28,14 +28,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.StorageSpaceInfo
 import com.example.model.RecordedVideo
 import com.example.model.RecordingConfig
 import com.example.model.RecordingStatus
+import com.example.ui.components.DiskStorageMonitorCard
 import com.example.ui.components.RecordControlCard
 import com.example.ui.components.VideoItemCard
 
 /**
- * Pestaña modular principal de Grabación con controles de captura, guía rápida y grabaciones recientes.
+ * Pestaña modular principal de Grabación con controles de captura, monitor de espacio en disco, guía rápida y grabaciones recientes.
  */
 @Composable
 fun RecordTab(
@@ -43,6 +45,7 @@ fun RecordTab(
     status: RecordingStatus,
     elapsedSeconds: Int,
     countdownNumber: Int,
+    storageInfo: StorageSpaceInfo = StorageSpaceInfo(),
     videos: List<RecordedVideo>,
     onStartClick: () -> Unit,
     onStopClick: () -> Unit,
@@ -50,6 +53,7 @@ fun RecordTab(
     onResumeClick: () -> Unit,
     onCancelCountdown: () -> Unit,
     onToggleGameMode: (Boolean) -> Unit,
+    onRefreshStorage: () -> Unit = {},
     onViewAllVideos: () -> Unit,
     onPlayVideo: (RecordedVideo) -> Unit,
     onShareVideo: (RecordedVideo) -> Unit,
@@ -79,7 +83,15 @@ fun RecordTab(
             )
         }
 
-        // 2. Tarjeta de Consejos rápidos
+        // 2. Tarjeta de Monitor de Almacenamiento y Tiempo Restante
+        item {
+            DiskStorageMonitorCard(
+                storageInfo = storageInfo,
+                onRefresh = onRefreshStorage
+            )
+        }
+
+        // 3. Tarjeta de Consejos rápidos
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),

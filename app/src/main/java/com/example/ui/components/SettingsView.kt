@@ -35,6 +35,7 @@ import com.example.ui.components.settings.CountdownSettingsCard
 import com.example.ui.components.settings.FacecamSettingsCard
 import com.example.ui.components.settings.FloatingBubbleSettingsCard
 import com.example.ui.components.settings.GameModeCard
+import com.example.ui.components.settings.ImageFormatSettingsCard
 import com.example.ui.components.settings.NativeModulesStatusCard
 import com.example.ui.components.settings.SceneOverlaySettingsCard
 import com.example.ui.components.settings.TouchVisualizerSettingsCard
@@ -53,6 +54,9 @@ fun SettingsView(
     onUpdateFps: (VideoFps) -> Unit,
     onUpdateBitrate: (VideoBitrate) -> Unit,
     onUpdateBitrateMbps: (Int) -> Unit = {},
+    onUpdateImageFormat: (com.example.model.ImageFormatOption) -> Unit = {},
+    onUpdateImageQuality: (Int) -> Unit = {},
+    onToggleImageWebpLossless: (Boolean) -> Unit = {},
     onUpdateAudioSource: (AudioSourceType) -> Unit,
     onUpdateAudioSampleRate: (AudioSampleRate) -> Unit = {},
     onToggleFloatingVuMeter: (Boolean) -> Unit = {},
@@ -193,6 +197,16 @@ fun SettingsView(
             onUpdateFps = onUpdateFps,
             onUpdateBitrate = onUpdateBitrate,
             onUpdateBitrateMbps = onUpdateBitrateMbps
+        )
+
+        // Formato y Compresión de Imagen / Screenshots (PNG, JPG %, WebP)
+        ImageFormatSettingsCard(
+            imageFormat = config.imageFormat,
+            imageQuality = config.imageQuality,
+            imageWebpLossless = config.imageWebpLossless,
+            onUpdateImageFormat = onUpdateImageFormat,
+            onUpdateImageQuality = onUpdateImageQuality,
+            onToggleWebpLossless = onToggleImageWebpLossless
         )
 
         // Fuente de Audio y Frecuencia de Muestreo (Sample Rate)

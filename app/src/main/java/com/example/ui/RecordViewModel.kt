@@ -9,6 +9,8 @@ import com.example.data.InstalledAppItem
 import com.example.data.InstalledGamesHelper
 import com.example.data.RecordingsRepository
 import com.example.data.SettingsRepository
+import com.example.data.StorageMonitorHelper
+import com.example.data.StorageSpaceInfo
 import com.example.model.AudioSampleRate
 import com.example.model.AudioSourceType
 import com.example.model.FacecamFps
@@ -33,6 +35,7 @@ data class UiState(
     val elapsedSeconds: Int = 0,
     val countdownNumber: Int = 0,
     val isCountingDown: Boolean = false,
+    val storageInfo: StorageSpaceInfo = StorageSpaceInfo(),
     val videos: List<RecordedVideo> = emptyList(),
     val isLoadingVideos: Boolean = false,
     val selectedVideoForPlay: RecordedVideo? = null,
@@ -56,6 +59,9 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     private val countdownManager = RecordCountdownManager(application, viewModelScope)
 
     private val _config = MutableStateFlow(settingsRepository.getConfig())
+    private val _storageInfo = MutableStateFlow(
+        StorageMonitorHelper.queryStorageInfo(application, _config.value.bitrate.bps)
+    )
     private val _videos = MutableStateFlow<List<RecordedVideo>>(emptyList())
     private val _isLoadingVideos = MutableStateFlow(false)
     private val _selectedVideoForPlay = MutableStateFlow<RecordedVideo?>(null)
@@ -71,16 +77,16 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         combine(_config, ScreenRecordService.recordingState, ScreenRecordService.elapsedSeconds, countdownManager.countdownNumber) { config, state, elapsed, cd ->
             Quadruple(config, state, elapsed, cd)
         },
-        combine(countdownManager.isCountingDown, _videos, _isLoadingVideos, combine(_selectedVideoForPlay, _selectedVideoForEdit) { play, edit -> Pair(play, edit) }) { isCd, vids, loadingVids, playEditPair ->
-            Quadruple(isCd, vids, loadingVids, playEditPair)
+        combine(countdownManager.isCountingDown, _storageInfo, _videos, combine(_isLoadingVideos, _selectedVideoForPlay, _selectedVideoForEdit) { lVids, play, edit -> Triple(lVids, play, edit) }) { isCd, storage, vids, extra ->
+            Quadruple(isCd, storage, vids, extra)
         },
         combine(_installedGames, _isLoadingGames, ScreenRecordService.errorMessage, combine(_infoMessage, _activeTab) { info, tab -> Pair(info, tab) }) { games, loadingGames, err, infoTab ->
             Quadruple(games, loadingGames, err, infoTab)
         }
     ) { group1, group2, group3 ->
         val (config, serviceState, elapsed, countdown) = group1
-        val (isCountingDown, videos, isLoadingVideos, playEditPair) = group2
-        val (selectedVideo, selectedVideoForEdit) = playEditPair
+        val (isCountingDown, storage, videos, extra) = group2
+        val (isLoadingVideos, selectedVideo, selectedVideoForEdit) = extra
         val (games, loadingGames, serviceError, infoTab) = group3
         val (infoMessage, activeTab) = infoTab
 
@@ -92,6 +98,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             elapsedSeconds = elapsed,
             countdownNumber = countdown,
             isCountingDown = isCountingDown,
+            storageInfo = storage,
             videos = videos,
             isLoadingVideos = isLoadingVideos,
             selectedVideoForPlay = selectedVideo,
@@ -107,11 +114,13 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     init {
         loadVideos()
         loadInstalledGames()
+        refreshStorageInfo()
 
         // Sincronizar reactivamente los cambios en la configuración persistida
         viewModelScope.launch {
             settingsRepository.configFlow.collect { persistentConfig ->
                 _config.value = persistentConfig
+                refreshStorageInfo()
             }
         }
 
@@ -119,9 +128,20 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             ScreenRecordService.lastSavedFilePath.collect { savedPath ->
                 if (savedPath != null) {
                     loadVideos()
+                    refreshStorageInfo()
                     _infoMessage.value = "¡Grabación guardada con éxito!"
                 }
             }
+        }
+    }
+
+    fun refreshStorageInfo() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val info = StorageMonitorHelper.queryStorageInfo(
+                getApplication(),
+                _config.value.bitrate.bps
+            )
+            _storageInfo.value = info
         }
     }
 
@@ -203,6 +223,18 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateCountdown(seconds: Int) {
         settingsRepository.updateCountdown(seconds)
+    }
+
+    fun updateImageFormat(format: com.example.model.ImageFormatOption) {
+        settingsRepository.updateImageFormat(format)
+    }
+
+    fun updateImageQuality(quality: Int) {
+        settingsRepository.updateImageQuality(quality)
+    }
+
+    fun toggleWebpLossless(lossless: Boolean) {
+        settingsRepository.toggleImageWebpLossless(lossless)
     }
 
     fun toggleFloatingBubble(enabled: Boolean) {

@@ -15,6 +15,8 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
+import com.example.data.SettingsRepository
+import com.example.model.ImageFormatOption
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -24,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Asistente modular para captura de instantáneas (Screenshots) durante la grabación o uso de la app.
- * Soporta captura directa en memoria mediante ImageReader sobre MediaProjection y extracción de respaldo.
+ * Soporta compresión configurable en PNG (sin pérdida), JPEG (calidad 10-100%) y WebP (alta eficiencia / sin pérdida).
  */
 object ScreenshotHelper {
     private const val TAG = "ScreenshotHelper"
@@ -39,6 +41,9 @@ object ScreenshotHelper {
         width: Int,
         height: Int,
         densityDpi: Int,
+        format: ImageFormatOption? = null,
+        quality: Int? = null,
+        webpLossless: Boolean? = null,
         onSuccess: (File) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -91,7 +96,15 @@ object ScreenshotHelper {
                             rawBitmap
                         }
 
-                        saveBitmapToGallery(context, finalBitmap, onSuccess, onError)
+                        saveBitmapToGallery(
+                            context = context,
+                            bitmap = finalBitmap,
+                            format = format,
+                            quality = quality,
+                            webpLossless = webpLossless,
+                            onSuccess = onSuccess,
+                            onError = onError
+                        )
                     } else {
                         onError("No se recibió ningún frame del renderizador gráfico")
                     }
@@ -127,17 +140,27 @@ object ScreenshotHelper {
     }
 
     /**
-     * Guarda un mapa de bits en el almacenamiento de imágenes (Pictures/Screenshots) y lo indexa en MediaStore.
+     * Guarda un mapa de bits en el almacenamiento de imágenes (Pictures/Screenshots) con el formato y
+     * compresión especificados, e indexa el archivo en MediaStore.
      */
     fun saveBitmapToGallery(
         context: Context,
         bitmap: Bitmap,
+        format: ImageFormatOption? = null,
+        quality: Int? = null,
+        webpLossless: Boolean? = null,
         onSuccess: (File) -> Unit,
         onError: (String) -> Unit
     ) {
         try {
+            val appConfig = SettingsRepository(context).getConfig()
+            val effectiveFormat = format ?: appConfig.imageFormat
+            val effectiveQuality = (quality ?: appConfig.imageQuality).coerceIn(10, 100)
+            val effectiveLossless = webpLossless ?: appConfig.imageWebpLossless
+
             val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-            val fileName = "OBS_SHOT_$timeStamp.png"
+            val extension = effectiveFormat.extension
+            val fileName = "OBS_SHOT_${timeStamp}.${extension}"
 
             val picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
             val screenshotsDir = File(picturesDir, "Screenshots")
@@ -153,16 +176,40 @@ object ScreenshotHelper {
 
             val imageFile = File(targetDir, fileName)
             FileOutputStream(imageFile).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                when (effectiveFormat) {
+                    ImageFormatOption.PNG -> {
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                    }
+                    ImageFormatOption.JPEG -> {
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, effectiveQuality, out)
+                    }
+                    ImageFormatOption.WEBP -> {
+                        @Suppress("DEPRECATION")
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            if (effectiveLossless) {
+                                bitmap.compress(Bitmap.CompressFormat.WEBP_LOSSLESS, 100, out)
+                            } else {
+                                bitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, effectiveQuality, out)
+                            }
+                        } else {
+                            bitmap.compress(Bitmap.CompressFormat.WEBP, if (effectiveLossless) 100 else effectiveQuality, out)
+                        }
+                    }
+                }
             }
 
             RecordStorageHelper.scanFileToMediaStore(context, imageFile)
-            Log.i(TAG, "Captura de pantalla guardada exitosamente: ${imageFile.absolutePath}")
+            val formatLabel = when (effectiveFormat) {
+                ImageFormatOption.PNG -> "PNG (100%)"
+                ImageFormatOption.JPEG -> "JPG (${effectiveQuality}%)"
+                ImageFormatOption.WEBP -> if (effectiveLossless) "WebP (Sin Pérdida)" else "WebP (${effectiveQuality}%)"
+            }
+            Log.i(TAG, "Captura guardada exitosamente ($formatLabel): ${imageFile.absolutePath} [${imageFile.length() / 1024} KB]")
 
             try {
                 onSuccess(imageFile)
                 Handler(Looper.getMainLooper()).post {
-                    Toast.makeText(context, "📸 Captura guardada en Imágenes", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "📸 Captura guardada en Imágenes ($formatLabel)", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 onSuccess(imageFile)
@@ -186,6 +233,9 @@ object ScreenshotHelper {
     fun captureFrameFromVideo(
         context: Context,
         videoFile: File,
+        format: ImageFormatOption? = null,
+        quality: Int? = null,
+        webpLossless: Boolean? = null,
         onSuccess: (File) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -201,7 +251,15 @@ object ScreenshotHelper {
             retriever.release()
 
             if (frame != null) {
-                saveBitmapToGallery(context, frame, onSuccess, onError)
+                saveBitmapToGallery(
+                    context = context,
+                    bitmap = frame,
+                    format = format,
+                    quality = quality,
+                    webpLossless = webpLossless,
+                    onSuccess = onSuccess,
+                    onError = onError
+                )
             } else {
                 onError("No se pudo obtener el frame del video")
             }

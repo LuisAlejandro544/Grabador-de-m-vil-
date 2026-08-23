@@ -23,19 +23,21 @@ vortex-studio/
 │       │   │   │   └── VideoEditorManager.kt     # Stream-Copy, Aspect Ratio 1-Tap, Split y Thumbnails
 │       │   │   ├── model/
 │       │   │   │   ├── RecordedVideo.kt
-│       │   │   │   └── RecordingConfig.kt
+│       │   │   │   └── RecordingConfig.kt        # Modelo con ImageFormatOption, Bitrate y Overlays
 │       │   │   ├── data/
 │       │   │   │   ├── InstalledGamesHelper.kt
 │       │   │   │   ├── RecordingsRepository.kt
-│       │   │   │   └── SettingsRepository.kt
+│       │   │   │   ├── SettingsRepository.kt     # Persistencia de video, audio y formato de imagen
+│       │   │   │   └── StorageMonitorHelper.kt   # Cálculo de espacio en disco y tiempo restante
 │       │   │   ├── nativecore/                   # Puentes JNI
 │       │   │   │   ├── NativeAudioDSPBridge.kt
 │       │   │   │   ├── NativeFFmpegBridge.kt
 │       │   │   │   ├── NativeOBSBridge.kt
 │       │   │   │   └── NativeRustNetwork.kt
 │       │   │   ├── service/                      # Servicio de Grabación y Overlays
-│       │   │   │   ├── ScreenRecordService.kt
-│       │   │   │   ├── ScreenCaptureEngine.kt
+│       │   │   │   ├── ScreenRecordService.kt    # Orquestador con salvaguarda por batería/espacio
+│       │   │   │   ├── ScreenCaptureEngine.kt    # Coordinador con Shutdown Hook y cierre seguro
+│       │   │   │   ├── ScreenshotHelper.kt       # Capturador multiformato (PNG, JPG % y WebP)
 │       │   │   │   ├── FacecamOverlayManager.kt
 │       │   │   │   ├── FloatingBubbleManager.kt
 │       │   │   │   ├── TouchVisualizerOverlay.kt
@@ -43,14 +45,14 @@ vortex-studio/
 │       │   │   │   ├── SceneOverlayManager.kt
 │       │   │   │   ├── vtuber/                   # Sistema de Avatar 2D / PNGtuber
 │       │   │   │   ├── vumeter/                  # Vúmetro LED y Mezclador Flotante
-│       │   │   │   └── capture/                  # Codificadores y DSP
+│       │   │   │   └── capture/                  # Codificadores, DSP y MuxerManager (Graceful Finalize)
 │       │   │   └── ui/
 │       │   │       ├── HomeScreen.kt
 │       │   │       ├── RecordViewModel.kt
 │       │   │       ├── editor/                   # UI del Editor Avanzado
 │       │   │       │   └── VideoEditorDialog.kt  # Aspect ratio chips, split tool, filmstrip
 │       │   │       ├── tabs/                     # Tabs de Grabación y Galería
-│       │   │       └── components/               # Tarjetas y controles Compose
+│       │   │       └── components/               # Tarjetas y controles Compose (DiskStorageMonitorCard, ImageFormatSettingsCard)
 │       │   └── res/                              # Recursos gráficos, iconos y estilos
 ├── AGENTS.md                   # Protocolo y roles de desarrollo
 ├── AI_CONTEXT.md               # Memoria de arquitectura del proyecto

@@ -32,9 +32,11 @@ fun SettingsCard(
     title: String,
     subtitle: String,
     icon: ImageVector,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
     Card(
+        modifier = modifier,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
