@@ -53,7 +53,8 @@ data class UiState(
     val isLoadingGames: Boolean = false,
     val errorMessage: String? = null,
     val infoMessage: String? = null,
-    val activeTab: Int = 0 // 0: Grabar, 1: Galería, 2: Juegos, 3: Ajustes
+    val activeTab: Int = 0, // 0: Grabar, 1: Galería, 2: Juegos, 3: Ajustes
+    val isOnboardingCompleted: Boolean = true
 )
 
 data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
@@ -111,15 +112,15 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         ) { isCd, storage, vids, extra ->
             Quadruple(isCd, storage, vids, extra)
         },
-        combine(_installedGames, _isLoadingGames, ScreenRecordService.errorMessage, combine(_infoMessage, _activeTab) { info, tab -> Pair(info, tab) }) { games, loadingGames, err, infoTab ->
-            Quadruple(games, loadingGames, err, infoTab)
+        combine(_installedGames, _isLoadingGames, ScreenRecordService.errorMessage, combine(_infoMessage, _activeTab, settingsRepository.onboardingCompletedFlow) { info, tab, onboarded -> Triple(info, tab, onboarded) }) { games, loadingGames, err, infoTabOnboard ->
+            Quadruple(games, loadingGames, err, infoTabOnboard)
         }
     ) { group1, group2, group3 ->
         val (config, serviceState, elapsed, countdown) = group1
         val (isCountingDown, storage, videos, extra) = group2
         val (isLoadingVideos, selectedVideo, selectedVideoForEdit) = extra
-        val (games, loadingGames, serviceError, infoTab) = group3
-        val (infoMessage, activeTab) = infoTab
+        val (games, loadingGames, serviceError, infoTabOnboard) = group3
+        val (infoMessage, activeTab, isOnboarded) = infoTabOnboard
 
         val effectiveStatus = if (isCountingDown) RecordingStatus.COUNTDOWN else serviceState
 
@@ -138,7 +139,8 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             isLoadingGames = loadingGames,
             errorMessage = serviceError,
             infoMessage = infoMessage,
-            activeTab = activeTab
+            activeTab = activeTab,
+            isOnboardingCompleted = isOnboarded
         )
     }
 
@@ -330,5 +332,13 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     fun clearInfoMessage() {
         _infoMessage.value = null
+    }
+
+    fun completeOnboarding() {
+        settingsRepository.setOnboardingCompleted(true)
+    }
+
+    fun resetOnboarding() {
+        settingsRepository.setOnboardingCompleted(false)
     }
 }

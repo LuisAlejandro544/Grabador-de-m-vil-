@@ -77,6 +77,10 @@ vortex-studio/
 │       │   │       │   ├── VideoEditorPlaybackControls.kt  # Botones de transporte, Split y Foto HD
 │       │   │       │   ├── VideoEditorFilmstripScrubber.kt  # Timeline, RangeSlider y Filmstrip
 │       │   │       │   └── VideoEditorModals.kt            # Confirmación de Split y Overlay de Progreso
+│       │   │       ├── onboarding/               # Flujo de Bienvenida y Centro de Permisos
+│       │   │       │   ├── OnboardingScreen.kt         # Orquestador del flujo y transiciones
+│       │   │       │   ├── OnboardingStepPage.kt       # Diapositivas explicativas (60 FPS, DSP, 9:16)
+│       │   │       │   └── PermissionsSetupPage.kt     # Centro interactivo de concesión de permisos
 │       │   │       ├── tabs/                     # Tabs de Grabación y Galería
 │       │   │       └── components/               # Tarjetas y controles Compose
 │       │   │           ├── GameLauncherCard.kt             # Pantalla orquestadora de juegos

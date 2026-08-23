@@ -14,8 +14,23 @@ Este documento detalla el progreso actual y las fases de desarrollo de **Vortex 
 | **Fase 4** | Overlays de Escena, Marca de Agua y Visualizador Táctil | ✅ Completado |
 | **Fase 5** | Editor de Video Avanzado (Recorte, División Split y Aspect Ratio 9:16) | ✅ Completado |
 | **Fase 6** | Protección Anti-Corrupción, Monitor de Disco & Formato de Imagen Multiformato | ✅ Completado |
-| **Fase 7** | Despliegue Automatizado a Telegram (CI/CD) & Transmisión en Vivo RTMP / SRT con Rust | ⏳ En Progreso / Base Lista |
-| **Fase 8** | Buffer de Repetición Instantánea (Instant Replay / Clips de 30s) | 📅 Planificado |
+| **Fase 7** | Flujo de Onboarding, Centro de Permisos & Limpieza de Dependencias Google | ✅ Completado |
+| **Fase 8** | Despliegue Automatizado a Telegram (CI/CD) & Transmisión en Vivo RTMP / SRT con Rust | ⏳ En Progreso / Base Lista |
+| **Fase 9** | Buffer de Repetición Instantánea (Instant Replay / Clips de 30s) | 📅 Planificado |
+
+---
+
+## 🌟 Detalle de la Fase 7: Experiencia de Primer Inicio y Autonomía (Completada)
+
+- [x] **Flujo de Bienvenida Interactivo (Onboarding):**
+  - Diapositivas explicativas con animación horizontal (`OnboardingScreen`, `OnboardingStepPage`): Grabación 60 FPS fluida, Facecam Pro RGB/Avatar VTuber con DSP y Editor 9:16 para redes.
+- [x] **Centro Unificado de Permisos (`PermissionsSetupPage`):**
+  - Detección en tiempo real de permisos del sistema: Superposición sobre otras apps (`SYSTEM_ALERT_WINDOW`), Micrófono, Cámara, Notificaciones y Almacenamiento.
+  - Botón de concesión unificada en lote ("⚡ Conceder Todos los Permisos") y enlace directo a ajustes del sistema.
+  - Tarjeta de acceso en Ajustes para reabrir el tutorial y revisar permisos en cualquier momento.
+- [x] **Limpieza y Desacoplamiento de Servicios de Google:**
+  - Eliminación de dependencias innecesarias de Firebase, Auth, Firestore, Datastore y Play Services.
+  - Compatibilidad total para distribución directa en tiendas de terceros como Uptodown y APK independiente.
 
 ---
 

@@ -3,6 +3,7 @@ package com.example.ui
 import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -25,10 +26,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.model.AudioSourceType
 import com.example.model.RecordingStatus
 import com.example.ui.components.GameLauncherScreen
 import com.example.ui.components.RecordBottomBar
@@ -36,6 +39,7 @@ import com.example.ui.components.RecordTopBar
 import com.example.ui.components.SettingsView
 import com.example.ui.components.VideoPlayerDialog
 import com.example.ui.editor.VideoEditorDialog
+import com.example.ui.onboarding.OnboardingScreen
 import com.example.ui.tabs.GalleryTab
 import com.example.ui.tabs.RecordTab
 import kotlinx.coroutines.launch
@@ -56,6 +60,17 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle(initialValue = UiState())
     val lifecycleOwner = LocalLifecycleOwner.current
 
+    // Flujo de Bienvenida y Centro de Permisos en la primera apertura
+    if (!uiState.isOnboardingCompleted) {
+        OnboardingScreen(
+            onCompleteOnboarding = {
+                viewModel.completeOnboarding()
+            },
+            modifier = modifier
+        )
+        return
+    }
+
     // Refrescar lista de videos automáticamente al volver a la app (ej. tras parar grabación desde un juego)
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -70,6 +85,17 @@ fun HomeScreen(
     }
 
     var pendingGameLaunchPackage by remember { mutableStateOf<String?>(null) }
+
+    // Launcher dedicado para permiso de cámara (usado al activar Facecam en Ajustes)
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) {
+            scope.launch {
+                snackbarHostState.showSnackbar("Permiso de cámara denegado")
+            }
+        }
+    }
 
     // Launcher de permisos de captura de pantalla MediaProjection
     val mediaProjectionLauncher = rememberLauncherForActivityResult(
@@ -90,7 +116,7 @@ fun HomeScreen(
         }
     }
 
-    // Launcher de permisos de audio y notificaciones
+    // Launcher de permisos requeridos (solo se invoca si hay permisos pendientes)
     val permissionsLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { _ ->
@@ -101,14 +127,38 @@ fun HomeScreen(
 
     fun requestStartRecording(gamePackage: String? = null) {
         pendingGameLaunchPackage = gamePackage
-        val perms = mutableListOf(Manifest.permission.RECORD_AUDIO)
+        val missingPermissions = mutableListOf<String>()
+
+        // 1. Permiso de micrófono: Solo si la configuración requiere capturar audio y aún no está concedido
+        if (uiState.config.audioSource != AudioSourceType.NONE) {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                missingPermissions.add(Manifest.permission.RECORD_AUDIO)
+            }
+        }
+
+        // 2. Permiso de cámara: Solo si Facecam está encendido y aún no está concedido
         if (uiState.config.showFacecam) {
-            perms.add(Manifest.permission.CAMERA)
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                missingPermissions.add(Manifest.permission.CAMERA)
+            }
         }
+
+        // 3. Notificaciones en Android 13+ (TIRAMISU)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            perms.add(Manifest.permission.POST_NOTIFICATIONS)
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                missingPermissions.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
         }
-        permissionsLauncher.launch(perms.toTypedArray())
+
+        if (missingPermissions.isEmpty()) {
+            // Todos los permisos ya fueron otorgados previamente: ir directo a la captura sin molestar
+            val projectionManager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            val captureIntent = projectionManager.createScreenCaptureIntent()
+            mediaProjectionLauncher.launch(captureIntent)
+        } else {
+            // Solo solicitar los permisos que realmente falten
+            permissionsLauncher.launch(missingPermissions.toTypedArray())
+        }
     }
 
     LaunchedEffect(uiState.infoMessage) {
@@ -219,8 +269,8 @@ fun HomeScreen(
                     onToggleGameMode = { viewModel.toggleGameMode(it) },
                     onToggleFloatingBubble = { viewModel.toggleFloatingBubble(it) },
                     onToggleFacecam = { enabled ->
-                        if (enabled) {
-                            permissionsLauncher.launch(arrayOf(Manifest.permission.CAMERA))
+                        if (enabled && ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                         }
                         viewModel.toggleFacecam(enabled)
                     },
@@ -252,7 +302,8 @@ fun HomeScreen(
                     onUpdateSceneOverlayType = { viewModel.updateSceneOverlayType(it) },
                     onUpdateSceneOverlayText = { viewModel.updateSceneOverlayText(it) },
                     onUpdateSceneOverlayOpacity = { viewModel.updateSceneOverlayOpacity(it) },
-                    onUpdateSceneOverlayImageUri = { viewModel.updateSceneOverlayImageUri(it) }
+                    onUpdateSceneOverlayImageUri = { viewModel.updateSceneOverlayImageUri(it) },
+                    onReopenOnboarding = { viewModel.resetOnboarding() }
                 )
             }
         }

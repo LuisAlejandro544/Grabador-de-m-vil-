@@ -46,10 +46,16 @@ Este documento mantiene el estado de desarrollo, decisiones de arquitectura y ma
 - `TouchVisualizerOverlay.kt`: Visualizador táctil con ripples animados sin necesidad de opciones de desarrollador.
 - `WatermarkOverlayManager.kt` y `SceneOverlayManager.kt`: Marca de agua arrastrable y overlays de escena.
 
+### 5. Flujo de Bienvenida (Onboarding) y Centro de Permisos (`com.example.ui.onboarding`)
+- **`OnboardingScreen.kt`**: Orquestador visual con transiciones horizontales animadas entre pasos informativos y el centro de permisos.
+- **`OnboardingStepPage.kt`**: Diapositivas explicativas que detallan las ventajas gamer: Grabación a 60 FPS con Bitrate Granular, Facecam Pro RGB/Avatar VTuber con DSP, y Conversión 9:16 para TikTok/Shorts.
+- **`PermissionsSetupPage.kt`**: Centro interactivo con detección en tiempo real (`onResume` / `LifecycleEventObserver`) de permisos de Superposición (`SYSTEM_ALERT_WINDOW`), Micrófono, Cámara, Notificaciones y Almacenamiento, permitiendo su concesión individual o en lote con 1 toque.
+- **Persistencia Reactiva**: Gestionado por `SettingsRepository` (`KEY_ONBOARDING_COMPLETED`), propagado mediante `StateFlow` en `RecordViewModel` y con acceso directo de reapertura desde la pestaña de Ajustes.
+
 ---
 
 ## 🎯 Reglas de Calidad y Rendimiento
 - **Protección Anti-Corrupción Garantizada:** Ninguna interrupción de batería, espacio o cierre de multitarea deja un archivo MP4 corrupto o ilegible.
 - **60 FPS constantes:** Interfaz Jetpack Compose reactiva con `StateFlow` y sin bloqueos en el hilo principal.
-- **Independencia:** Cero dependencias de Google Play Services para permitir distribución en Uptodown y tiendas de terceros.
+- **Independencia y Cero Basura de Google:** Eliminadas dependencias obsoletas de Firebase, Auth, Play Services y Firestore. 100% autosuficiente para distribución en Uptodown, GitHub Releases y APKs de terceros.
 - **Almacenamiento Público:** Los videos recortados, divididos y miniaturas se registran automáticamente en `MediaStore` / `MediaScannerConnection`.

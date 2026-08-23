@@ -43,6 +43,18 @@ class SettingsRepository(context: Context) {
     private val _configFlow = MutableStateFlow(loadConfig())
     val configFlow: StateFlow<RecordingConfig> = _configFlow.asStateFlow()
 
+    private val _onboardingCompletedFlow = MutableStateFlow(isOnboardingCompleted())
+    val onboardingCompletedFlow: StateFlow<Boolean> = _onboardingCompletedFlow.asStateFlow()
+
+    fun isOnboardingCompleted(): Boolean {
+        return prefs.getBoolean(KEY_ONBOARDING_COMPLETED, false)
+    }
+
+    fun setOnboardingCompleted(completed: Boolean) {
+        prefs.edit().putBoolean(KEY_ONBOARDING_COMPLETED, completed).apply()
+        _onboardingCompletedFlow.value = completed
+    }
+
     fun getConfig(): RecordingConfig = _configFlow.value
 
     fun loadConfig(): RecordingConfig {
@@ -351,5 +363,6 @@ class SettingsRepository(context: Context) {
 
     companion object {
         private const val PREFS_NAME = "obs_mobile_recording_prefs"
+        private const val KEY_ONBOARDING_COMPLETED = "vortex_onboarding_completed"
     }
 }

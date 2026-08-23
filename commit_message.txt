@@ -1,46 +1,17 @@
-refactor: desarrollo modular de SettingsRepository, VideoEditorManager y GameLauncherCard
+fix: gestión inteligente de permisos en tiempo de ejecución y eliminación de solicitudes repetitivas
 
-- Capa de Configuración (Settings):
-  * Desacoplamiento de `SettingsRepository.kt` en submódulos especializados de persistencia bajo `data.settings`:
-    - `VideoAudioSettingsStore.kt`: Gestión aislada de resoluciones, tasas de cuadros (FPS), bitrates y filtros de audio DSP (Noise Gate, Ducking, ganancias).
-    - `OverlaySettingsStore.kt`: Persistencia granular de Facecam, avatares VTuber/PNGtuber, marcas de agua, marcos de escena, visualizador táctil y vúmetro flotante.
-    - `GameAndImageSettingsStore.kt`: Gestión de perfiles de juego, cuenta regresiva y formatos de captura de pantalla (PNG, JPG, WebP).
-  * Reducción de complejidad y mantenimiento de la API pública 100% retrocompatible mediante el patrón Fachada.
+- Gestión Inteligente de Permisos en Tiempo de Ejecución (Eliminación de Solicitudes Repetitivas de Micrófono):
+  * Corrección de la lógica de solicitud de permisos en `HomeScreen.kt`:
+    - Verificación previa de permisos con `ContextCompat.checkSelfPermission` antes de disparar el launcher del sistema (`RECORD_AUDIO`, `CAMERA`, `POST_NOTIFICATIONS`).
+    - Eliminación de la llamada indiscriminada a `permissionsLauncher`: si los permisos ya fueron otorgados previamente o no se requiere audio (`AudioSourceType.NONE`), el flujo avanza inmediatamente a `createScreenCaptureIntent` sin mostrar diálogos de permisos recurrentes ni interrumpir la experiencia de juego.
+    - Desacoplamiento del permiso de cámara para Facecam en Ajustes mediante `cameraPermissionLauncher` independiente, evitando la invocación accidental de la captura de pantalla al alternar opciones en Ajustes.
 
-- Motor de Edición de Video (Editor):
-  * Modularización de `VideoEditorManager.kt` mediante la extracción de responsabilidades en submotores bajo `editor.engine` y `editor`:
-    - `AspectRatioModels.kt`: Definición de enums y cálculo de dimensiones de aspect ratio (9:16, 16:9, 1:1, 4:5, 4:3).
-    - `VideoStreamCopyEngine.kt`: Motor de recorte sin pérdidas (Lossless Stream-Copy), división de clips (Split Tool) y conversión de aspecto con aceleración de hardware y fallback NDK FFmpeg.
-    - `VideoThumbnailEngine.kt`: Extractor de fotogramas de alta definición (HD 1080p/4K) y generador de tiras de miniaturas (Filmstrip) para la línea de tiempo interactiva.
-  * Simplificación de `VideoEditorManager.kt` a un orquestador ligero de menos de 60 líneas.
+- Flujo de Bienvenida (Onboarding) y Centro de Permisos en Primer Inicio:
+  * Implementación de pantallas interactivas de bienvenida (`OnboardingScreen`, `OnboardingStepPage`, `PermissionsSetupPage`):
+    - Presentación visual de las capacidades clave: Grabación a 60 FPS, Facecam Pro/Avatar VTuber con DSP y Editor 9:16 para redes sociales.
+    - Centro de configuración de permisos con detección en tiempo real para superposición (`SYSTEM_ALERT_WINDOW`), micrófono, cámara, notificaciones y almacenamiento.
+    - Botón de concesión unificada en lote ("⚡ Conceder Todos los Permisos") y acceso directo a la configuración del sistema para superposición.
+    - Acceso persistente desde Ajustes para reabrir la guía y verificar el estado de permisos en cualquier momento.
 
-- Interfaz de Usuario del Lanzador de Juegos (UI / Compose):
-  * División de `GameLauncherCard.kt` en componentes modulares independientes bajo `ui.components.gamelauncher`:
-    - `GameLauncherHeaderBanner.kt`: Banner informativo superior con botón de escaneo y refresco.
-    - `GameLauncherFilterBar.kt`: Barra de filtros segmentados (Juegos vs Todas las Apps) y caja de búsqueda en tiempo real.
-    - `GameLauncherItemCard.kt`: Tarjeta individual de juego/app con soporte para lanzamiento directo y grabación simultánea.
-    - `GameLauncherEmptyState.kt`: Vista contextual de estado vacío con sugerencias y botones de acción rápida.
-  * Compactación de `GameLauncherCard.kt` como pantalla orquestadora limpia (< 120 líneas).
-
-- Documentación:
-  * Actualización completa del árbol de arquitectura en `STRUCTURE.md` reflejando los nuevos paquetes y submódulos.
-
-- Pipeline y DSP de Audio (Sincronización Dual y Corrección de Tartamudeo):
-  * Solución al corte/tartamudeo del audio del juego al activar el micrófono:
-    - `AudioPipelineModule.kt`: Implementación de un bucle de mezcla síncrona en tiempo real con acumulador elástico (`micAccumulator`) para compensar el jitter temporal de los hilos de captura y evitar la alternancia destructiva de buffers hacia el codificador AAC.
-    - Sincronización temporal fija impulsada por el reloj del audio interno con generación de silencio como fallback para evitar pérdida de cuadros y desincronización de reloj.
-    - `AudioDspMixer.kt`: Incorporación de redimensionamiento dinámico de buffer (`ensureMixBufSize`) y mezcla balanceada continua entre el audio interno y el micrófono para compatibilidad con el procesador nativo C++ (Noise Gate, Audio Ducking y Soft Limiter).
-
-- Interfaz Flotante y Widget de Grabación (Rediseño HUD / Floating Tools Grid Dock):
-  * Rediseño visual y ergonómico del submenú de herramientas en `BubbleToolsSubmenu.kt`:
-    - Sustitución de la barra horizontal larga e invasiva por un panel flotante compacto estilo *Gaming Glassmorphism Grid* (5 columnas x 2 filas) con bordes de neón sutiles.
-    - Botones táctiles optimizados para acceso rápido con el pulgar (`56dp x 54dp`) con etiquetas legibles y estado LED en vivo (`dotIndicator`) para overlays activos (Facecam, Avatar 2D, Vúmetro, Belleza, RGB, Toques, Logo y Marco).
-    - `BubbleMainBar.kt` & `BubbleOverlayView.kt`: Indicador de estado activo en el botón de Herramientas y transición limpia al expandir/colapsar el dock flotante.
-
-- Lanzamiento de Juegos y Corrección de Orientación Nativa (Anti-Letterboxing / Full-Screen):
-  * Corrección del orden de inicio en `RecordViewModel.kt` al pulsar "Grabar" desde el Lanzador de Juegos:
-    - Lanzamiento inmediato del juego a primer plano para permitir la rotación natural de la pantalla a Horizontal / Landscape antes de instanciar el codificador de video.
-    - Sincronización de la cuenta regresiva (garantizando un mínimo de transición de 2 segundos) para que el juego se despliegue a pantalla completa.
-    - Inicialización diferida del servicio en primer plano (`RecordServiceLauncher.startService`) cuando el juego ya está en primer plano y en su orientación real.
-    - `RecordServiceLauncher.kt`: Detección dinámica de orientación (`Configuration.ORIENTATION_LANDSCAPE`) en lugar de fijar valores verticales predeterminados, eliminando barras negras gigantes y garantizando videos panorámicos nativos en 16:9 (1080p/720p/480p) compatibles con cualquier editor.
-
+- Limpieza y Optimización de Dependencias:
+  * Eliminación completa de librerías innecesarias de Google/Firebase (`firebase-bom`, `firebase-firestore`, `firebase-auth`, `google-services`, `datastore`, `accompanist`) para garantizar compatibilidad limpia con tiendas de terceros (Uptodown/APKs independientes) y reducir peso del binario.
