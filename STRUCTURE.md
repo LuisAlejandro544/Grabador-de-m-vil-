@@ -19,16 +19,24 @@ vortex-studio/
 │       │   │   └── src/lib.rs                    # RTMP/SRT Engine y cálculo de Aspect Ratio
 │       │   ├── java/com/example/
 │       │   │   ├── MainActivity.kt
-│       │   │   ├── editor/                       # Motor de Edición de Video
-│       │   │   │   └── VideoEditorManager.kt     # Stream-Copy, Aspect Ratio 1-Tap, Split y Thumbnails
+│       │   │   ├── editor/                       # Motor de Edición de Video (Arquitectura Modular)
+│       │   │   │   ├── AspectRatioModels.kt      # Enums y cálculo de dimensiones de aspect ratio
+│       │   │   │   ├── VideoEditorManager.kt     # Fachada orquestadora del editor
+│       │   │   │   └── engine/                   # Submotores de procesamiento de video
+│       │   │   │       ├── VideoStreamCopyEngine.kt   # Recorte, Split y Aspect Ratio Stream-Copy
+│       │   │   │       └── VideoThumbnailEngine.kt    # Captura de fotogramas HD y Filmstrip
 │       │   │   ├── model/
 │       │   │   │   ├── RecordedVideo.kt
 │       │   │   │   └── RecordingConfig.kt        # Modelo con ImageFormatOption, Bitrate y Overlays
 │       │   │   ├── data/
 │       │   │   │   ├── InstalledGamesHelper.kt
 │       │   │   │   ├── RecordingsRepository.kt
-│       │   │   │   ├── SettingsRepository.kt     # Persistencia de video, audio y formato de imagen
-│       │   │   │   └── StorageMonitorHelper.kt   # Cálculo de espacio en disco y tiempo restante
+│       │   │   │   ├── SettingsRepository.kt     # Fachada de configuración y reactividad
+│       │   │   │   ├── StorageMonitorHelper.kt   # Cálculo de espacio en disco y tiempo restante
+│       │   │   │   └── settings/                 # Subalmacenes modulares de persistencia
+│       │   │   │       ├── VideoAudioSettingsStore.kt    # Persistencia de video y audio DSP
+│       │   │   │       ├── OverlaySettingsStore.kt       # Persistencia de Facecam, VTuber y Overlays
+│       │   │   │       └── GameAndImageSettingsStore.kt  # Modo juego, timer y capturas
 │       │   │   ├── nativecore/                   # Puentes JNI
 │       │   │   │   ├── NativeAudioDSPBridge.kt
 │       │   │   │   ├── NativeFFmpegBridge.kt
@@ -71,7 +79,15 @@ vortex-studio/
 │       │   │       │   └── VideoEditorModals.kt            # Confirmación de Split y Overlay de Progreso
 │       │   │       ├── tabs/                     # Tabs de Grabación y Galería
 │       │   │       └── components/               # Tarjetas y controles Compose
+│       │   │           ├── GameLauncherCard.kt             # Pantalla orquestadora de juegos
+│       │   │           ├── gamelauncher/                   # Componentes modulares del lanzador
+│       │   │           │   ├── GameLauncherHeaderBanner.kt # Banner y botón de refresco
+│       │   │           │   ├── GameLauncherFilterBar.kt    # Filtros y buscador
+│       │   │           │   ├── GameLauncherItemCard.kt     # Tarjeta individual con lanzamiento directo
+│       │   │           │   └── GameLauncherEmptyState.kt   # Estado vacío y acciones rápidas
+│       │   │           └── settings/                       # Paneles modulares de configuración
 │       │   └── res/                              # Recursos gráficos, iconos y estilos
+│       └── test/                                 # Tests unitarios y de arquitectura
 ├── AGENTS.md                   # Protocolo y roles de desarrollo
 ├── AI_CONTEXT.md               # Memoria de arquitectura del proyecto
 ├── commit_message.txt          # Historial de cambios en español

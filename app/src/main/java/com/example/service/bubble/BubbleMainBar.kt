@@ -40,6 +40,10 @@ class BubbleMainBar(
     private val iconMicToggle: ImageView
     private val tvMicToggleLabel: TextView
 
+    private val btnTools: LinearLayout
+    private val iconTools: ImageView
+    private val tvToolsLabel: TextView
+
     val btnToggleExpand: ImageView
     private var dotPulseAnimator: ObjectAnimator? = null
 
@@ -158,7 +162,7 @@ class BubbleMainBar(
         actionControlsLayout.addView(btnMicToggle)
 
         // Botón Herramientas
-        val btnTools = LinearLayout(context).apply {
+        btnTools = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_TOOLS_BG, dp(14))
@@ -170,7 +174,7 @@ class BubbleMainBar(
                 marginEnd = dp(6)
             }
 
-            val iconTools = ImageView(context).apply {
+            iconTools = ImageView(context).apply {
                 setImageResource(android.R.drawable.ic_menu_manage)
                 layoutParams = LinearLayout.LayoutParams(dp(14), dp(14)).apply {
                     marginEnd = dp(4)
@@ -179,7 +183,7 @@ class BubbleMainBar(
             }
             addView(iconTools)
 
-            val tvToolsLabel = TextView(context).apply {
+            tvToolsLabel = TextView(context).apply {
                 text = "Herramientas"
                 setTextColor(0xFF818CF8.toInt())
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
@@ -294,6 +298,30 @@ class BubbleMainBar(
                 iconMicToggle.setColorFilter(BubbleColors.COLOR_MIC_ON_TEXT)
                 tvMicToggleLabel.text = "Voz ON"
                 tvMicToggleLabel.setTextColor(BubbleColors.COLOR_MIC_ON_TEXT)
+            }
+        }
+    }
+
+    fun updateToolsStatus(isOpen: Boolean) {
+        layout.post {
+            if (isOpen) {
+                btnTools.background = BubbleDrawables.createCardDrawable(
+                    context = context,
+                    color = BubbleColors.COLOR_TOOLS_ACTIVE_BG,
+                    cornerRadiusPx = dp(14),
+                    strokeColor = 0xFFA5B4FC.toInt(),
+                    strokeWidthDp = 1
+                )
+                iconTools.setColorFilter(Color.WHITE)
+                tvToolsLabel.setTextColor(Color.WHITE)
+            } else {
+                btnTools.background = BubbleDrawables.createCardDrawable(
+                    context = context,
+                    color = BubbleColors.COLOR_TOOLS_BG,
+                    cornerRadiusPx = dp(14)
+                )
+                iconTools.setColorFilter(0xFF818CF8.toInt())
+                tvToolsLabel.setTextColor(0xFF818CF8.toInt())
             }
         }
     }

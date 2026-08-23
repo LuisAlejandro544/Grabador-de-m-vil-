@@ -172,55 +172,129 @@ class AudioPipelineModule(
         internalAudioWorker?.start()
         micAudioWorker?.start()
 
+        val isDualAudioMode = internalAudioWorker != null && micAudioWorker != null
+
         // Hilo consumidor y codificador MediaCodec AAC
         encoderWorkerThread = Thread({
             val bufferInfo = MediaCodec.BufferInfo()
+            val micAccumulator = java.io.ByteArrayOutputStream(16384)
+            var lastInternalDataTime = SystemClock.uptimeMillis()
 
             while (isRecordingProvider()) {
                 try {
                     val isPaused = isPausedProvider()
-                    val internalData = internalAudioWorker?.audioQueue?.poll()
-                    val micData = if (micAudioWorker?.isMicMuted == false) {
-                        micAudioWorker?.audioQueue?.poll()
-                    } else null
 
-                    if (internalData == null && micData == null) {
-                        // Si no hay datos inmediatos, drenar buffers de salida pendientes del codificador
-                        drainAudioEncoder(encoder, bufferInfo, isPaused)
-                        SystemClock.sleep(5)
-                        continue
-                    }
-
-                    var finalBytes: ByteArray? = null
-                    var finalSize = 0
-
-                    if (internalData != null && micData != null) {
-                        val (mixed, size) = mixer.mixDualAudio(internalData, micData)
-                        finalBytes = mixed
-                        finalSize = size
-                    } else if (internalData != null) {
-                        finalBytes = internalData
-                        finalSize = internalData.size
-                    } else if (micData != null) {
-                        val (proc, size) = mixer.processSingleMicAudio(micData)
-                        finalBytes = proc
-                        finalSize = size
-                    }
-
-                    if (finalBytes != null && finalSize > 0 && !isPaused) {
-                        val inputBufferIndex = encoder.dequeueInputBuffer(TIMEOUT_USEC)
-                        if (inputBufferIndex >= 0) {
-                            val inputBuffer = encoder.getInputBuffer(inputBufferIndex)
-                            inputBuffer?.clear()
-                            inputBuffer?.put(finalBytes, 0, finalSize)
-
-                            val pts = System.nanoTime() / 1000
-                            encoder.queueInputBuffer(inputBufferIndex, 0, finalSize, pts, 0)
+                    if (isDualAudioMode) {
+                        // --- MODO DUAL SINCRONIZADO (AUDIO DEL JUEGO + MICRÓFONO) ---
+                        val micWorker = micAudioWorker
+                        if (micWorker != null && !micWorker.isMicMuted) {
+                            while (true) {
+                                val chunk = micWorker.audioQueue.poll() ?: break
+                                micAccumulator.write(chunk)
+                            }
                         }
-                    }
 
-                    // Drenar encoder de audio continuamente
-                    drainAudioEncoder(encoder, bufferInfo, isPaused)
+                        val internalData = internalAudioWorker?.audioQueue?.poll()
+                        var finalBytes: ByteArray? = null
+                        var finalSize = 0
+
+                        if (internalData != null) {
+                            lastInternalDataTime = SystemClock.uptimeMillis()
+                            val neededBytes = internalData.size
+                            val micData = ByteArray(neededBytes)
+
+                            if (micWorker != null && !micWorker.isMicMuted && micAccumulator.size() > 0) {
+                                val currentMicBytes = micAccumulator.toByteArray()
+                                val bytesToCopy = minOf(neededBytes, currentMicBytes.size)
+                                System.arraycopy(currentMicBytes, 0, micData, 0, bytesToCopy)
+
+                                micAccumulator.reset()
+                                if (currentMicBytes.size > bytesToCopy) {
+                                    val remaining = currentMicBytes.size - bytesToCopy
+                                    val safeRemaining = minOf(remaining, 16384)
+                                    val startOffset = currentMicBytes.size - safeRemaining
+                                    micAccumulator.write(currentMicBytes, startOffset, safeRemaining)
+                                }
+                            }
+
+                            val (mixed, size) = mixer.mixDualAudio(internalData, micData)
+                            finalBytes = mixed
+                            finalSize = size
+                        } else {
+                            // Fallback si la fuente del juego tarda más de 50ms (ej. pantalla de carga o silencio completo)
+                            val elapsedSinceInternal = SystemClock.uptimeMillis() - lastInternalDataTime
+                            if (elapsedSinceInternal > 50L && micAccumulator.size() >= 4096) {
+                                val currentMicBytes = micAccumulator.toByteArray()
+                                val chunkSize = 4096
+                                val micChunk = currentMicBytes.copyOf(chunkSize)
+                                micAccumulator.reset()
+                                if (currentMicBytes.size > chunkSize) {
+                                    micAccumulator.write(currentMicBytes, chunkSize, currentMicBytes.size - chunkSize)
+                                }
+
+                                val silentInternal = ByteArray(chunkSize)
+                                val (mixed, size) = mixer.mixDualAudio(silentInternal, micChunk)
+                                finalBytes = mixed
+                                finalSize = size
+                            }
+                        }
+
+                        if (finalBytes != null && finalSize > 0 && !isPaused) {
+                            val inputBufferIndex = encoder.dequeueInputBuffer(TIMEOUT_USEC)
+                            if (inputBufferIndex >= 0) {
+                                val inputBuffer = encoder.getInputBuffer(inputBufferIndex)
+                                inputBuffer?.clear()
+                                inputBuffer?.put(finalBytes, 0, finalSize)
+
+                                val pts = System.nanoTime() / 1000
+                                encoder.queueInputBuffer(inputBufferIndex, 0, finalSize, pts, 0)
+                            }
+                        }
+
+                        drainAudioEncoder(encoder, bufferInfo, isPaused)
+
+                        if (internalData == null) {
+                            SystemClock.sleep(4)
+                        }
+                    } else {
+                        // --- MODO FUENTE ÚNICA (SOLO JUEGO O SOLO MICRÓFONO) ---
+                        val internalData = internalAudioWorker?.audioQueue?.poll()
+                        val micData = if (micAudioWorker?.isMicMuted == false) {
+                            micAudioWorker?.audioQueue?.poll()
+                        } else null
+
+                        if (internalData == null && micData == null) {
+                            drainAudioEncoder(encoder, bufferInfo, isPaused)
+                            SystemClock.sleep(5)
+                            continue
+                        }
+
+                        var finalBytes: ByteArray? = null
+                        var finalSize = 0
+
+                        if (internalData != null) {
+                            finalBytes = internalData
+                            finalSize = internalData.size
+                        } else if (micData != null) {
+                            val (proc, size) = mixer.processSingleMicAudio(micData)
+                            finalBytes = proc
+                            finalSize = size
+                        }
+
+                        if (finalBytes != null && finalSize > 0 && !isPaused) {
+                            val inputBufferIndex = encoder.dequeueInputBuffer(TIMEOUT_USEC)
+                            if (inputBufferIndex >= 0) {
+                                val inputBuffer = encoder.getInputBuffer(inputBufferIndex)
+                                inputBuffer?.clear()
+                                inputBuffer?.put(finalBytes, 0, finalSize)
+
+                                val pts = System.nanoTime() / 1000
+                                encoder.queueInputBuffer(inputBufferIndex, 0, finalSize, pts, 0)
+                            }
+                        }
+
+                        drainAudioEncoder(encoder, bufferInfo, isPaused)
+                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error en bucle de audio: ${e.message}")
                     break

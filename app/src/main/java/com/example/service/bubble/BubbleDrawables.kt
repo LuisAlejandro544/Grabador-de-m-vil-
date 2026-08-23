@@ -9,12 +9,14 @@ import android.util.TypedValue
  */
 object BubbleDrawables {
 
-    fun createCardDrawable(context: Context, color: Int, cornerRadiusPx: Int): GradientDrawable {
+    fun createCardDrawable(context: Context, color: Int, cornerRadiusPx: Int, strokeColor: Int = 0x33FFFFFF.toInt(), strokeWidthDp: Int = 1): GradientDrawable {
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             setColor(color)
             cornerRadius = cornerRadiusPx.toFloat()
-            setStroke(dpToPx(context, 1), 0x33FFFFFF.toInt())
+            if (strokeWidthDp > 0) {
+                setStroke(dpToPx(context, strokeWidthDp), strokeColor)
+            }
         }
     }
 

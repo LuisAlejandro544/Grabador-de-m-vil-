@@ -11,10 +11,16 @@ class AudioDspMixer(
     private val channelCount: Int = 2
 ) {
     companion object {
-        private const val BUFFER_SIZE = 4096
+        private const val DEFAULT_BUFFER_SIZE = 8192
     }
 
-    private val mixBuf = ByteArray(BUFFER_SIZE)
+    private var mixBuf = ByteArray(DEFAULT_BUFFER_SIZE)
+
+    private fun ensureMixBufSize(requiredSize: Int) {
+        if (mixBuf.size < requiredSize) {
+            mixBuf = ByteArray(maxOf(mixBuf.size * 2, requiredSize * 2))
+        }
+    }
 
     fun initializeDsp(
         gameGain: Float = 1.0f,
@@ -50,6 +56,7 @@ class AudioDspMixer(
     fun mixDualAudio(internalData: ByteArray, micData: ByteArray): Pair<ByteArray, Int> {
         val pcmCount = minOf(internalData.size, micData.size)
         val finalSize = maxOf(internalData.size, micData.size)
+        ensureMixBufSize(finalSize)
 
         val processedBytes = if (NativeAudioDSPBridge.isNativeReady()) {
             NativeAudioDSPBridge.processAndMixAudio(
@@ -97,6 +104,7 @@ class AudioDspMixer(
 
     fun processSingleMicAudio(micData: ByteArray): Pair<ByteArray, Int> {
         val finalSize = micData.size
+        ensureMixBufSize(finalSize)
         val processed = if (NativeAudioDSPBridge.isNativeReady()) {
             NativeAudioDSPBridge.processAndMixAudio(
                 internalAudio = null,

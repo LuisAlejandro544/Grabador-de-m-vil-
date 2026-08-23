@@ -268,15 +268,38 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         val countdown = config.countdownSeconds
         pendingLaunchGamePackage = targetGamePackage
 
-        RecordServiceLauncher.startService(
-            context = getApplication(),
-            resultCode = resultCode,
-            resultData = resultData,
-            config = config
-        )
-
-        countdownManager.startCountdown(countdown) {
+        if (targetGamePackage != null) {
+            // 1. Abrir el juego inmediatamente para que Android lo traiga a primer plano y rote la orientación
             launchPendingGame()
+
+            // 2. Ejecutar cuenta atrás garantizando al menos 2 segundos para completar la transición de pantalla
+            val effectiveCountdown = maxOf(countdown, 2)
+            countdownManager.startCountdown(effectiveCountdown) {
+                RecordServiceLauncher.startService(
+                    context = getApplication(),
+                    resultCode = resultCode,
+                    resultData = resultData,
+                    config = _config.value
+                )
+            }
+        } else {
+            if (countdown > 0) {
+                countdownManager.startCountdown(countdown) {
+                    RecordServiceLauncher.startService(
+                        context = getApplication(),
+                        resultCode = resultCode,
+                        resultData = resultData,
+                        config = _config.value
+                    )
+                }
+            } else {
+                RecordServiceLauncher.startService(
+                    context = getApplication(),
+                    resultCode = resultCode,
+                    resultData = resultData,
+                    config = config
+                )
+            }
         }
     }
 

@@ -18,7 +18,8 @@ object RecordServiceLauncher {
         resultData: Intent,
         config: RecordingConfig
     ) {
-        val (width, height) = config.resolution.getDimensions(isPortrait = true)
+        val isLandscape = context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        val (width, height) = config.resolution.getDimensions(isPortrait = !isLandscape)
 
         val serviceIntent = Intent(context, ScreenRecordService::class.java).apply {
             action = ScreenRecordService.ACTION_START

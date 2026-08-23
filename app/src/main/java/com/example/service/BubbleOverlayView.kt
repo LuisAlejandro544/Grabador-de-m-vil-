@@ -111,6 +111,7 @@ class BubbleOverlayView(
         if (!isExpanded) {
             toolsSubmenu.layout.visibility = View.GONE
             isToolsMenuOpen = false
+            mainBar.updateToolsStatus(false)
         }
         mainBar.btnToggleExpand.rotation = if (isExpanded) 90f else 270f
     }
@@ -118,6 +119,7 @@ class BubbleOverlayView(
     fun toggleToolsMenu() {
         isToolsMenuOpen = !isToolsMenuOpen
         toolsSubmenu.layout.visibility = if (isToolsMenuOpen) View.VISIBLE else View.GONE
+        mainBar.updateToolsStatus(isToolsMenuOpen)
     }
 
     fun updateTimer(elapsedSeconds: Int) {

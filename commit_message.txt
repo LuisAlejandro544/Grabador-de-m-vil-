@@ -1,34 +1,46 @@
-refactor(architecture): desarrollo modular de VideoEditorDialog, RecordViewModel y ScreenRecordService
+refactor: desarrollo modular de SettingsRepository, VideoEditorManager y GameLauncherCard
 
-- Modularización de VideoEditorDialog.kt:
-  * Descomposición de la vista monolítica (~985 líneas) en 6 submódulos desacoplados y reutilizables bajo `com.example.ui.editor`:
-    - `VideoEditorHeader.kt`: Barra superior con metadatos de video/formato y botón contextual de exportación o recorte.
-    - `AspectRatioSelectorRow.kt`: Barra interactiva con chips de relación de aspecto 1-Tap (9:16, 16:9, 1:1, 4:5, 4:3) y selector de modos de ajuste (Blur, Crop, Letterbox).
-    - `VideoEditorPreviewPlayer.kt`: Monitor central de video con `AndroidView` `VideoView`, renderizado reactivo de fondo difuminado (Blur) y badge de tiempo flotante.
-    - `VideoEditorPlaybackControls.kt`: Controles de transporte (-1s, Play/Pause, +1s) y botones de acción rápida para División instantánea (Split ✂️) y Captura de Fotograma HD.
-    - `VideoEditorFilmstripScrubber.kt`: Línea de tiempo visual con tira de miniaturas, sombreado de límites, aguja de reproducción (playhead), `RangeSlider` dual y marcadores In/Out.
-    - `VideoEditorModals.kt`: Diálogo modal de confirmación de división de video y overlay de progreso de procesamiento.
-  * Reducción de `VideoEditorDialog.kt` a un orquestador limpio y declarativo de ~170 líneas.
+- Capa de Configuración (Settings):
+  * Desacoplamiento de `SettingsRepository.kt` en submódulos especializados de persistencia bajo `data.settings`:
+    - `VideoAudioSettingsStore.kt`: Gestión aislada de resoluciones, tasas de cuadros (FPS), bitrates y filtros de audio DSP (Noise Gate, Ducking, ganancias).
+    - `OverlaySettingsStore.kt`: Persistencia granular de Facecam, avatares VTuber/PNGtuber, marcas de agua, marcos de escena, visualizador táctil y vúmetro flotante.
+    - `GameAndImageSettingsStore.kt`: Gestión de perfiles de juego, cuenta regresiva y formatos de captura de pantalla (PNG, JPG, WebP).
+  * Reducción de complejidad y mantenimiento de la API pública 100% retrocompatible mediante el patrón Fachada.
 
-- Modularización de RecordViewModel.kt:
-  * Extracción de responsabilidades en delegados especializados bajo `com.example.ui.delegates`:
-    - `VideoGalleryDelegate.kt`: Gestión del ciclo de vida de videos (carga asíncrona, eliminación, renombrado, reproducción, compartición y recepción de clips/miniaturas).
-    - `SettingsActionsDelegate.kt`: Persistencia reactiva de configuración audiovisual, DSP (Noise Gate, Ducking, Ganancias), compresión de screenshots, overlays y avatares 2D PNGtuber con guardado en disco en `Dispatchers.IO`.
-  * Reducción de `RecordViewModel.kt` a ~180 líneas manteniendo integración con `StateFlow`, `InstalledGamesHelper` y `StorageMonitorHelper`.
+- Motor de Edición de Video (Editor):
+  * Modularización de `VideoEditorManager.kt` mediante la extracción de responsabilidades en submotores bajo `editor.engine` y `editor`:
+    - `AspectRatioModels.kt`: Definición de enums y cálculo de dimensiones de aspect ratio (9:16, 16:9, 1:1, 4:5, 4:3).
+    - `VideoStreamCopyEngine.kt`: Motor de recorte sin pérdidas (Lossless Stream-Copy), división de clips (Split Tool) y conversión de aspecto con aceleración de hardware y fallback NDK FFmpeg.
+    - `VideoThumbnailEngine.kt`: Extractor de fotogramas de alta definición (HD 1080p/4K) y generador de tiras de miniaturas (Filmstrip) para la línea de tiempo interactiva.
+  * Simplificación de `VideoEditorManager.kt` a un orquestador ligero de menos de 60 líneas.
 
-- Modularización de ScreenRecordService.kt:
-  * Extracción de componentes auxiliares bajo paquetes dedicados:
-    - `ServiceEmergencyReceiver.kt` (`service.receiver`): Manejo y registro seguro de broadcasts de emergencia del sistema (`ACTION_BATTERY_LOW` y `ACTION_DEVICE_STORAGE_LOW`).
-    - `ServiceChronometerTimer.kt` (`service.timer`): Temporizador de grabación en tiempo real, sincronización con la notificación y burbuja, y sondeo periódico de salvaguarda de almacenamiento.
-    - `ServiceActionDispatcher.kt` (`service.dispatcher`): Gestión de tipos de servicio en primer plano para Android 14+ (`FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION`, `MICROPHONE`, `CAMERA`) e inicialización de overlays.
-  * Reducción de `ScreenRecordService.kt` de >530 líneas a un servicio conciso y ordenado de ~220 líneas.
+- Interfaz de Usuario del Lanzador de Juegos (UI / Compose):
+  * División de `GameLauncherCard.kt` en componentes modulares independientes bajo `ui.components.gamelauncher`:
+    - `GameLauncherHeaderBanner.kt`: Banner informativo superior con botón de escaneo y refresco.
+    - `GameLauncherFilterBar.kt`: Barra de filtros segmentados (Juegos vs Todas las Apps) y caja de búsqueda en tiempo real.
+    - `GameLauncherItemCard.kt`: Tarjeta individual de juego/app con soporte para lanzamiento directo y grabación simultánea.
+    - `GameLauncherEmptyState.kt`: Vista contextual de estado vacío con sugerencias y botones de acción rápida.
+  * Compactación de `GameLauncherCard.kt` como pantalla orquestadora limpia (< 120 líneas).
 
-- Actualización de Documentación:
-  * Reflejo de los nuevos paquetes (`ui/editor/`, `ui/delegates/`, `service/receiver/`, `service/timer/`, `service/dispatcher/`) en `STRUCTURE.md`.
+- Documentación:
+  * Actualización completa del árbol de arquitectura en `STRUCTURE.md` reflejando los nuevos paquetes y submódulos.
 
-- Corrección de Estabilidad en Pausa y Reanudación de Grabación (Hardware Buffer Drainage & PTS Sync):
-  * `VideoEncoderModule.kt`: Eliminación de `SystemClock.sleep()` y omisión de drenaje durante la pausa. Implementación de drenaje y liberación continua e inmediata de buffers (`releaseOutputBuffer`) del codificador `MediaCodec` AVC/H.264 para evitar el bloqueo del `BufferQueue` en `VirtualDisplay` y el cierre forzado del proceso por el watchdog del sistema.
-  * `InternalAudioWorker.kt` & `MicAudioWorker.kt`: Lectura continua e ininterrumpida de `AudioRecord` para vaciar los buffers nativos del HAL/kernel durante la pausa, descartando muestras en lugar de bloquear los hilos, previniendo desbordamientos de búfer (*buffer overruns*) y desconexiones de `audioserver`.
-  * `AudioPipelineModule.kt`: Drenaje constante de las salidas del codificador AAC (`drainAudioEncoder`) y enrutamiento selectivo al Muxer únicamente cuando la grabación esté activa.
-  * `MuxerManager.kt`: Integración de compensación automática de Presentation Time Stamps (`PTS`) para video y audio en pausas/desfases (>100ms), manteniendo la monotonicidad estricta y asegurando una sincronización A/V fluida en el contenedor MP4 al reanudar.
+- Pipeline y DSP de Audio (Sincronización Dual y Corrección de Tartamudeo):
+  * Solución al corte/tartamudeo del audio del juego al activar el micrófono:
+    - `AudioPipelineModule.kt`: Implementación de un bucle de mezcla síncrona en tiempo real con acumulador elástico (`micAccumulator`) para compensar el jitter temporal de los hilos de captura y evitar la alternancia destructiva de buffers hacia el codificador AAC.
+    - Sincronización temporal fija impulsada por el reloj del audio interno con generación de silencio como fallback para evitar pérdida de cuadros y desincronización de reloj.
+    - `AudioDspMixer.kt`: Incorporación de redimensionamiento dinámico de buffer (`ensureMixBufSize`) y mezcla balanceada continua entre el audio interno y el micrófono para compatibilidad con el procesador nativo C++ (Noise Gate, Audio Ducking y Soft Limiter).
+
+- Interfaz Flotante y Widget de Grabación (Rediseño HUD / Floating Tools Grid Dock):
+  * Rediseño visual y ergonómico del submenú de herramientas en `BubbleToolsSubmenu.kt`:
+    - Sustitución de la barra horizontal larga e invasiva por un panel flotante compacto estilo *Gaming Glassmorphism Grid* (5 columnas x 2 filas) con bordes de neón sutiles.
+    - Botones táctiles optimizados para acceso rápido con el pulgar (`56dp x 54dp`) con etiquetas legibles y estado LED en vivo (`dotIndicator`) para overlays activos (Facecam, Avatar 2D, Vúmetro, Belleza, RGB, Toques, Logo y Marco).
+    - `BubbleMainBar.kt` & `BubbleOverlayView.kt`: Indicador de estado activo en el botón de Herramientas y transición limpia al expandir/colapsar el dock flotante.
+
+- Lanzamiento de Juegos y Corrección de Orientación Nativa (Anti-Letterboxing / Full-Screen):
+  * Corrección del orden de inicio en `RecordViewModel.kt` al pulsar "Grabar" desde el Lanzador de Juegos:
+    - Lanzamiento inmediato del juego a primer plano para permitir la rotación natural de la pantalla a Horizontal / Landscape antes de instanciar el codificador de video.
+    - Sincronización de la cuenta regresiva (garantizando un mínimo de transición de 2 segundos) para que el juego se despliegue a pantalla completa.
+    - Inicialización diferida del servicio en primer plano (`RecordServiceLauncher.startService`) cuando el juego ya está en primer plano y en su orientación real.
+    - `RecordServiceLauncher.kt`: Detección dinámica de orientación (`Configuration.ORIENTATION_LANDSCAPE`) en lugar de fijar valores verticales predeterminados, eliminando barras negras gigantes y garantizando videos panorámicos nativos en 16:9 (1080p/720p/480p) compatibles con cualquier editor.
 
