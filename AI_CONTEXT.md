@@ -5,7 +5,7 @@ Este documento provee el contexto de dominio y las restricciones técnicas funda
 ---
 
 ## 🎯 Propósito del Proyecto
-Construir una suite de grabación de pantalla y streaming en vivo para Android llamada **Vortex Studio** (estilo OBS Studio), optimizada específicamente para teléfonos móviles, sesiones de videojuegos a 60 FPS, herramientas de anotación en tiempo real, efectos visuales (Filtro de Belleza, Borde RGB, Toques Táctiles) y consumo térmico eficiente.
+Construir una suite de grabación de pantalla y streaming en vivo para Android llamada **Vortex Studio**, optimizada específicamente para teléfonos móviles, sesiones de videojuegos a 60 FPS, herramientas de anotación en tiempo real, efectos visuales (Filtro de Belleza, Borde RGB, Toques Táctiles) y consumo térmico eficiente.
 
 ---
 
@@ -21,7 +21,7 @@ Construir una suite de grabación de pantalla y streaming en vivo para Android l
 
 3. **Arquitectura de Audio, Mezcla Dinámica con DSP C++ y Vúmetro Flotante:**
    - **`FloatingVuMeterManager` & `VuMeterOverlayView`:** Monitoreo acústico en vivo sobre juegos con barras LED dinámicas en dB y faders táctiles independientes para regular la ganancia de audio del juego (0% - 200%) y de voz/micrófono (0% - 200%).
-   - **`AudioSourceType.INTERNAL_AND_MIC`:** Modo por defecto con mezcla dual PCM procesada mediante motor C++ DSP (`obs::dsp::AudioDspEngine`). Captura `AudioPlaybackCapture` (juego) y `AudioRecord` (micrófono), aplicando **Noise Gate** para silenciar ruidos de ambiente, **Audio Ducking** (-9 dB en el juego cuando hablas) y **Soft Limiter** sin distorsión digital, permitiendo conmutar la voz en vivo (`Voz ON` / `Solo Juego`) sin reiniciar codificadores.
+   - **`AudioSourceType.INTERNAL_AND_MIC`:** Modo por defecto con mezcla dual PCM procesada mediante motor C++ DSP (`vortex::dsp::AudioDspEngine`). Captura `AudioPlaybackCapture` (juego) y `AudioRecord` (micrófono), aplicando **Noise Gate** para silenciar ruidos de ambiente, **Audio Ducking** (-9 dB en el juego cuando hablas) y **Soft Limiter** sin distorsión digital, permitiendo conmutar la voz en vivo (`Voz ON` / `Solo Juego`) sin reiniciar codificadores.
    - **`AudioSourceType.INTERNAL_GAME`:** Captura exclusiva del sonido generado por las aplicaciones y juegos.
    - **`AudioSourceType.MIC`:** Captura mediante micrófono con filtrado de ruido en C++ DSP.
    - **`AudioSourceType.NONE`:** Modo silencioso sin pista de audio.
@@ -54,6 +54,11 @@ Construir una suite de grabación de pantalla y streaming en vivo para Android l
 
 10. **Integración Nativa Segura (C++, DSP y Rust):**
    - Toda llamada a librerías nativas debe estar envuelta con protección contra `UnsatisfiedLinkError` en sus respectivos puentes (`NativeOBSBridge.kt`, `NativeAudioDSPBridge.kt`, `NativeFFmpegBridge.kt`, `NativeRustNetwork.kt`).
+
+11. **Mini Editor de Video & Extractor de Miniaturas HD (`VideoEditorManager` / `VideoEditorDialog`):**
+   - **Stream-Copy Trim:** Recorte de video ultra-rápido sin renderizado (`MediaExtractor` + `MediaMuxer` con fallback a NDK FFmpeg) que preserva 100% de la calidad original (H.264/AAC), manteniendo el framerate a 60 FPS y procesando clips en fracciones de segundo.
+   - **Extractor HD:** `MediaMetadataRetriever` con captura de frames en resolución completa sin compresión destructiva guardado en `Pictures/ScreenRecorder`.
+   - **UI Móvil estilo CapCut:** Filmstrip interactivo, range slider dual in/out con milisegundos, transport controls y visor de video en tiempo real.
 
 ---
 

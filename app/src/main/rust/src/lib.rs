@@ -1,4 +1,4 @@
-//! OBS Mobile Rust Network & Streaming Engine
+//! Vortex Studio Rust Network & Streaming Engine
 //!
 //! Provides ultra-low latency packetization, adaptive bitrate (ABR) calculation,
 //! and RTMP/SRT connection management with zero-cost memory safety.
@@ -41,7 +41,7 @@ pub extern "system" fn Java_com_example_nativecore_NativeRustNetwork_rustGetEngi
     mut env: JNIEnv,
     _class: JClass,
 ) -> jstring {
-    let version = "OBS-RustNetwork-v0.1.0 (MemorySafe-RTMP/SRT)";
+    let version = "Vortex-RustNetwork-v0.1.0 (MemorySafe-RTMP/SRT)";
     let output = env
         .new_string(version)
         .expect("Couldn't create Java string!");

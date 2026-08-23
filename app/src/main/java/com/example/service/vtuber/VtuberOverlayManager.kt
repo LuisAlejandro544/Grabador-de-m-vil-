@@ -91,19 +91,19 @@ class VtuberOverlayManager(
             overlayView = view
             isShowing = true
 
-            // Iniciar reactor de audio
+            // Iniciar reactor de audio real
             audioReactor = VtuberAudioReactor(managerScope) { state, amp ->
                 overlayView?.updateState(state, amp)
             }.apply {
                 sensitivity = config.vtuberSensitivity
                 start()
-                startPreviewAudioPulse()
             }
 
             Log.i(TAG, "PNGtuber Overlay mostrado exitosamente con preset: ${config.vtuberPreset.label}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error al mostrar PNGtuber overlay: ${e.message}", e)
+        } catch (t: Throwable) {
+            Log.e(TAG, "Error al mostrar PNGtuber overlay: ${t.message}", t)
             isShowing = false
+            overlayView = null
         }
     }
 

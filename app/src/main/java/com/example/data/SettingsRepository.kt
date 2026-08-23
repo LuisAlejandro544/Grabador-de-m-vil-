@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Repositorio de persistencia local para la configuración de grabación de OBS Mobile.
+ * Repositorio de persistencia local para la configuración de grabación de Vortex Studio.
  * Garantiza que las resoluciones, FPS, bitrate, fuentes de audio, cuenta atrás,
  * modo de juego, burbuja flotante y Facecam persistan entre reinicios de la aplicación y
  * se transmitan de forma 100% fiel al motor de captura [ScreenRecordService] y [ScreenCaptureEngine].

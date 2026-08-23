@@ -9,7 +9,7 @@ import android.util.AttributeSet
 import android.view.View
 
 /**
- * Vista de barra de Vúmetro estilo OBS Studio con aceleración por hardware.
+ * Vista de barra de Vúmetro estilo consola de estudio con aceleración por hardware.
  * Dibuja un gradiente de 3 tramos: Verde (normal), Amarillo (precaución) y Rojo (saturación/clipping),
  * con marcador de pico (Peak Hold) y fondo oscuro tipo medidor de radiodifusión.
  */

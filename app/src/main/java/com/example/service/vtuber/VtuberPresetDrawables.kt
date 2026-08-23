@@ -47,20 +47,104 @@ object VtuberPresetDrawables {
     }
 
     /**
-     * Carga un [Bitmap] de forma segura desde una URI local (SAF / MediaStore / File).
+     * Guarda una imagen seleccionada por el usuario en el almacenamiento interno privado
+     * de la aplicación para garantizar acceso permanente y persistencia sin pérdidas de permisos.
+     */
+    fun saveImageToInternalStorage(context: Context, sourceUri: Uri, slotName: String): String? {
+        return try {
+            val vtuberDir = java.io.File(context.filesDir, "vtuber").apply { if (!exists()) mkdirs() }
+            val destFile = java.io.File(vtuberDir, "vtuber_$slotName.png")
+
+            context.contentResolver.openInputStream(sourceUri)?.use { input ->
+                destFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            destFile.absolutePath
+        } catch (t: Throwable) {
+            Log.e(TAG, "Error guardando imagen VTuber interna para slot $slotName: ${t.message}", t)
+            null
+        }
+    }
+
+    /**
+     * Carga un [Bitmap] de forma segura desde una URI o ruta local (SAF / MediaStore / File / Internal Storage).
+     * Incluye submuestreo inteligente (max 512x512) para evitar [OutOfMemoryError] en móviles.
      */
     fun loadBitmapFromUri(context: Context, uriString: String?): Bitmap? {
         if (uriString.isNullOrBlank()) return null
         return try {
-            val uri = Uri.parse(uriString)
-            val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
-            inputStream?.use { stream ->
-                BitmapFactory.decodeStream(stream)
+            val file = java.io.File(uriString)
+            if (file.exists() && file.isFile) {
+                decodeSampledBitmapFromFile(file.absolutePath, 512, 512)
+            } else {
+                val uri = Uri.parse(uriString)
+                if (uri.scheme == "file") {
+                    decodeSampledBitmapFromFile(uri.path ?: uriString, 512, 512)
+                } else {
+                    decodeSampledBitmapFromUri(context, uri, 512, 512)
+                }
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error cargando imagen VTuber desde $uriString: ${e.message}")
+        } catch (t: Throwable) {
+            Log.e(TAG, "Error cargando imagen VTuber desde $uriString: ${t.message}")
             null
         }
+    }
+
+    private fun decodeSampledBitmapFromFile(filePath: String, reqWidth: Int, reqHeight: Int): Bitmap? {
+        return try {
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            BitmapFactory.decodeFile(filePath, options)
+
+            options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight)
+            options.inJustDecodeBounds = false
+            options.inPreferredConfig = Bitmap.Config.ARGB_8888
+
+            BitmapFactory.decodeFile(filePath, options)
+        } catch (t: Throwable) {
+            Log.e(TAG, "Error decodificando bitmap desde archivo $filePath: ${t.message}")
+            null
+        }
+    }
+
+    private fun decodeSampledBitmapFromUri(context: Context, uri: Uri, reqWidth: Int, reqHeight: Int): Bitmap? {
+        return try {
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream, null, options)
+            }
+
+            options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight)
+            options.inJustDecodeBounds = false
+            options.inPreferredConfig = Bitmap.Config.ARGB_8888
+
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream, null, options)
+            }
+        } catch (t: Throwable) {
+            Log.e(TAG, "Error decodificando bitmap desde URI $uri: ${t.message}")
+            null
+        }
+    }
+
+    private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+        val height = options.outHeight
+        val width = options.outWidth
+        var inSampleSize = 1
+
+        if (height > reqHeight || width > reqWidth) {
+            val halfHeight = height / 2
+            val halfWidth = width / 2
+
+            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+        return maxOf(1, inSampleSize)
     }
 
     // ==========================================

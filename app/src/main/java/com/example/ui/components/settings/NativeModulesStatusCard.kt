@@ -36,7 +36,7 @@ fun NativeModulesStatusCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Módulos Nativos OBS (C++ & Rust)",
+                text = "Módulos Nativos (C++ & Rust)",
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface

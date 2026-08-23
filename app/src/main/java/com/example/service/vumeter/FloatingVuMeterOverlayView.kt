@@ -15,7 +15,7 @@ import android.widget.SeekBar
 import android.widget.TextView
 
 /**
- * Interfaz de usuario del Vúmetro Flotante y Mezclador de Audio de OBS Studio.
+ * Interfaz de usuario del Vúmetro Flotante y Mezclador de Audio de Vortex Studio.
  * Desacoplada, compacta, con soporte para arrastre y controles en tiempo real.
  */
 @SuppressLint("ViewConstructor")

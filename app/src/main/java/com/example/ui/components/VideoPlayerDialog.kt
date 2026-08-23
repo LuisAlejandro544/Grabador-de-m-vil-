@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -45,7 +46,8 @@ import com.example.model.RecordedVideo
 fun VideoPlayerDialog(
     video: RecordedVideo,
     onDismiss: () -> Unit,
-    onShare: (RecordedVideo) -> Unit
+    onShare: (RecordedVideo) -> Unit,
+    onEdit: (RecordedVideo) -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -95,6 +97,17 @@ fun VideoPlayerDialog(
                     }
 
                     Row {
+                        IconButton(
+                            onClick = { onEdit(video) },
+                            modifier = Modifier.testTag("player_edit_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ContentCut,
+                                contentDescription = "Editar Clip",
+                                tint = Color(0xFF00E676)
+                            )
+                        }
+
                         IconButton(
                             onClick = { onShare(video) },
                             modifier = Modifier.testTag("player_share_button")

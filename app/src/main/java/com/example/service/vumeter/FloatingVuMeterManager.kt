@@ -14,7 +14,7 @@ import com.example.model.RecordingConfig
 import com.example.service.watermark.WatermarkTouchHelper
 
 /**
- * Gestor modular del Vúmetro Flotante y Mezclador de Audio de OBS Studio.
+ * Gestor modular del Vúmetro Flotante y Mezclador de Audio de Vortex Studio.
  * Desacopla la ventana flotante en WindowManager, la animación de barras de niveles a 30 FPS,
  * y los controles de ganancia y filtros en tiempo real.
  */
@@ -149,7 +149,7 @@ class FloatingVuMeterManager(
             // Iniciar bucle de refresco del vúmetro
             mainHandler.post(meterUpdateRunnable)
 
-            Log.i(TAG, "Vúmetro Flotante de Audio OBS mostrado con éxito")
+            Log.i(TAG, "Vúmetro Flotante de Audio mostrado con éxito")
         } catch (e: Exception) {
             Log.e(TAG, "Error mostrando Vúmetro Flotante: ${e.message}", e)
             isShowingInternal = false

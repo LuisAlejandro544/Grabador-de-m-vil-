@@ -38,6 +38,7 @@ fun GalleryTab(
     onShareVideo: (RecordedVideo) -> Unit,
     onDeleteVideo: (RecordedVideo) -> Unit,
     onRenameVideo: (RecordedVideo, String) -> Unit,
+    onEditVideo: (RecordedVideo) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -115,7 +116,8 @@ fun GalleryTab(
                             onPlay = { onPlayVideo(video) },
                             onShare = { onShareVideo(video) },
                             onDelete = { onDeleteVideo(video) },
-                            onRename = { v, name -> onRenameVideo(v, name) }
+                            onRename = { v, name -> onRenameVideo(v, name) },
+                            onEdit = { onEditVideo(video) }
                         )
                     }
                 }

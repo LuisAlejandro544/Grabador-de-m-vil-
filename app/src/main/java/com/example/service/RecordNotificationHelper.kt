@@ -17,7 +17,7 @@ class RecordNotificationHelper(private val context: Context) {
 
     companion object {
         const val CHANNEL_ID = "screen_record_channel"
-        const val CHANNEL_NAME = "OBS Mobile - Grabación de Pantalla"
+        const val CHANNEL_NAME = "Vortex Studio - Grabación de Pantalla"
         const val NOTIFICATION_ID = 1001
     }
 

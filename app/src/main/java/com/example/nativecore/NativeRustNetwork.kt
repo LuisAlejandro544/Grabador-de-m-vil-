@@ -4,7 +4,7 @@ import android.util.Log
 
 /**
  * Native Rust Network & Streaming Engine Bridge.
- * Interfaces with `libobs_rust_network.so` for memory-safe RTMP/SRT streaming and packetization.
+ * Interfaces with `libvortex_rust_network.so` for memory-safe RTMP/SRT streaming and packetization.
  */
 object NativeRustNetwork {
     private const val TAG = "NativeRustNetwork"
@@ -12,12 +12,12 @@ object NativeRustNetwork {
 
     init {
         try {
-            System.loadLibrary("obs_rust_network")
+            System.loadLibrary("vortex_rust_network")
             isLibraryLoaded = true
-            Log.i(TAG, "Successfully loaded native Rust library 'obs_rust_network'")
+            Log.i(TAG, "Successfully loaded native Rust library 'vortex_rust_network'")
         } catch (e: UnsatisfiedLinkError) {
             isLibraryLoaded = false
-            Log.w(TAG, "Native Rust library 'obs_rust_network' not yet compiled into APK: ${e.message}")
+            Log.w(TAG, "Native Rust library 'vortex_rust_network' not yet compiled into APK: ${e.message}")
         }
     }
 

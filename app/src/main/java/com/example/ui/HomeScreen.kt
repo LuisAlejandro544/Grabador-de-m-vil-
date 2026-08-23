@@ -35,12 +35,13 @@ import com.example.ui.components.RecordBottomBar
 import com.example.ui.components.RecordTopBar
 import com.example.ui.components.SettingsView
 import com.example.ui.components.VideoPlayerDialog
+import com.example.ui.editor.VideoEditorDialog
 import com.example.ui.tabs.GalleryTab
 import com.example.ui.tabs.RecordTab
 import kotlinx.coroutines.launch
 
 /**
- * Pantalla principal modular de OBS Mobile.
+ * Pantalla principal modular de Vortex Studio.
  * Orquesta la barra superior, barra inferior y las pestañas [RecordTab], [GalleryTab],
  * [GameLauncherScreen] y [SettingsView] desacopladas.
  */
@@ -173,7 +174,8 @@ fun HomeScreen(
                     onPlayVideo = { viewModel.playVideo(it) },
                     onShareVideo = { viewModel.shareVideo(context, it) },
                     onDeleteVideo = { viewModel.deleteVideo(it) },
-                    onRenameVideo = { v, name -> viewModel.renameVideo(v, name) }
+                    onRenameVideo = { v, name -> viewModel.renameVideo(v, name) },
+                    onEditVideo = { viewModel.openEditor(it) }
                 )
 
                 1 -> GalleryTab(
@@ -182,7 +184,8 @@ fun HomeScreen(
                     onPlayVideo = { viewModel.playVideo(it) },
                     onShareVideo = { viewModel.shareVideo(context, it) },
                     onDeleteVideo = { viewModel.deleteVideo(it) },
-                    onRenameVideo = { v, name -> viewModel.renameVideo(v, name) }
+                    onRenameVideo = { v, name -> viewModel.renameVideo(v, name) },
+                    onEditVideo = { viewModel.openEditor(it) }
                 )
 
                 2 -> GameLauncherScreen(
@@ -255,7 +258,22 @@ fun HomeScreen(
         VideoPlayerDialog(
             video = video,
             onDismiss = { viewModel.closePlayer() },
-            onShare = { viewModel.shareVideo(context, it) }
+            onShare = { viewModel.shareVideo(context, it) },
+            onEdit = { viewModel.openEditor(it) }
+        )
+    }
+
+    // Modal de Mini Editor de Video estilo CapCut
+    uiState.selectedVideoForEdit?.let { video ->
+        VideoEditorDialog(
+            video = video,
+            onDismiss = { viewModel.closeEditor() },
+            onVideoEdited = { editedFile ->
+                viewModel.onVideoEdited(editedFile)
+            },
+            onThumbnailExtracted = { thumbFile ->
+                viewModel.onThumbnailExtracted(thumbFile)
+            }
         )
     }
 }

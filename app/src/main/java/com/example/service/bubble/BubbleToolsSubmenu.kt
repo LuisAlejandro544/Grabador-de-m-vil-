@@ -99,7 +99,7 @@ class BubbleToolsSubmenu(
         )
         layout.addView(btnDraw)
 
-        // 3. Vúmetro / Mezclador de Audio Flotante OBS
+        // 3. Vúmetro / Mezclador de Audio Flotante Pro
         btnVuMeterToggle = createBaseContainer()
         iconVuMeterToggle = createIcon(android.R.drawable.ic_lock_silent_mode_off, Color.WHITE)
         tvVuMeterToggleLabel = createLabel("Vúmetro", Color.WHITE)

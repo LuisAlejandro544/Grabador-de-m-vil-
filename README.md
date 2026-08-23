@@ -39,7 +39,7 @@
   - **Soporte de PNG Personalizado:** Carga de imágenes PNG transparentes completas desde la galería.
   - **Control de Opacidad:** Ajuste fino de transparencia para no obstruir el gameplay, conmutable en caliente desde la Burbuja Flotante.
 - **🔊 Captura, Mezcla, Frecuencia Ajustable y DSP en C++:**
-  - **📊 Vúmetro de Audio Flotante & Mezclador OBS en Vivo:**
+  - **📊 Vúmetro de Audio Flotante & Mezclador en Vivo:**
     - Widget superpuesto interactivo y arrastrable sobre cualquier juego que muestra barras LED dinámicas de decibelios (dB) con gradiente verde-amarillo-rojo para monitoreo en vivo de señales acústicas.
     - **Control de Ganancia Independiente:** Faders deslizantes en pantalla para regular de forma precisa el volumen del juego (0% a 200%) y del micrófono/voz (0% a 200%) sin detener la grabación.
     - **Conmutación Rápida de Filtros DSP:** Botones táctiles para encender/apagar en caliente la Puerta de Ruido (Noise Gate), el Auto-Ducking y el silenciamiento del micrófono (Mute).
@@ -59,6 +59,16 @@
   - **🛠️ Menú de Herramientas en Vivo:**
     - 📸 **Captura Rápida (Screenshot):** Captura instantáneas en alta calidad durante la grabación y las guarda en la galería de imágenes del dispositivo.
     - ✏️ **Pincel / Lapicero en Pantalla:** Lienzo transparente acelerado por hardware para dibujar marcas, flechas y notas sobre cualquier juego en tiempo real con selector de colores, grosores, deshacer y limpiar trazos.
+- **✂️ Mini Editor de Video Integrado (Estilo CapCut / Premiere Rush):**
+  - **Recorte Rápido sin Renderizado (Stream Copy / Trim Instantáneo):**
+    - Permite seleccionar puntos de inicio y final (*In / Out markers*) con precisión de milisegundos mediante un deslizador visual interactivo.
+    - Exportación inmediata sin recodificar frames (`MediaExtractor` + `MediaMuxer` / NDK FFmpeg), conservando el 100% de calidad original, 60 FPS y audio nítido sin demoras ni recalentamiento de CPU.
+  - **🖼️ Extractor de Miniaturas en HD (Thumbnail Grabber):**
+    - Captura el fotograma exacto seleccionado en el reproductor en resolución completa original (1080p / 4K).
+    - Guarda automáticamente la imagen en formato JPEG de máxima calidad en `Pictures/ScreenRecorder/` para portadas de YouTube, TikTok, Shorts o miniaturas de redes sociales.
+  - **Línea de Tiempo Visual con Filmstrip:**
+    - Tira de fotogramas generada dinámicamente sobre la barra de tiempo.
+    - Cabezal de reproducción interactivo (*playhead*), scrubber táctil y botones de desplazamiento fino (-1s / +1s).
 - **🕹️ Lanzador de Juegos Rápido:** Detección de juegos y aplicaciones instaladas; permite iniciar la grabación y abrir el juego simultáneamente.
 - **🎬 Galería y Reproductor Integrado:** Gestión de archivos grabados (MP4 H.264 / AAC), reproducción instantánea, renombrado y compartir.
 - **⚙️ Motor Gráfico Nativo C++ (OpenGL ES 3.0 / EGL):**

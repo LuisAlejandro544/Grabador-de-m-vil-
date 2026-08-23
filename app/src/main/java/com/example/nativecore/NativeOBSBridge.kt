@@ -3,7 +3,7 @@ package com.example.nativecore
 import android.util.Log
 
 /**
- * Native C++ OBS Engine Bridge.
+ * Native C++ Scene Compositor Bridge for Vortex Studio.
  * Interfaces with `libobs_core.so` (OpenGL ES 3.0 Scene Compositor and EGL Pipeline).
  */
 object NativeOBSBridge {

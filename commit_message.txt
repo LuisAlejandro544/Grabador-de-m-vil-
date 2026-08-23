@@ -1,8 +1,17 @@
-feat(audio): implementar Vúmetro de Audio Flotante y Control de Ganancia Independiente estilo OBS
+feat(editor): implementar Mini Editor de Video estilo CapCut con Recorte Rápido sin Renderizado y Extractor de Miniaturas HD
 
-- Integrar FloatingVuMeterManager y VuMeterOverlayView con renderizado en tiempo real de niveles RMS/Peak en decibelios (dB) con gradiente verde-amarillo-rojo estilo consola broadcast.
-- Añadir controles de faders independientes de ganancia para Audio del Juego (0% - 200%) y Micrófono/Voz (0% - 200%) en tiempo real sobre la pantalla mediante WindowManager.
-- Integrar conmutadores en caliente para filtros DSP de OBS: Puerta de Ruido (Noise Gate) y Atenuación Automática (Audio Ducking) directamente desde el vúmetro y la pestaña de Ajustes.
-- Exponer canales de métricas acústicas en C++ (audio_dsp_engine.cpp / AudioDspMixer) hacia el servicio ScreenRecordService y el coordinador ServiceOverlayCoordinator.
-- Actualizar AudioSettingsCard con controles completos de sliders de ganancia, switches de filtros DSP y toggle del vúmetro flotante.
-- Sincronizar y actualizar la documentación técnica en STRUCTURE.md, README.md, ROADMAP.md y AI_CONTEXT.md.
+- Crear VideoEditorManager con motor de recorte Stream-Copy ultra-rápido (MediaExtractor/MediaMuxer y NDK FFmpeg) que corta archivos MP4 sin recodificar frames, manteniendo el 100% de calidad sin demora ni consumo excesivo de CPU.
+- Implementar Extractor de Miniaturas HD (Thumbnail Grabber) capaz de capturar fotogramas exactos en máxima resolución (1080p/4K) y guardarlos en el almacenamiento público Pictures/ScreenRecorder.
+- Diseñar la interfaz móvil VideoEditorDialog inspirada en CapCut y Premiere Rush:
+  * Visor interactivo en tiempo real con scrubber, playhead y transport controls (-1s, +1s, play/pause).
+  * Línea de tiempo visual con tira de fotogramas (filmstrip) generada dinámicamente.
+  * Selector deslizante dual (RangeSlider In/Out) con marcadores de inicio y fin en milisegundos.
+  * Botones de acción rápida: "Guardar Clip" y "Extraer Miniatura HD".
+- Integrar acceso directo al editor desde la pestaña de Grabaciones recientes (RecordTab), Galería completa (GalleryTab), y el modal reproductor (VideoPlayerDialog).
+- Actualizar el flujo en RecordViewModel y HomeScreen gestionando los estados del editor y la persistencia de nuevos clips y miniaturas.
+- Actualizar la documentación técnica en README.md, ROADMAP.md, STRUCTURE.md y AI_CONTEXT.md.
+- Corregir fallo crítico de cierre forzoso al iniciar la grabación con PNGtuber / Avatar 2D activado:
+  * Sincronización de hilos (Main Thread & Looper): Despacho de actualizaciones de estado y animador elástico (ValueAnimator / Squash & Stretch) garantizado en el hilo de UI para evitar excepciones AndroidRuntimeException.
+  * Persistencia segura de imágenes personalizadas: Guardado automático de archivos PNG seleccionados en el almacenamiento interno privado de la aplicación, eliminando pérdidas de permisos temporales de URI de SAF/MediaStore.
+  * Protección de memoria y decodificación: Submuestreo inteligente con inSampleSize para evitar errores de desbordamiento de memoria (OutOfMemoryError) al cargar imágenes PNG de alta resolución.
+  * Tolerancia a fallos: Envoltorio con bloques try/catch integrales en el ciclo de vida del Overlay Coordinator y ScreenRecordService para proteger el inicio de grabación.

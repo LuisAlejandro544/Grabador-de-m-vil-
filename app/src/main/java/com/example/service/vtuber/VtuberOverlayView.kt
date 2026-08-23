@@ -81,12 +81,19 @@ class VtuberOverlayView(
     }
 
     private fun loadCustomBitmaps() {
-        if (config.vtuberPreset == VtuberPreset.CUSTOM) {
-            customIdleBitmap = VtuberPresetDrawables.loadBitmapFromUri(context, config.vtuberIdleImageUri)
-            customTalkBitmap = VtuberPresetDrawables.loadBitmapFromUri(context, config.vtuberTalkImageUri)
-            customBlinkBitmap = VtuberPresetDrawables.loadBitmapFromUri(context, config.vtuberBlinkImageUri)
-            customBlinkTalkBitmap = VtuberPresetDrawables.loadBitmapFromUri(context, config.vtuberBlinkTalkImageUri)
-        } else {
+        try {
+            if (config.vtuberPreset == VtuberPreset.CUSTOM) {
+                customIdleBitmap = VtuberPresetDrawables.loadBitmapFromUri(context, config.vtuberIdleImageUri)
+                customTalkBitmap = VtuberPresetDrawables.loadBitmapFromUri(context, config.vtuberTalkImageUri)
+                customBlinkBitmap = VtuberPresetDrawables.loadBitmapFromUri(context, config.vtuberBlinkImageUri)
+                customBlinkTalkBitmap = VtuberPresetDrawables.loadBitmapFromUri(context, config.vtuberBlinkTalkImageUri)
+            } else {
+                customIdleBitmap = null
+                customTalkBitmap = null
+                customBlinkBitmap = null
+                customBlinkTalkBitmap = null
+            }
+        } catch (t: Throwable) {
             customIdleBitmap = null
             customTalkBitmap = null
             customBlinkBitmap = null
@@ -95,12 +102,20 @@ class VtuberOverlayView(
     }
 
     fun updateConfig(newConfig: RecordingConfig) {
+        if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+            post { updateConfig(newConfig) }
+            return
+        }
         this.config = newConfig
         loadCustomBitmaps()
         avatarDrawingView.invalidate()
     }
 
     fun updateState(state: VtuberState, amplitude: Float) {
+        if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+            post { updateState(state, amplitude) }
+            return
+        }
         val oldState = currentState
         currentState = state
 
@@ -115,50 +130,58 @@ class VtuberOverlayView(
     }
 
     private fun triggerBounce() {
-        bounceAnimator?.cancel()
-        bounceAnimator = ValueAnimator.ofFloat(0f, -18f, 0f).apply {
-            duration = 180
-            interpolator = OvershootInterpolator(1.8f)
-            addUpdateListener { anim ->
-                currentBounceOffset = anim.animatedValue as Float
-                avatarDrawingView.invalidate()
+        try {
+            bounceAnimator?.cancel()
+            bounceAnimator = ValueAnimator.ofFloat(0f, -18f, 0f).apply {
+                duration = 180
+                interpolator = OvershootInterpolator(1.8f)
+                addUpdateListener { anim ->
+                    currentBounceOffset = (anim.animatedValue as? Float) ?: 0f
+                    avatarDrawingView.invalidate()
+                }
+                start()
             }
-            start()
+        } catch (t: Throwable) {
+            currentBounceOffset = 0f
         }
     }
 
     private fun drawAvatar(canvas: Canvas) {
-        val w = width.toFloat()
-        val h = height.toFloat()
-        if (w <= 0 || h <= 0) return
+        try {
+            val w = width.toFloat()
+            val h = height.toFloat()
+            if (w <= 0 || h <= 0) return
 
-        if (config.vtuberPreset == VtuberPreset.CUSTOM) {
-            val activeBitmap = getCustomBitmapForState(currentState)
-            if (activeBitmap != null && !activeBitmap.isRecycled) {
-                val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-                val src = Rect(0, 0, activeBitmap.width, activeBitmap.height)
-                val cy = (h / 2f) + currentBounceOffset
-                val size = minOf(w, h) * 0.92f
-                val dst = RectF(
-                    (w - size) / 2f,
-                    cy - (size / 2f),
-                    (w + size) / 2f,
-                    cy + (size / 2f)
-                )
-                canvas.drawBitmap(activeBitmap, src, dst, paint)
-                return
+            if (config.vtuberPreset == VtuberPreset.CUSTOM) {
+                val activeBitmap = getCustomBitmapForState(currentState)
+                if (activeBitmap != null && !activeBitmap.isRecycled) {
+                    val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+                    val src = Rect(0, 0, activeBitmap.width, activeBitmap.height)
+                    val cy = (h / 2f) + currentBounceOffset
+                    val size = minOf(w, h) * 0.92f
+                    val dst = RectF(
+                        (w - size) / 2f,
+                        cy - (size / 2f),
+                        (w + size) / 2f,
+                        cy + (size / 2f)
+                    )
+                    canvas.drawBitmap(activeBitmap, src, dst, paint)
+                    return
+                }
             }
-        }
 
-        // Renderizado del preset vectorial (Cyber Cat, Anime Aoi, Pixel Slime)
-        VtuberPresetDrawables.drawPreset(
-            canvas = canvas,
-            width = w,
-            height = h,
-            preset = config.vtuberPreset,
-            state = currentState,
-            bounceOffset = currentBounceOffset
-        )
+            // Renderizado del preset vectorial (Cyber Cat, Anime Aoi, Pixel Slime)
+            VtuberPresetDrawables.drawPreset(
+                canvas = canvas,
+                width = w,
+                height = h,
+                preset = config.vtuberPreset,
+                state = currentState,
+                bounceOffset = currentBounceOffset
+            )
+        } catch (t: Throwable) {
+            // Proteger de caídas durante el dibujo
+        }
     }
 
     private fun getCustomBitmapForState(state: VtuberState): Bitmap? {

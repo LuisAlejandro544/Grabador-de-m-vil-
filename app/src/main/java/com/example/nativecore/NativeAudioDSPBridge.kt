@@ -3,7 +3,7 @@ package com.example.nativecore
 import android.util.Log
 
 /**
- * Native C++ Audio DSP Bridge for OBS Mobile.
+ * Native C++ Audio DSP Bridge for Vortex Studio.
  * Provides real-time Noise Gate, Intelligent Audio Ducking, and Soft Limiter.
  */
 object NativeAudioDSPBridge {

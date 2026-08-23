@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.MoreVert
@@ -66,6 +67,7 @@ fun VideoItemCard(
     onShare: (RecordedVideo) -> Unit,
     onDelete: (RecordedVideo) -> Unit,
     onRename: (RecordedVideo, String) -> Unit,
+    onEdit: (RecordedVideo) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -225,6 +227,14 @@ fun VideoItemCard(
                         onClick = {
                             showMenu = false
                             onPlay(video)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Editar Clip (CapCut)") },
+                        leadingIcon = { Icon(Icons.Default.ContentCut, contentDescription = null, tint = Color(0xFF00E676)) },
+                        onClick = {
+                            showMenu = false
+                            onEdit(video)
                         }
                     )
                     DropdownMenuItem(

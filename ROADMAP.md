@@ -1,4 +1,4 @@
-# 🗺️ Roadmap: De Grabador de Pantalla a Vortex Studio (OBS para Android)
+# 🗺️ Roadmap: De Grabador de Pantalla a Vortex Studio
 
 Este documento detalla las fases de evolución del proyecto para transformar la aplicación en una suite completa de producción de video y transmisión en vivo móvil llamada **Vortex Studio**.
 
@@ -15,7 +15,7 @@ Este documento detalla las fases de evolución del proyecto para transformar la 
 
 ## 📍 Fase 2: Control de Audio, Perfiles y Widget Flotante con Herramientas (Completada ✅)
 - [x] Selector, mezcla y procesamiento de audio pro:
-  - **📊 Vúmetro de Audio Flotante & Mezclador OBS:** Barras dinámicas de decibelios (dB) con gradiente verde-amarillo-rojo para juego y micrófono.
+  - **📊 Vúmetro de Audio Flotante & Mezclador en Vivo:** Barras dinámicas de decibelios (dB) con gradiente verde-amarillo-rojo para juego y micrófono.
   - **🎚️ Control de Ganancia Independiente:** Faders deslizantes en vivo para regular la ganancia del juego (0% - 200%) y de la voz (0% - 200%) en tiempo real.
   - **Frecuencia de Muestreo (Sample Rate):** Selección entre 32.000 Hz, 44.100 Hz (CD), 48.000 Hz (broadcast gamer) y 96.000 Hz (Hi-Res).
   - **Motor DSP en C++ Nativo:** Puerta de ruido (Noise Gate), Audio Ducking automático inteligente (-9 dB) y Soft Limiter / Saturation shaper anti-clipping.
@@ -77,16 +77,22 @@ Este documento detalla las fases de evolución del proyecto para transformar la 
 
 ---
 
-## 📍 Fase 5: Motor de Edición y Post-Producción con FFmpeg Puro Nativo (C/C++)
+## 📍 Fase 5: Motor de Edición y Post-Producción con FFmpeg y MediaMuxer (En Desarrollo 🚀)
 - [x] **Cimientos y Arquitectura de FFmpeg Nativo (`libav*`):**
   - Estructura C++ (`ffmpeg_engine.hpp` / `ffmpeg_engine.cpp`) sin librerías descontinuadas ni wrappers externos.
   - Puente JNI `NativeFFmpegBridge` con métodos de recorte, extracción de audio y compresión.
-- [ ] **Recorte Rápido de Video (*Stream Copy & Frame Accurate*):**
-  - Recorte instantáneo sin pérdida ni renderizado para clips rápidos.
-- [ ] **Extracción y Procesamiento de Audio:**
+- [x] **Recorte Rápido de Video (*Stream Copy / Trim Instantáneo*):**
+  - Motor `VideoEditorManager` con recorte sin renderizado ni recodificación mediante `MediaMuxer`/`MediaExtractor` y NDK FFmpeg, manteniendo el 100% de calidad original, 60 FPS y audio nítido en milisegundos.
+- [x] **Extractor de Miniaturas en HD (*Thumbnail Grabber*):**
+  - Captura y exportación de fotogramas en resolución máxima original (1080p/4K) hacia `Pictures/ScreenRecorder` para portadas de YouTube, TikTok y Shorts.
+- [x] **Línea de Tiempo Visual y Editor Móvil estilo CapCut (`VideoEditorDialog`):**
+  - Visor interactivo, scrubber con playhead, tira de fotogramas (filmstrip) y slider dual de rango in/out.
+- [ ] **Extracción y Procesamiento de Audio (Audio Stripper):**
   - Separación de pistas de voz/juego y exportación directa a MP3/AAC.
 - [ ] **Conversión para Redes (Shorts / TikTok / Reels):**
   - Adaptación inteligente de formato 16:9 a 9:16 con desenfoque de fondo.
+- [ ] **Generador de GIFs Animados:**
+  - Exportación de fragmentos de 3-8 segundos en GIF optimizado para Discord y WhatsApp.
 
 ---
 

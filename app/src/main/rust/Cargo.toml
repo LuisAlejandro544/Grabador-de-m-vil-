@@ -1,11 +1,11 @@
 [package]
-name = "obs_rust_network"
+name = "vortex_rust_network"
 version = "0.1.0"
 edition = "2021"
-description = "Rust Real-time Streaming & RTMP/SRT Packet Engine for OBS Mobile"
+description = "Rust Real-time Streaming & RTMP/SRT Packet Engine for Vortex Studio"
 
 [lib]
-name = "obs_rust_network"
+name = "vortex_rust_network"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]

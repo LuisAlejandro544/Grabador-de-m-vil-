@@ -36,6 +36,7 @@ data class UiState(
     val videos: List<RecordedVideo> = emptyList(),
     val isLoadingVideos: Boolean = false,
     val selectedVideoForPlay: RecordedVideo? = null,
+    val selectedVideoForEdit: RecordedVideo? = null,
     val installedGames: List<InstalledAppItem> = emptyList(),
     val isLoadingGames: Boolean = false,
     val errorMessage: String? = null,
@@ -58,6 +59,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     private val _videos = MutableStateFlow<List<RecordedVideo>>(emptyList())
     private val _isLoadingVideos = MutableStateFlow(false)
     private val _selectedVideoForPlay = MutableStateFlow<RecordedVideo?>(null)
+    private val _selectedVideoForEdit = MutableStateFlow<RecordedVideo?>(null)
     private val _installedGames = MutableStateFlow<List<InstalledAppItem>>(emptyList())
     private val _isLoadingGames = MutableStateFlow(false)
     private val _activeTab = MutableStateFlow(0)
@@ -69,15 +71,16 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         combine(_config, ScreenRecordService.recordingState, ScreenRecordService.elapsedSeconds, countdownManager.countdownNumber) { config, state, elapsed, cd ->
             Quadruple(config, state, elapsed, cd)
         },
-        combine(countdownManager.isCountingDown, _videos, _isLoadingVideos, _selectedVideoForPlay) { isCd, vids, loadingVids, selectedVid ->
-            Quadruple(isCd, vids, loadingVids, selectedVid)
+        combine(countdownManager.isCountingDown, _videos, _isLoadingVideos, combine(_selectedVideoForPlay, _selectedVideoForEdit) { play, edit -> Pair(play, edit) }) { isCd, vids, loadingVids, playEditPair ->
+            Quadruple(isCd, vids, loadingVids, playEditPair)
         },
         combine(_installedGames, _isLoadingGames, ScreenRecordService.errorMessage, combine(_infoMessage, _activeTab) { info, tab -> Pair(info, tab) }) { games, loadingGames, err, infoTab ->
             Quadruple(games, loadingGames, err, infoTab)
         }
     ) { group1, group2, group3 ->
         val (config, serviceState, elapsed, countdown) = group1
-        val (isCountingDown, videos, isLoadingVideos, selectedVideo) = group2
+        val (isCountingDown, videos, isLoadingVideos, playEditPair) = group2
+        val (selectedVideo, selectedVideoForEdit) = playEditPair
         val (games, loadingGames, serviceError, infoTab) = group3
         val (infoMessage, activeTab) = infoTab
 
@@ -92,6 +95,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             videos = videos,
             isLoadingVideos = isLoadingVideos,
             selectedVideoForPlay = selectedVideo,
+            selectedVideoForEdit = selectedVideoForEdit,
             installedGames = games,
             isLoadingGames = loadingGames,
             errorMessage = serviceError,
@@ -305,20 +309,76 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         settingsRepository.toggleVtuberBounce(enabled)
     }
 
-    fun updateVtuberIdleImage(uri: String?) {
-        settingsRepository.updateVtuberIdleUri(uri)
+    fun updateVtuberIdleImage(uriString: String?) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val finalPath = if (!uriString.isNullOrBlank()) {
+                val uri = android.net.Uri.parse(uriString)
+                if (uri.scheme == "content") {
+                    com.example.service.vtuber.VtuberPresetDrawables.saveImageToInternalStorage(
+                        getApplication(), uri, "idle"
+                    ) ?: uriString
+                } else {
+                    uriString
+                }
+            } else {
+                null
+            }
+            settingsRepository.updateVtuberIdleUri(finalPath)
+        }
     }
 
-    fun updateVtuberTalkImage(uri: String?) {
-        settingsRepository.updateVtuberTalkUri(uri)
+    fun updateVtuberTalkImage(uriString: String?) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val finalPath = if (!uriString.isNullOrBlank()) {
+                val uri = android.net.Uri.parse(uriString)
+                if (uri.scheme == "content") {
+                    com.example.service.vtuber.VtuberPresetDrawables.saveImageToInternalStorage(
+                        getApplication(), uri, "talk"
+                    ) ?: uriString
+                } else {
+                    uriString
+                }
+            } else {
+                null
+            }
+            settingsRepository.updateVtuberTalkUri(finalPath)
+        }
     }
 
-    fun updateVtuberBlinkImage(uri: String?) {
-        settingsRepository.updateVtuberBlinkUri(uri)
+    fun updateVtuberBlinkImage(uriString: String?) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val finalPath = if (!uriString.isNullOrBlank()) {
+                val uri = android.net.Uri.parse(uriString)
+                if (uri.scheme == "content") {
+                    com.example.service.vtuber.VtuberPresetDrawables.saveImageToInternalStorage(
+                        getApplication(), uri, "blink"
+                    ) ?: uriString
+                } else {
+                    uriString
+                }
+            } else {
+                null
+            }
+            settingsRepository.updateVtuberBlinkUri(finalPath)
+        }
     }
 
-    fun updateVtuberBlinkTalkImage(uri: String?) {
-        settingsRepository.updateVtuberBlinkTalkUri(uri)
+    fun updateVtuberBlinkTalkImage(uriString: String?) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val finalPath = if (!uriString.isNullOrBlank()) {
+                val uri = android.net.Uri.parse(uriString)
+                if (uri.scheme == "content") {
+                    com.example.service.vtuber.VtuberPresetDrawables.saveImageToInternalStorage(
+                        getApplication(), uri, "blink_talk"
+                    ) ?: uriString
+                } else {
+                    uriString
+                }
+            } else {
+                null
+            }
+            settingsRepository.updateVtuberBlinkTalkUri(finalPath)
+        }
     }
 
     fun toggleGameMode(enabled: Boolean) {
@@ -400,6 +460,25 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     fun closePlayer() {
         _selectedVideoForPlay.value = null
+    }
+
+    fun openEditor(video: RecordedVideo) {
+        _selectedVideoForPlay.value = null
+        _selectedVideoForEdit.value = video
+    }
+
+    fun closeEditor() {
+        _selectedVideoForEdit.value = null
+    }
+
+    fun onVideoEdited(file: java.io.File) {
+        _selectedVideoForEdit.value = null
+        _infoMessage.value = "¡Clip recortado guardado: ${file.name}!"
+        loadVideos()
+    }
+
+    fun onThumbnailExtracted(file: java.io.File) {
+        _infoMessage.value = "¡Miniatura HD guardada en Pictures: ${file.name}!"
     }
 
     fun shareVideo(context: Context, video: RecordedVideo) {

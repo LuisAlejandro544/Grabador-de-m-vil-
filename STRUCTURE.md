@@ -1,6 +1,6 @@
 # 🏛️ Estructura del Proyecto (Architecture & File Tree)
 
-Este archivo describe la organización de directorios, módulos y capas del proyecto **Vortex Studio** (Grabador de Pantalla & Streaming OBS).
+Este archivo describe la organización de directorios, módulos y capas del proyecto **Vortex Studio** (Grabador de Pantalla & Motor de Streaming).
 
 ---
 
@@ -10,7 +10,7 @@ Este archivo describe la organización de directorios, módulos y capas del proy
 vortex-studio/
 ├── .github/
 │   └── workflows/
-│       ├── build-apk.yml                    # Compilación automatizada de APK Debug con caché y keystore
+│       ├── build-apk.yml                    # Compilación automatizada de APK Debug con NDK C++, Rust y caché
 │       └── override-commit.yml              # Sincronización del mensaje del commit desde commit_message.txt
 ├── app/
 │   ├── build.gradle.kts                     # Configuración de compilación Android & dependencias
@@ -25,7 +25,7 @@ vortex-studio/
 │       │   │   ├── audio_dsp_engine.cpp     # Implementación del motor DSP en tiempo real (48 kHz Estéreo)
 │       │   │   ├── ffmpeg_engine.hpp        # Interfaz de procesamiento FFmpeg puro (libav*)
 │       │   │   ├── ffmpeg_engine.cpp        # Implementación de pipeline de recorte, audio y transcodificación
-│       │   │   └── obs_core.cpp             # JNI export bridge completo para Kotlin (OBS, DSP & FFmpeg)
+│       │   │   └── obs_core.cpp             # JNI export bridge completo para Kotlin (Core, DSP & FFmpeg)
 │       │   ├── rust/                        # Motor Rust nativo (Streaming & Red)
 │       │   │   ├── Cargo.toml               # Configuración Cargo (cdylib, JNI, logging)
 │       │   │   └── src/
@@ -35,6 +35,8 @@ vortex-studio/
 │       │   │   ├── model/
 │       │   │   │   ├── RecordingConfig.kt   # Modelos de configuración (FPS, Bitrate, Audio, Facecam, Belleza, RGB, Toques)
 │       │   │   │   └── RecordedVideo.kt     # Entidad de video grabado con helpers de formato
+│       │   │   ├── editor/                  # Motor de edición de video rápido
+│       │   │   │   └── VideoEditorManager.kt# Recorte sin renderizado (Stream Copy) y Extractor de Miniaturas HD
 │       │   │   ├── nativecore/
 │       │   │   │   ├── NativeOBSBridge.kt   # Puente JNI seguro hacia C++ (GLES3 / EGL / Transformaciones)
 │       │   │   │   ├── NativeAudioDSPBridge.kt # Puente JNI seguro hacia C++ Audio DSP (Noise Gate, Ducking, Limiter)
@@ -80,7 +82,7 @@ vortex-studio/
 │       │   │   │   ├── overlay/                   # Submódulos de dibujo y coordinación de escena/overlays
 │       │   │   │   │   ├── ServiceOverlayCoordinator.kt # Coordinador modular de todos los overlays y widgets flotantes
 │       │   │   │   │   └── SceneOverlayDrawables.kt# Renderizado vectorial de marcos y banners de streamer
-│       │   │   │   ├── FloatingVuMeterManager.kt  # Gestor del Vúmetro Flotante y Mezclador OBS
+│       │   │   │   ├── FloatingVuMeterManager.kt  # Gestor del Vúmetro Flotante y Mezclador de Audio Pro
 │       │   │   │   ├── vumeter/                   # Submódulos del vúmetro y mezclador de audio
 │       │   │   │   │   └── VuMeterOverlayView.kt  # Vista de medidor LED de decibelios (dB) y faders de ganancia
 │       │   │   │   ├── FloatingBubbleManager.kt   # Coordinador del ciclo de vida del widget flotante y herramientas
@@ -99,6 +101,8 @@ vortex-studio/
 │       │   │       ├── tabs/
 │       │   │       │   ├── RecordTab.kt           # Pestaña principal de grabación, pulso y accesos directos
 │       │   │       │   └── GalleryTab.kt          # Pestaña de galería de grabaciones y lista reactiva
+│       │   │       ├── editor/
+│       │   │       │   └── VideoEditorDialog.kt   # Interfaz de mini editor estilo CapCut (Filmstrip, Trim Slider, HD Thumbs)
 │       │   │       ├── components/
 │       │   │       │   ├── RecordTopBar.kt        # Barra superior con badge de estado en tiempo real
 │       │   │       │   ├── RecordBottomBar.kt     # Barra inferior de navegación entre pestañas
@@ -132,7 +136,7 @@ vortex-studio/
 │           ├── ExampleRobolectricTest.kt    # Pruebas unitarias de contexto y lógica
 │           └── GreetingScreenshotTest.kt    # Pruebas de captura Roborazzi
 ├── README.md                                # Guía general del proyecto
-├── ROADMAP.md                               # Plan de evolución a OBS Studio
+├── ROADMAP.md                               # Plan de evolución de Vortex Studio
 ├── STRUCTURE.md                             # Este archivo (Estructura técnica)
 ├── AI_CONTEXT.md                            # Contexto para asistentes de inteligencia artificial
 ├── AGENTS.md                                # Flujo de trabajo y normas para agentes
@@ -158,7 +162,7 @@ vortex-studio/
    - `ScreenRecordService`: Coordinador liviano enfocado exclusivamente en el ciclo de vida del servicio en primer plano.
    - `ServiceParamsExtractor`: Extracción segura y cálculo de orientación de parámetros de grabación desde el Intent.
    - `ServiceOverlayCoordinator`: Gestor desacoplado que orquesta todos los widgets y capas visuales flotantes (Facecam, Burbuja, VTuber 2D, Toques, Marca de agua, Escenas y Vúmetro de Audio Flotante).
-   - `FloatingVuMeterManager` & `VuMeterOverlayView`: Widget flotante arrastrable de monitoreo de audio en tiempo real estilo consola OBS con medidores LED estéreo (dB) y faders de ganancia independientes para juego y voz.
+   - `FloatingVuMeterManager` & `VuMeterOverlayView`: Widget flotante arrastrable de monitoreo de audio en tiempo real estilo consola de estudio con medidores LED estéreo (dB) y faders de ganancia independientes para juego y voz.
    - `VtuberOverlayManager` & `VtuberAudioReactor`: Motor de avatar 2D / PNGtuber reactivo al micrófono con animación de habla por RMS, parpadeo inteligente con decaimiento natural, soporte de presets vectoriales y PNGs personalizados de 4 estados.
    - `ScreenCaptureEngine`: Fachada que delega responsabilidades a submódulos en `service/capture/`:
      - `VideoEncoderModule`: Manejo de hardware encoder AVC/H.264 y entrega de buffers de video.

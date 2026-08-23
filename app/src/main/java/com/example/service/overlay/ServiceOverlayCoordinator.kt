@@ -14,7 +14,7 @@ import com.example.service.vumeter.FloatingVuMeterManager
 
 /**
  * Coordinador modular de todas las capas visuales y widgets flotantes del servicio.
- * Desacopla la gestión de Facecam, PNGtuber / Avatar 2D, Vúmetro Flotante OBS, Burbuja Flotante,
+ * Desacopla la gestión de Facecam, PNGtuber / Avatar 2D, Vúmetro Flotante, Burbuja Flotante,
  * Toques Táctiles, Marca de Agua y Overlays de Escena fuera del ciclo de vida de [ScreenRecordService].
  */
 class ServiceOverlayCoordinator(
@@ -289,21 +289,27 @@ class ServiceOverlayCoordinator(
     }
 
     fun launchVtuber(config: RecordingConfig) {
-        vtuberOverlayManager?.dismiss()
-        vtuberOverlayManager = VtuberOverlayManager(
-            context = context,
-            config = config,
-            onCloseClicked = {
-                onVtuberStateChanged(false)
-                floatingBubbleManager?.updateVtuberStatus(false)
-                settingsRepository.toggleVtuber(false)
+        try {
+            vtuberOverlayManager?.dismiss()
+            vtuberOverlayManager = VtuberOverlayManager(
+                context = context,
+                config = config,
+                onCloseClicked = {
+                    onVtuberStateChanged(false)
+                    floatingBubbleManager?.updateVtuberStatus(false)
+                    settingsRepository.toggleVtuber(false)
+                }
+            ).apply {
+                show()
             }
-        ).apply {
-            show()
+            val isShowing = vtuberOverlayManager?.isShowing == true
+            onVtuberStateChanged(isShowing)
+            floatingBubbleManager?.updateVtuberStatus(isShowing)
+        } catch (t: Throwable) {
+            Log.e(TAG, "Error lanzando PNGtuber: ${t.message}", t)
+            onVtuberStateChanged(false)
+            floatingBubbleManager?.updateVtuberStatus(false)
         }
-        val isShowing = vtuberOverlayManager?.isShowing == true
-        onVtuberStateChanged(isShowing)
-        floatingBubbleManager?.updateVtuberStatus(isShowing)
     }
 
     fun toggleVtuber() {
@@ -372,7 +378,11 @@ class ServiceOverlayCoordinator(
     }
 
     fun onAudioAmplitude(amp: Float) {
-        vtuberOverlayManager?.onAudioVolume(amp)
+        try {
+            vtuberOverlayManager?.onAudioVolume(amp)
+        } catch (t: Throwable) {
+            // Prevenir excepciones en pipeline de audio
+        }
     }
 
     fun dismissAll() {

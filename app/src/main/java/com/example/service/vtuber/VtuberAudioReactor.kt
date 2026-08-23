@@ -122,6 +122,13 @@ class VtuberAudioReactor(
             !isTalking && isBlinking -> VtuberState.BLINKING
             else -> VtuberState.IDLE
         }
-        onStateChanged(state, currentAmplitude)
+        val amp = currentAmplitude
+        scope.launch(Dispatchers.Main) {
+            try {
+                onStateChanged(state, amp)
+            } catch (t: Throwable) {
+                // Prevenir caídas no deseadas en callbacks
+            }
+        }
     }
 }

@@ -83,7 +83,7 @@ fun AudioSettingsCard(
             }
         }
 
-        // 2. Mezclador de Audio OBS & Vúmetro Flotante
+        // 2. Mezclador de Audio Pro & Vúmetro Flotante
         Card(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
@@ -111,7 +111,7 @@ fun AudioSettingsCard(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = "Vúmetro Flotante & Mezclador OBS",
+                                text = "Vúmetro Flotante & Mezclador Pro",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -225,7 +225,7 @@ fun AudioSettingsCard(
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Filtros DSP OBS: Puerta de Ruido & Audio Ducking
+                // Filtros DSP Pro: Puerta de Ruido & Audio Ducking
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

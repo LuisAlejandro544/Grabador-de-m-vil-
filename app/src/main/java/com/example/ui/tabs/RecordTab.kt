@@ -55,6 +55,7 @@ fun RecordTab(
     onShareVideo: (RecordedVideo) -> Unit,
     onDeleteVideo: (RecordedVideo) -> Unit,
     onRenameVideo: (RecordedVideo, String) -> Unit,
+    onEditVideo: (RecordedVideo) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -140,7 +141,8 @@ fun RecordTab(
                     onPlay = { onPlayVideo(video) },
                     onShare = { onShareVideo(video) },
                     onDelete = { onDeleteVideo(video) },
-                    onRename = { v, name -> onRenameVideo(v, name) }
+                    onRename = { v, name -> onRenameVideo(v, name) },
+                    onEdit = { onEditVideo(video) }
                 )
             }
         }

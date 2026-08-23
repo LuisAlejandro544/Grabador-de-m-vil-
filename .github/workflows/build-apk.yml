@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       use_cache:
-        description: 'Usar caché para dependencias y binarios C++ (Gradle, NDK, CXX)'
+        description: 'Usar caché para dependencias y binarios C++/Rust (Gradle, NDK, Cargo)'
         required: true
         default: true
         type: boolean
@@ -22,9 +22,9 @@ concurrency:
 
 jobs:
   build-apk:
-    name: Compilar APK Debug (OBS Mobile con C++ NDK)
+    name: Compilar APK Debug (Vortex Studio NDK C++ & Rust)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - name: 📥 Descargar código del repositorio
@@ -43,7 +43,7 @@ jobs:
 
       - name: 📜 Aceptar licencias de Android SDK e instalar NDK y CMake
         run: |
-          echo "=== Aceptando licencias e instalando herramientas de compilación C++ ==="
+          echo "=== Aceptando licencias e instalando herramientas de compilación C++ NDK ==="
           yes | sdkmanager --licenses || true
           sdkmanager --install \
             "platforms;android-36" \
@@ -52,18 +52,54 @@ jobs:
             "ndk;26.1.10909125" \
             "cmake;3.22.1" || true
 
-      - name: ⚡ Restaurar Caché de Gradle y NDK CXX
+      - name: 🦀 Configurar Toolchain de Rust y Targets Android
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, armv7-linux-androideabi, x86_64-linux-android
+
+      - name: ⚡ Restaurar Caché de Gradle, NDK C++ y Rust Cargo
         if: ${{ inputs.use_cache == true }}
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
+            ~/.cargo/bin
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
             app/.cxx
-          key: ${{ runner.os }}-obs-mobile-${{ hashFiles('**/*.gradle*', '**/libs.versions.toml', 'app/src/main/cpp/**') }}
+            app/src/main/rust/target
+          key: ${{ runner.os }}-vortex-studio-${{ hashFiles('**/*.gradle*', '**/libs.versions.toml', 'app/src/main/cpp/**', 'app/src/main/rust/**') }}
           restore-keys: |
-            ${{ runner.os }}-obs-mobile-
+            ${{ runner.os }}-vortex-studio-
             ${{ runner.os }}-gradle-
+            ${{ runner.os }}-rust-
+
+      - name: 📦 Instalar cargo-ndk para compilación cruzada
+        run: |
+          echo "=== Instalando / verificando cargo-ndk ==="
+          if ! command -v cargo-ndk &> /dev/null; then
+            cargo install cargo-ndk --locked || cargo install cargo-ndk
+          else
+            echo "cargo-ndk ya se encuentra en caché."
+          fi
+
+      - name: 🦀 Compilar Módulo Nativo Rust (Motor de Streaming de Baja Latencia)
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.1.10909125
+        run: |
+          echo "=== Compilando librerías Rust para arquitecturas Android con cargo-ndk ==="
+          mkdir -p app/src/main/jniLibs
+          cd app/src/main/rust
+          if [ "${{ inputs.use_cache }}" = "false" ]; then
+            echo "Limpiando target de Rust para compilación limpia..."
+            cargo clean
+          fi
+          cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o ../jniLibs build --release
+          cd ../../../
+          echo "=== Bibliotecas nativas compiladas en jniLibs ==="
+          ls -la app/src/main/jniLibs/
 
       - name: 🔑 Generar Keystore de Depuración (debug.keystore)
         run: |
@@ -96,7 +132,7 @@ jobs:
           gradle wrapper --gradle-version 9.3.1 --distribution-type bin || gradle wrapper || true
           chmod +x gradlew
 
-      - name: 🔨 Compilar APK Debug (con C++ DSP, OpenGL ES y FFmpeg Engine)
+      - name: 🔨 Compilar APK Debug (con C++ DSP, OpenGL ES, FFmpeg y Rust Network)
         env:
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.configuration-cache=false -Dkotlin.compiler.execution.strategy=in-process"
           ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.1.10909125
@@ -115,7 +151,8 @@ jobs:
       - name: 🚀 Subir APK como Artefacto descargable
         uses: actions/upload-artifact@v4
         with:
-          name: OBS-Mobile-Debug-APK
+          name: Vortex-Studio-Debug-APK
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 30
+

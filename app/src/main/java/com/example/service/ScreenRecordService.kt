@@ -234,26 +234,59 @@ class ScreenRecordService : Service() {
             _errorMessage.value = null
             _isMicMuted.value = captureEngine.isMicrophoneMuted
 
-            // 4. Iniciar Overlays configurados
-            if (params.showFacecam) overlayCoordinator.launchFacecam(params.savedConfig)
-            if (params.savedConfig.showVtuber) overlayCoordinator.launchVtuber(params.savedConfig)
-            if (params.savedConfig.showFloatingVuMeter) overlayCoordinator.launchVuMeter(params.savedConfig)
-            if (params.savedConfig.showTouchVisualizer) overlayCoordinator.launchTouchVisualizer(params.savedConfig)
-            if (params.savedConfig.showWatermark) overlayCoordinator.launchWatermark(params.savedConfig)
-            if (params.savedConfig.showSceneOverlay) overlayCoordinator.launchSceneOverlay(params.savedConfig)
+            // 4. Iniciar Overlays configurados de forma tolerante a fallos
+            try {
+                if (params.showFacecam) overlayCoordinator.launchFacecam(params.savedConfig)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Error iniciando Facecam: ${t.message}")
+            }
+
+            try {
+                if (params.savedConfig.showVtuber) overlayCoordinator.launchVtuber(params.savedConfig)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Error iniciando PNGtuber: ${t.message}")
+            }
+
+            try {
+                if (params.savedConfig.showFloatingVuMeter) overlayCoordinator.launchVuMeter(params.savedConfig)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Error iniciando Vúmetro Flotante: ${t.message}")
+            }
+
+            try {
+                if (params.savedConfig.showTouchVisualizer) overlayCoordinator.launchTouchVisualizer(params.savedConfig)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Error iniciando Toques: ${t.message}")
+            }
+
+            try {
+                if (params.savedConfig.showWatermark) overlayCoordinator.launchWatermark(params.savedConfig)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Error iniciando Marca de Agua: ${t.message}")
+            }
+
+            try {
+                if (params.savedConfig.showSceneOverlay) overlayCoordinator.launchSceneOverlay(params.savedConfig)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Error iniciando Overlay de Escena: ${t.message}")
+            }
 
             // 5. Iniciar Burbuja Flotante si estaba activada
             if (params.showFloatingBubble) {
-                overlayCoordinator.setupFloatingBubble(
-                    isMicMuted = captureEngine.isMicrophoneMuted,
-                    isBeautyActive = params.savedConfig.beautyFilterEnabled,
-                    isRgbActive = params.savedConfig.facecamRgbBorder,
-                    onPauseClicked = { handlePauseAction() },
-                    onResumeClicked = { handleResumeAction() },
-                    onStopClicked = { handleStopAction() },
-                    onMicToggleClicked = { handleToggleMicAction() },
-                    onScreenshotRequested = { handleScreenshotAction() }
-                )
+                try {
+                    overlayCoordinator.setupFloatingBubble(
+                        isMicMuted = captureEngine.isMicrophoneMuted,
+                        isBeautyActive = params.savedConfig.beautyFilterEnabled,
+                        isRgbActive = params.savedConfig.facecamRgbBorder,
+                        onPauseClicked = { handlePauseAction() },
+                        onResumeClicked = { handleResumeAction() },
+                        onStopClicked = { handleStopAction() },
+                        onMicToggleClicked = { handleToggleMicAction() },
+                        onScreenshotRequested = { handleScreenshotAction() }
+                    )
+                } catch (t: Throwable) {
+                    Log.e(TAG, "Error iniciando Burbuja Flotante: ${t.message}")
+                }
             }
 
             startChronometerTimer()
