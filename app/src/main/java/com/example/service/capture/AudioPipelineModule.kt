@@ -1,17 +1,13 @@
 package com.example.service.capture
 
-import android.media.MediaCodec
-import android.media.MediaCodecInfo
-import android.media.MediaFormat
 import android.media.projection.MediaProjection
-import android.os.SystemClock
 import android.util.Log
 import com.example.model.AudioSourceType
 
 /**
- * Módulo modular de captura, procesamiento DSP en C++ (Noise Gate, Ducking automático, Soft Limiter)
- * y codificación AAC de audio para juegos y voz.
- * Orquesta concurrentemente [InternalAudioWorker], [MicAudioWorker] y [AudioDspMixer].
+ * Módulo de captura, procesamiento DSP en C++ (Noise Gate, Ducking automático, Soft Limiter)
+ * y orquestación de audio para juegos y voz.
+ * Coordina de forma modular [InternalAudioWorker], [MicAudioWorker], [AudioDspMixer] y [AudioEncoderWorker].
  */
 class AudioPipelineModule(
     private val audioSource: String,
@@ -25,21 +21,17 @@ class AudioPipelineModule(
 
     companion object {
         private const val TAG = "AudioPipelineModule"
-        private const val AUDIO_BIT_RATE = 192000
-        private const val TIMEOUT_USEC = 10000L
     }
 
     private var internalAudioWorker: InternalAudioWorker? = null
     private var micAudioWorker: MicAudioWorker? = null
     private var dspMixer: AudioDspMixer? = null
-    private var audioEncoder: MediaCodec? = null
+    private var audioEncoderWorker: AudioEncoderWorker? = null
 
     private var currentGameGain: Float = 1.0f
     private var currentMicGain: Float = 1.25f
     private var currentNoiseGate: Boolean = true
     private var currentDucking: Boolean = true
-
-    private var encoderWorkerThread: Thread? = null
 
     var hasAudio: Boolean = false
         private set
@@ -137,27 +129,30 @@ class AudioPipelineModule(
         val hasAnyRecord = (internalAudioWorker?.isInitialized == true) || (micAudioWorker?.isInitialized == true)
 
         if (hasAnyRecord) {
-            val aFormat = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, sampleRate, channelCount).apply {
-                setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
-                setInteger(MediaFormat.KEY_BIT_RATE, AUDIO_BIT_RATE)
-                setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16384)
-            }
+            val encoder = AudioEncoderWorker(
+                sampleRate = sampleRate,
+                channelCount = channelCount,
+                muxerManager = muxerManager,
+                isRecordingProvider = isRecordingProvider,
+                isPausedProvider = isPausedProvider
+            )
 
-            val aEncoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC)
-            aEncoder.configure(aFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-            aEncoder.start()
-            audioEncoder = aEncoder
-            hasAudio = true
+            if (encoder.initialize()) {
+                audioEncoderWorker = encoder
+                hasAudio = true
 
-            // Inicializar DSP C++ con los parámetros configurados
-            dspMixer = AudioDspMixer(sampleRate, channelCount).apply {
-                initializeDsp(
-                    gameGain = currentGameGain,
-                    micGain = currentMicGain,
-                    noiseGateEnabled = currentNoiseGate,
-                    duckingEnabled = currentDucking,
-                    peakLimiterEnabled = true
-                )
+                // Inicializar DSP C++ con los parámetros configurados
+                dspMixer = AudioDspMixer(sampleRate, channelCount).apply {
+                    initializeDsp(
+                        gameGain = currentGameGain,
+                        micGain = currentMicGain,
+                        noiseGateEnabled = currentNoiseGate,
+                        duckingEnabled = currentDucking,
+                        peakLimiterEnabled = true
+                    )
+                }
+            } else {
+                hasAudio = false
             }
         } else {
             Log.w(TAG, "Ningún AudioRecord disponible, continuando sin audio")
@@ -166,171 +161,23 @@ class AudioPipelineModule(
     }
 
     fun startWorker() {
-        val encoder = audioEncoder ?: return
         val mixer = dspMixer ?: return
+        val encoderWorker = audioEncoderWorker ?: return
 
         internalAudioWorker?.start()
         micAudioWorker?.start()
 
-        val isDualAudioMode = internalAudioWorker != null && micAudioWorker != null
-
-        // Hilo consumidor y codificador MediaCodec AAC
-        encoderWorkerThread = Thread({
-            val bufferInfo = MediaCodec.BufferInfo()
-            val micAccumulator = java.io.ByteArrayOutputStream(16384)
-            var lastInternalDataTime = SystemClock.uptimeMillis()
-
-            while (isRecordingProvider()) {
-                try {
-                    val isPaused = isPausedProvider()
-
-                    if (isDualAudioMode) {
-                        // --- MODO DUAL SINCRONIZADO (AUDIO DEL JUEGO + MICRÓFONO) ---
-                        val micWorker = micAudioWorker
-                        if (micWorker != null && !micWorker.isMicMuted) {
-                            while (true) {
-                                val chunk = micWorker.audioQueue.poll() ?: break
-                                micAccumulator.write(chunk)
-                            }
-                        }
-
-                        val internalData = internalAudioWorker?.audioQueue?.poll()
-                        var finalBytes: ByteArray? = null
-                        var finalSize = 0
-
-                        if (internalData != null) {
-                            lastInternalDataTime = SystemClock.uptimeMillis()
-                            val neededBytes = internalData.size
-                            val micData = ByteArray(neededBytes)
-
-                            if (micWorker != null && !micWorker.isMicMuted && micAccumulator.size() > 0) {
-                                val currentMicBytes = micAccumulator.toByteArray()
-                                val bytesToCopy = minOf(neededBytes, currentMicBytes.size)
-                                System.arraycopy(currentMicBytes, 0, micData, 0, bytesToCopy)
-
-                                micAccumulator.reset()
-                                if (currentMicBytes.size > bytesToCopy) {
-                                    val remaining = currentMicBytes.size - bytesToCopy
-                                    val safeRemaining = minOf(remaining, 16384)
-                                    val startOffset = currentMicBytes.size - safeRemaining
-                                    micAccumulator.write(currentMicBytes, startOffset, safeRemaining)
-                                }
-                            }
-
-                            val (mixed, size) = mixer.mixDualAudio(internalData, micData)
-                            finalBytes = mixed
-                            finalSize = size
-                        } else {
-                            // Fallback si la fuente del juego tarda más de 50ms (ej. pantalla de carga o silencio completo)
-                            val elapsedSinceInternal = SystemClock.uptimeMillis() - lastInternalDataTime
-                            if (elapsedSinceInternal > 50L && micAccumulator.size() >= 4096) {
-                                val currentMicBytes = micAccumulator.toByteArray()
-                                val chunkSize = 4096
-                                val micChunk = currentMicBytes.copyOf(chunkSize)
-                                micAccumulator.reset()
-                                if (currentMicBytes.size > chunkSize) {
-                                    micAccumulator.write(currentMicBytes, chunkSize, currentMicBytes.size - chunkSize)
-                                }
-
-                                val silentInternal = ByteArray(chunkSize)
-                                val (mixed, size) = mixer.mixDualAudio(silentInternal, micChunk)
-                                finalBytes = mixed
-                                finalSize = size
-                            }
-                        }
-
-                        if (finalBytes != null && finalSize > 0 && !isPaused) {
-                            val inputBufferIndex = encoder.dequeueInputBuffer(TIMEOUT_USEC)
-                            if (inputBufferIndex >= 0) {
-                                val inputBuffer = encoder.getInputBuffer(inputBufferIndex)
-                                inputBuffer?.clear()
-                                inputBuffer?.put(finalBytes, 0, finalSize)
-
-                                val pts = System.nanoTime() / 1000
-                                encoder.queueInputBuffer(inputBufferIndex, 0, finalSize, pts, 0)
-                            }
-                        }
-
-                        drainAudioEncoder(encoder, bufferInfo, isPaused)
-
-                        if (internalData == null) {
-                            SystemClock.sleep(4)
-                        }
-                    } else {
-                        // --- MODO FUENTE ÚNICA (SOLO JUEGO O SOLO MICRÓFONO) ---
-                        val internalData = internalAudioWorker?.audioQueue?.poll()
-                        val micData = if (micAudioWorker?.isMicMuted == false) {
-                            micAudioWorker?.audioQueue?.poll()
-                        } else null
-
-                        if (internalData == null && micData == null) {
-                            drainAudioEncoder(encoder, bufferInfo, isPaused)
-                            SystemClock.sleep(5)
-                            continue
-                        }
-
-                        var finalBytes: ByteArray? = null
-                        var finalSize = 0
-
-                        if (internalData != null) {
-                            finalBytes = internalData
-                            finalSize = internalData.size
-                        } else if (micData != null) {
-                            val (proc, size) = mixer.processSingleMicAudio(micData)
-                            finalBytes = proc
-                            finalSize = size
-                        }
-
-                        if (finalBytes != null && finalSize > 0 && !isPaused) {
-                            val inputBufferIndex = encoder.dequeueInputBuffer(TIMEOUT_USEC)
-                            if (inputBufferIndex >= 0) {
-                                val inputBuffer = encoder.getInputBuffer(inputBufferIndex)
-                                inputBuffer?.clear()
-                                inputBuffer?.put(finalBytes, 0, finalSize)
-
-                                val pts = System.nanoTime() / 1000
-                                encoder.queueInputBuffer(inputBufferIndex, 0, finalSize, pts, 0)
-                            }
-                        }
-
-                        drainAudioEncoder(encoder, bufferInfo, isPaused)
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error en bucle de audio: ${e.message}")
-                    break
-                }
-            }
-        }, "OBS_AudioEncoderWorker").apply { start() }
-    }
-
-    private fun drainAudioEncoder(encoder: MediaCodec, bufferInfo: MediaCodec.BufferInfo, isPaused: Boolean) {
-        while (true) {
-            val outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 0)
-            if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                val newFormat = encoder.outputFormat
-                muxerManager.addAudioTrack(newFormat)
-            } else if (outputBufferIndex >= 0) {
-                val outputBuffer = encoder.getOutputBuffer(outputBufferIndex)
-                if (outputBuffer != null && bufferInfo.size > 0 && (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0) {
-                    if (!isPaused) {
-                        muxerManager.writeAudioSample(outputBuffer, bufferInfo)
-                    }
-                }
-                encoder.releaseOutputBuffer(outputBufferIndex, false)
-            } else {
-                break
-            }
-        }
+        encoderWorker.start(
+            internalWorker = internalAudioWorker,
+            micWorker = micAudioWorker,
+            mixer = mixer
+        )
     }
 
     fun stopWorker() {
         internalAudioWorker?.stop()
         micAudioWorker?.stop()
-
-        try {
-            encoderWorkerThread?.join(500)
-        } catch (_: Exception) {}
-        encoderWorkerThread = null
+        audioEncoderWorker?.stop()
     }
 
     fun release() {
@@ -342,13 +189,8 @@ class AudioPipelineModule(
         micAudioWorker?.release()
         micAudioWorker = null
 
-        try {
-            audioEncoder?.stop()
-            audioEncoder?.release()
-        } catch (e: Exception) {
-            Log.w(TAG, "Error liberando audioEncoder: ${e.message}")
-        }
-        audioEncoder = null
+        audioEncoderWorker?.release()
+        audioEncoderWorker = null
 
         dspMixer?.release()
         dspMixer = null

@@ -1,17 +1,25 @@
-fix: gestión inteligente de permisos en tiempo de ejecución y eliminación de solicitudes repetitivas
+refactor: desarrollo modular de ScreenRecordService, AudioPipelineModule y HomeScreen
 
-- Gestión Inteligente de Permisos en Tiempo de Ejecución (Eliminación de Solicitudes Repetitivas de Micrófono):
-  * Corrección de la lógica de solicitud de permisos en `HomeScreen.kt`:
-    - Verificación previa de permisos con `ContextCompat.checkSelfPermission` antes de disparar el launcher del sistema (`RECORD_AUDIO`, `CAMERA`, `POST_NOTIFICATIONS`).
-    - Eliminación de la llamada indiscriminada a `permissionsLauncher`: si los permisos ya fueron otorgados previamente o no se requiere audio (`AudioSourceType.NONE`), el flujo avanza inmediatamente a `createScreenCaptureIntent` sin mostrar diálogos de permisos recurrentes ni interrumpir la experiencia de juego.
-    - Desacoplamiento del permiso de cámara para Facecam en Ajustes mediante `cameraPermissionLauncher` independiente, evitando la invocación accidental de la captura de pantalla al alternar opciones en Ajustes.
+- Modularización de `ScreenRecordService`:
+  * Se extrajo la gestión del estado reactivo (`StateFlow`s de grabación, audio, cronómetro y capas de overlay) al objeto centralizado `ServiceStateManager.kt` en el paquete `service.state`.
+  * `ScreenRecordService` mantiene retrocompatibilidad total delegando sus propiedades públicas hacia `ServiceStateManager`.
 
-- Flujo de Bienvenida (Onboarding) y Centro de Permisos en Primer Inicio:
-  * Implementación de pantallas interactivas de bienvenida (`OnboardingScreen`, `OnboardingStepPage`, `PermissionsSetupPage`):
-    - Presentación visual de las capacidades clave: Grabación a 60 FPS, Facecam Pro/Avatar VTuber con DSP y Editor 9:16 para redes sociales.
-    - Centro de configuración de permisos con detección en tiempo real para superposición (`SYSTEM_ALERT_WINDOW`), micrófono, cámara, notificaciones y almacenamiento.
-    - Botón de concesión unificada en lote ("⚡ Conceder Todos los Permisos") y acceso directo a la configuración del sistema para superposición.
-    - Acceso persistente desde Ajustes para reabrir la guía y verificar el estado de permisos en cualquier momento.
+- Modularización de `AudioPipelineModule`:
+  * Se desacopló la codificación por hardware AAC y el drenado de muestras hacia el componente especializado `AudioEncoderWorker.kt` en `service.capture`.
+  * `AudioPipelineModule` actúa ahora como orquestador limpio y conciso entre los workers de captura (`InternalAudioWorker`, `MicAudioWorker`), el procesador DSP en C++ (`AudioDspMixer`) y el codificador AAC.
 
-- Limpieza y Optimización de Dependencias:
-  * Eliminación completa de librerías innecesarias de Google/Firebase (`firebase-bom`, `firebase-firestore`, `firebase-auth`, `google-services`, `datastore`, `accompanist`) para garantizar compatibilidad limpia con tiendas de terceros (Uptodown/APKs independientes) y reducir peso del binario.
+- Modularización de `HomeScreen`:
+  * Se extrajeron los `ActivityResultLauncher` (MediaProjection, cámara y notificaciones) al helper Composable reutilizable `rememberScreenRecordLaunchers` en `ui.launcher.ScreenRecordPermissionHelper.kt`.
+  * Se encapsuló la renderización condicional de diálogos modales (reproductor integrado y mini-editor de video) en el componente desacoplado `HomeModalsHost.kt` en `ui.components`.
+
+- Actualización de arquitectura en `STRUCTURE.md`:
+  * Se documentaron los nuevos submódulos creados dentro de la estructura general del proyecto.
+
+---
+fix: corrección del orden de inicio de grabación al lanzar juegos (Foreground Service en Android 14+)
+
+- Corrección de restricción de micrófono en segundo plano (Android 14+ / While-in-Use):
+  * Se invirtió el orden de ejecución en `RecordViewModel.startRecordingFlow`:
+    - El `ForegroundService` (`ScreenRecordService`) ahora se inicia de inmediato mientras `MainActivity` todavía está en primer plano y en estado activo visible.
+    - Se abre la aplicación/juego de destino inmediatamente después del inicio del servicio.
+    - Esto evita que el sistema operativo restrinja el permiso de micrófono (`RECORD_AUDIO` / `FOREGROUND_SERVICE_TYPE_MICROPHONE`) y previene la cancelación involuntaria de la grabación por arranque tardío desde segundo plano (Background).

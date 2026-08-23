@@ -1,13 +1,5 @@
 package com.example.ui
 
-import android.Manifest
-import android.app.Activity
-import android.content.Context
-import android.content.pm.PackageManager
-import android.media.projection.MediaProjectionManager
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,25 +12,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.model.AudioSourceType
 import com.example.model.RecordingStatus
 import com.example.ui.components.GameLauncherScreen
+import com.example.ui.components.HomeModalsHost
 import com.example.ui.components.RecordBottomBar
 import com.example.ui.components.RecordTopBar
 import com.example.ui.components.SettingsView
-import com.example.ui.components.VideoPlayerDialog
-import com.example.ui.editor.VideoEditorDialog
+import com.example.ui.launcher.rememberScreenRecordLaunchers
 import com.example.ui.onboarding.OnboardingScreen
 import com.example.ui.tabs.GalleryTab
 import com.example.ui.tabs.RecordTab
@@ -47,7 +35,8 @@ import kotlinx.coroutines.launch
 /**
  * Pantalla principal modular de Vortex Studio.
  * Orquesta la barra superior, barra inferior y las pestañas [RecordTab], [GalleryTab],
- * [GameLauncherScreen] y [SettingsView] desacopladas.
+ * [GameLauncherScreen] y [SettingsView], delegando los modales a [HomeModalsHost]
+ * y los lanzadores de captura a [rememberScreenRecordLaunchers].
  */
 @Composable
 fun HomeScreen(
@@ -71,7 +60,7 @@ fun HomeScreen(
         return
     }
 
-    // Refrescar lista de videos automáticamente al volver a la app (ej. tras parar grabación desde un juego)
+    // Refrescar lista de videos automáticamente al volver a la app
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -84,82 +73,14 @@ fun HomeScreen(
         }
     }
 
-    var pendingGameLaunchPackage by remember { mutableStateOf<String?>(null) }
-
-    // Launcher dedicado para permiso de cámara (usado al activar Facecam en Ajustes)
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (!granted) {
-            scope.launch {
-                snackbarHostState.showSnackbar("Permiso de cámara denegado")
-            }
+    // Gestor modular de permisos y lanzadores de MediaProjection
+    val recordLaunchersState = rememberScreenRecordLaunchers(
+        viewModel = viewModel,
+        config = uiState.config,
+        onShowSnackbar = { msg ->
+            scope.launch { snackbarHostState.showSnackbar(msg) }
         }
-    }
-
-    // Launcher de permisos de captura de pantalla MediaProjection
-    val mediaProjectionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-            viewModel.startRecordingFlow(
-                resultCode = result.resultCode,
-                resultData = result.data!!,
-                targetGamePackage = pendingGameLaunchPackage
-            )
-            pendingGameLaunchPackage = null
-        } else {
-            scope.launch {
-                snackbarHostState.showSnackbar("Permiso de captura de pantalla cancelado")
-            }
-            pendingGameLaunchPackage = null
-        }
-    }
-
-    // Launcher de permisos requeridos (solo se invoca si hay permisos pendientes)
-    val permissionsLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { _ ->
-        val projectionManager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        val captureIntent = projectionManager.createScreenCaptureIntent()
-        mediaProjectionLauncher.launch(captureIntent)
-    }
-
-    fun requestStartRecording(gamePackage: String? = null) {
-        pendingGameLaunchPackage = gamePackage
-        val missingPermissions = mutableListOf<String>()
-
-        // 1. Permiso de micrófono: Solo si la configuración requiere capturar audio y aún no está concedido
-        if (uiState.config.audioSource != AudioSourceType.NONE) {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                missingPermissions.add(Manifest.permission.RECORD_AUDIO)
-            }
-        }
-
-        // 2. Permiso de cámara: Solo si Facecam está encendido y aún no está concedido
-        if (uiState.config.showFacecam) {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                missingPermissions.add(Manifest.permission.CAMERA)
-            }
-        }
-
-        // 3. Notificaciones en Android 13+ (TIRAMISU)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                missingPermissions.add(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
-
-        if (missingPermissions.isEmpty()) {
-            // Todos los permisos ya fueron otorgados previamente: ir directo a la captura sin molestar
-            val projectionManager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-            val captureIntent = projectionManager.createScreenCaptureIntent()
-            mediaProjectionLauncher.launch(captureIntent)
-        } else {
-            // Solo solicitar los permisos que realmente falten
-            permissionsLauncher.launch(missingPermissions.toTypedArray())
-        }
-    }
+    )
 
     LaunchedEffect(uiState.infoMessage) {
         uiState.infoMessage?.let { msg ->
@@ -212,7 +133,7 @@ fun HomeScreen(
                     countdownNumber = uiState.countdownNumber,
                     storageInfo = uiState.storageInfo,
                     videos = uiState.videos,
-                    onStartClick = { requestStartRecording() },
+                    onStartClick = { recordLaunchersState.requestStartRecording(null) },
                     onStopClick = { viewModel.stopRecording() },
                     onPauseClick = { viewModel.pauseRecording() },
                     onResumeClick = { viewModel.resumeRecording() },
@@ -244,7 +165,7 @@ fun HomeScreen(
                     games = uiState.installedGames,
                     isLoading = uiState.isLoadingGames,
                     isRecording = uiState.status == RecordingStatus.RECORDING,
-                    onStartRecordingWithGame = { pkg -> requestStartRecording(pkg) },
+                    onStartRecordingWithGame = { pkg -> recordLaunchersState.requestStartRecording(pkg) },
                     onLaunchGameDirectly = { pkg -> viewModel.launchGame(pkg) },
                     onRefreshGames = { viewModel.loadInstalledGames() }
                 )
@@ -269,8 +190,8 @@ fun HomeScreen(
                     onToggleGameMode = { viewModel.toggleGameMode(it) },
                     onToggleFloatingBubble = { viewModel.toggleFloatingBubble(it) },
                     onToggleFacecam = { enabled ->
-                        if (enabled && ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        if (enabled) {
+                            recordLaunchersState.requestCameraPermission()
                         }
                         viewModel.toggleFacecam(enabled)
                     },
@@ -309,27 +230,10 @@ fun HomeScreen(
         }
     }
 
-    // Modal de reproducción de video integrado
-    uiState.selectedVideoForPlay?.let { video ->
-        VideoPlayerDialog(
-            video = video,
-            onDismiss = { viewModel.closePlayer() },
-            onShare = { viewModel.shareVideo(context, it) },
-            onEdit = { viewModel.openEditor(it) }
-        )
-    }
-
-    // Modal de Mini Editor de Video estilo CapCut
-    uiState.selectedVideoForEdit?.let { video ->
-        VideoEditorDialog(
-            video = video,
-            onDismiss = { viewModel.closeEditor() },
-            onVideoEdited = { editedFile ->
-                viewModel.onVideoEdited(editedFile)
-            },
-            onThumbnailExtracted = { thumbFile ->
-                viewModel.onThumbnailExtracted(thumbFile)
-            }
-        )
-    }
+    // Hospedaje modular de diálogos modales (Reproductor y Editor)
+    HomeModalsHost(
+        uiState = uiState,
+        viewModel = viewModel,
+        context = context
+    )
 }

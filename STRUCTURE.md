@@ -52,6 +52,8 @@ vortex-studio/
 │       │   │   │   ├── TouchVisualizerOverlay.kt
 │       │   │   │   ├── WatermarkOverlayManager.kt
 │       │   │   │   ├── SceneOverlayManager.kt
+│       │   │   │   ├── state/                    # Gestor de Estado Centralizado
+│       │   │   │   │   └── ServiceStateManager.kt      # StateFlows reactivos desacoplados
 │       │   │   │   ├── receiver/                 # Receptores de Eventos del Sistema
 │       │   │   │   │   └── ServiceEmergencyReceiver.kt # Batería baja y almacenamiento crítico
 │       │   │   │   ├── timer/                    # Cronómetro y Monitoreo Periódico
@@ -61,11 +63,20 @@ vortex-studio/
 │       │   │   │   ├── vtuber/                   # Sistema de Avatar 2D / PNGtuber
 │       │   │   │   ├── vumeter/                  # Vúmetro LED y Mezclador Flotante
 │       │   │   │   └── capture/                  # Codificadores, DSP y MuxerManager (Graceful Finalize)
+│       │   │   │       ├── AudioEncoderWorker.kt     # Hilo dedicado de codificación AAC y drenado
+│       │   │   │       ├── AudioPipelineModule.kt    # Orquestador de captura de audio y DSP
+│       │   │   │       ├── AudioDspMixer.kt          # Mezclador DSP C++ y ducking
+│       │   │   │       ├── InternalAudioWorker.kt    # Captura de audio interno de juegos
+│       │   │   │       ├── MicAudioWorker.kt         # Captura de micrófono y amplitudes
+│       │   │   │       ├── VideoEncoderModule.kt     # Codificador H.264/AVC por hardware
+│       │   │   │       └── MuxerManager.kt           # Multiplexor MP4 seguro
 │       │   │   └── ui/
-│       │   │       ├── HomeScreen.kt
+│       │   │       ├── HomeScreen.kt             # Pantalla principal desacoplada
 │       │   │       ├── RecordViewModel.kt        # Orquestador MVVM desacoplado
 │       │   │       ├── RecordCountdownManager.kt # Gestor del conteo regresivo
 │       │   │       ├── RecordServiceLauncher.kt  # Despachador de Intents del servicio
+│       │   │       ├── launcher/                 # Lanzadores y Permisos Reutilizables
+│       │   │       │   └── ScreenRecordPermissionHelper.kt # ActivityResultLaunchers de captura
 │       │   │       ├── delegates/                # Delegados de Estado y Operaciones
 │       │   │       │   ├── VideoGalleryDelegate.kt     # Galería, reproducción y edición
 │       │   │       │   └── SettingsActionsDelegate.kt  # Ajustes de video, audio, facecam y avatares
@@ -83,6 +94,7 @@ vortex-studio/
 │       │   │       │   └── PermissionsSetupPage.kt     # Centro interactivo de concesión de permisos
 │       │   │       ├── tabs/                     # Tabs de Grabación y Galería
 │       │   │       └── components/               # Tarjetas y controles Compose
+│       │   │           ├── HomeModalsHost.kt               # Hospedaje modular de diálogos (Player y Editor)
 │       │   │           ├── GameLauncherCard.kt             # Pantalla orquestadora de juegos
 │       │   │           ├── gamelauncher/                   # Componentes modulares del lanzador
 │       │   │           │   ├── GameLauncherHeaderBanner.kt # Banner y botón de refresco

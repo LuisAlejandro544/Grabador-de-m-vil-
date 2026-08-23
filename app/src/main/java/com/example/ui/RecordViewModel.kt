@@ -271,19 +271,17 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         pendingLaunchGamePackage = targetGamePackage
 
         if (targetGamePackage != null) {
-            // 1. Abrir el juego inmediatamente para que Android lo traiga a primer plano y rote la orientación
-            launchPendingGame()
+            // 1. Iniciar el Foreground Service PRIMERO mientras la app aún está en primer plano (actividad visible).
+            // Esto garantiza que Android 14+ autorice el uso del micrófono y media projection sin restricciones 'while-in-use'.
+            RecordServiceLauncher.startService(
+                context = getApplication(),
+                resultCode = resultCode,
+                resultData = resultData,
+                config = config
+            )
 
-            // 2. Ejecutar cuenta atrás garantizando al menos 2 segundos para completar la transición de pantalla
-            val effectiveCountdown = maxOf(countdown, 2)
-            countdownManager.startCountdown(effectiveCountdown) {
-                RecordServiceLauncher.startService(
-                    context = getApplication(),
-                    resultCode = resultCode,
-                    resultData = resultData,
-                    config = _config.value
-                )
-            }
+            // 2. Abrir el juego inmediatamente
+            launchPendingGame()
         } else {
             if (countdown > 0) {
                 countdownManager.startCountdown(countdown) {

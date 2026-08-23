@@ -11,11 +11,11 @@ import com.example.service.dispatcher.OverlayActionCallbacks
 import com.example.service.dispatcher.ServiceActionDispatcher
 import com.example.service.overlay.ServiceOverlayCoordinator
 import com.example.service.receiver.ServiceEmergencyReceiver
+import com.example.service.state.ServiceStateManager
 import com.example.service.timer.ServiceChronometerTimer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -23,6 +23,7 @@ import java.io.File
  * Servicio en primer plano modular y desacoplado para la grabación de pantalla.
  * Coordina:
  * - [ScreenCaptureEngine]: Motor de codificación y captura multimedia.
+ * - [ServiceStateManager]: Gestor centralizado del estado reactivo del servicio.
  * - [ServiceChronometerTimer]: Cronómetro en tiempo real y salvaguarda de espacio en disco.
  * - [ServiceEmergencyReceiver]: Manejador de eventos de batería y almacenamiento crítico.
  * - [ServiceActionDispatcher]: Enrutamiento y lanzamiento de tipos de Foreground Service y Overlays.
@@ -59,49 +60,22 @@ class ScreenRecordService : Service() {
         const val EXTRA_SHOW_FLOATING_BUBBLE = "extra_show_floating_bubble"
         const val EXTRA_SHOW_FACECAM = "extra_show_facecam"
 
-        private val _recordingState = MutableStateFlow(RecordingStatus.IDLE)
-        val recordingState = _recordingState.asStateFlow()
+        // Delegación transparente hacia ServiceStateManager para retrocompatibilidad total
+        val recordingState: StateFlow<RecordingStatus> get() = ServiceStateManager.recordingState
+        val elapsedSeconds: StateFlow<Int> get() = ServiceStateManager.elapsedSeconds
+        val isMicMuted: StateFlow<Boolean> get() = ServiceStateManager.isMicMuted
+        val isFacecamActive: StateFlow<Boolean> get() = ServiceStateManager.isFacecamActive
+        val isVtuberActive: StateFlow<Boolean> get() = ServiceStateManager.isVtuberActive
+        val isVuMeterActive: StateFlow<Boolean> get() = ServiceStateManager.isVuMeterActive
+        val isBeautyActive: StateFlow<Boolean> get() = ServiceStateManager.isBeautyActive
+        val isRgbActive: StateFlow<Boolean> get() = ServiceStateManager.isRgbActive
+        val isTouchActive: StateFlow<Boolean> get() = ServiceStateManager.isTouchActive
+        val isWatermarkActive: StateFlow<Boolean> get() = ServiceStateManager.isWatermarkActive
+        val isSceneOverlayActive: StateFlow<Boolean> get() = ServiceStateManager.isSceneOverlayActive
+        val lastSavedFilePath: StateFlow<String?> get() = ServiceStateManager.lastSavedFilePath
+        val errorMessage: StateFlow<String?> get() = ServiceStateManager.errorMessage
 
-        private val _elapsedSeconds = MutableStateFlow(0)
-        val elapsedSeconds = _elapsedSeconds.asStateFlow()
-
-        private val _isMicMuted = MutableStateFlow(false)
-        val isMicMuted = _isMicMuted.asStateFlow()
-
-        private val _isFacecamActive = MutableStateFlow(false)
-        val isFacecamActive = _isFacecamActive.asStateFlow()
-
-        private val _isVtuberActive = MutableStateFlow(false)
-        val isVtuberActive = _isVtuberActive.asStateFlow()
-
-        private val _isVuMeterActive = MutableStateFlow(false)
-        val isVuMeterActive = _isVuMeterActive.asStateFlow()
-
-        private val _isBeautyActive = MutableStateFlow(false)
-        val isBeautyActive = _isBeautyActive.asStateFlow()
-
-        private val _isRgbActive = MutableStateFlow(false)
-        val isRgbActive = _isRgbActive.asStateFlow()
-
-        private val _isTouchActive = MutableStateFlow(false)
-        val isTouchActive = _isTouchActive.asStateFlow()
-
-        private val _isWatermarkActive = MutableStateFlow(false)
-        val isWatermarkActive = _isWatermarkActive.asStateFlow()
-
-        private val _isSceneOverlayActive = MutableStateFlow(false)
-        val isSceneOverlayActive = _isSceneOverlayActive.asStateFlow()
-
-        private val _lastSavedFilePath = MutableStateFlow<String?>(null)
-        val lastSavedFilePath = _lastSavedFilePath.asStateFlow()
-
-        private val _errorMessage = MutableStateFlow<String?>(null)
-        val errorMessage = _errorMessage.asStateFlow()
-
-        fun isRecording(): Boolean {
-            val state = _recordingState.value
-            return state == RecordingStatus.RECORDING || state == RecordingStatus.PAUSED
-        }
+        fun isRecording(): Boolean = ServiceStateManager.isRecording()
     }
 
     private lateinit var captureEngine: ScreenCaptureEngine
@@ -129,14 +103,14 @@ class ScreenRecordService : Service() {
         overlayCoordinator = ServiceOverlayCoordinator(
             context = this,
             settingsRepository = settingsRepository,
-            onFacecamStateChanged = { _isFacecamActive.value = it },
-            onBeautyStateChanged = { _isBeautyActive.value = it },
-            onRgbStateChanged = { _isRgbActive.value = it },
-            onTouchStateChanged = { _isTouchActive.value = it },
-            onWatermarkStateChanged = { _isWatermarkActive.value = it },
-            onSceneOverlayStateChanged = { _isSceneOverlayActive.value = it },
-            onVtuberStateChanged = { _isVtuberActive.value = it },
-            onVuMeterStateChanged = { _isVuMeterActive.value = it },
+            onFacecamStateChanged = { ServiceStateManager.setFacecamActive(it) },
+            onBeautyStateChanged = { ServiceStateManager.setBeautyActive(it) },
+            onRgbStateChanged = { ServiceStateManager.setRgbActive(it) },
+            onTouchStateChanged = { ServiceStateManager.setTouchActive(it) },
+            onWatermarkStateChanged = { ServiceStateManager.setWatermarkActive(it) },
+            onSceneOverlayStateChanged = { ServiceStateManager.setSceneOverlayActive(it) },
+            onVtuberStateChanged = { ServiceStateManager.setVtuberActive(it) },
+            onVuMeterStateChanged = { ServiceStateManager.setVuMeterActive(it) },
             onAudioGainsChanged = { gameGain, micGain ->
                 captureEngine.setAudioGains(gameGain, micGain)
             },
@@ -162,20 +136,20 @@ class ScreenRecordService : Service() {
             overlayCoordinator = overlayCoordinator,
             notificationHelper = notificationHelper,
             settingsRepository = settingsRepository,
-            elapsedSecondsFlow = _elapsedSeconds,
+            elapsedSecondsFlow = ServiceStateManager.elapsedSecondsMutableFlow,
             onEmergencyStorageStop = { errorMsg ->
-                _errorMessage.value = errorMsg
+                ServiceStateManager.setErrorMessage(errorMsg)
                 handleStopAction()
             }
         )
 
         emergencyReceiver = ServiceEmergencyReceiver(
             onEmergencyBatteryLow = {
-                _errorMessage.value = "Grabación salvaguardada por batería baja del dispositivo."
+                ServiceStateManager.setErrorMessage("Grabación salvaguardada por batería baja del dispositivo.")
                 handleStopAction()
             },
             onEmergencyStorageLow = {
-                _errorMessage.value = "Grabación salvaguardada por falta de espacio en almacenamiento."
+                ServiceStateManager.setErrorMessage("Grabación salvaguardada por falta de espacio en almacenamiento.")
                 handleStopAction()
             }
         )
@@ -252,8 +226,8 @@ class ScreenRecordService : Service() {
             onAudioAmplitude = { amp -> overlayCoordinator.onAudioAmplitude(amp) },
             onError = { errorMsg ->
                 Log.e(TAG, "Error en captura: $errorMsg")
-                _errorMessage.value = errorMsg
-                _recordingState.value = RecordingStatus.ERROR
+                ServiceStateManager.setErrorMessage(errorMsg)
+                ServiceStateManager.setRecordingState(RecordingStatus.ERROR)
                 cleanupAndStop()
             },
             onSystemStop = {
@@ -263,10 +237,10 @@ class ScreenRecordService : Service() {
         )
 
         if (started) {
-            _recordingState.value = RecordingStatus.RECORDING
-            _elapsedSeconds.value = 0
-            _errorMessage.value = null
-            _isMicMuted.value = captureEngine.isMicrophoneMuted
+            ServiceStateManager.setRecordingState(RecordingStatus.RECORDING)
+            ServiceStateManager.setElapsedSeconds(0)
+            ServiceStateManager.setErrorMessage(null)
+            ServiceStateManager.setMicMuted(captureEngine.isMicrophoneMuted)
 
             // 4. Lanzar interfaces y overlays configurados
             actionDispatcher.launchActiveOverlays(
@@ -288,10 +262,10 @@ class ScreenRecordService : Service() {
 
     private fun handleToggleMicAction() {
         val newMuted = captureEngine.toggleMicrophoneMuted()
-        _isMicMuted.value = newMuted
+        ServiceStateManager.setMicMuted(newMuted)
         overlayCoordinator.updateBubbleMicStatus(newMuted)
         notificationHelper.updateNotification(
-            _elapsedSeconds.value.toLong(),
+            ServiceStateManager.elapsedSeconds.value.toLong(),
             isPaused = captureEngine.isPaused,
             isMicrophoneEnabled = !newMuted
         )
@@ -300,10 +274,10 @@ class ScreenRecordService : Service() {
 
     private fun handlePauseAction() {
         if (captureEngine.pauseCapture()) {
-            _recordingState.value = RecordingStatus.PAUSED
+            ServiceStateManager.setRecordingState(RecordingStatus.PAUSED)
             overlayCoordinator.updateBubbleStatus(isPaused = true)
             notificationHelper.updateNotification(
-                _elapsedSeconds.value.toLong(),
+                ServiceStateManager.elapsedSeconds.value.toLong(),
                 isPaused = true,
                 isMicrophoneEnabled = !captureEngine.isMicrophoneMuted
             )
@@ -312,10 +286,10 @@ class ScreenRecordService : Service() {
 
     private fun handleResumeAction() {
         if (captureEngine.resumeCapture()) {
-            _recordingState.value = RecordingStatus.RECORDING
+            ServiceStateManager.setRecordingState(RecordingStatus.RECORDING)
             overlayCoordinator.updateBubbleStatus(isPaused = false)
             notificationHelper.updateNotification(
-                _elapsedSeconds.value.toLong(),
+                ServiceStateManager.elapsedSeconds.value.toLong(),
                 isPaused = false,
                 isMicrophoneEnabled = !captureEngine.isMicrophoneMuted
             )
@@ -357,19 +331,19 @@ class ScreenRecordService : Service() {
     }
 
     private fun handleStopAction() {
-        _recordingState.value = RecordingStatus.SAVING
+        ServiceStateManager.setRecordingState(RecordingStatus.SAVING)
         chronometerTimer.stop()
         overlayCoordinator.dismissAll()
 
         val savedFile = captureEngine.stopCapture()
 
         if (savedFile != null && savedFile.exists() && savedFile.length() > 0) {
-            _lastSavedFilePath.value = savedFile.absolutePath
+            ServiceStateManager.setLastSavedFilePath(savedFile.absolutePath)
             RecordStorageHelper.scanFileToMediaStore(this, savedFile)
             Log.i(TAG, "Grabación finalizada y guardada en: ${savedFile.absolutePath}")
         } else {
             savedFile?.delete()
-            _errorMessage.value = "La grabación se canceló o no generó contenido válido."
+            ServiceStateManager.setErrorMessage("La grabación se canceló o no generó contenido válido.")
             Log.w(TAG, "Archivo de grabación vacío o nulo")
         }
 
@@ -385,7 +359,7 @@ class ScreenRecordService : Service() {
         if (::captureEngine.isInitialized) {
             captureEngine.release()
         }
-        _recordingState.value = RecordingStatus.IDLE
+        ServiceStateManager.reset()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -415,3 +389,4 @@ class ScreenRecordService : Service() {
         super.onDestroy()
     }
 }
+
