@@ -65,6 +65,23 @@ public:
     MediaInfo probeMedia(const std::string& inputPath);
 
     // Media Processing Operations
+    bool splitVideo(
+        const std::string& inputPath,
+        const std::string& outputPart1,
+        const std::string& outputPart2,
+        int64_t splitMs,
+        std::function<void(float progress)> progressCallback = nullptr
+    );
+
+    bool convertAspectRatio(
+        const std::string& inputPath,
+        const std::string& outputPath,
+        int32_t targetWidth,
+        int32_t targetHeight,
+        int32_t fitMode, // 0 = Fit with blur, 1 = Crop Fill, 2 = Letterbox Black
+        std::function<void(float progress)> progressCallback = nullptr
+    );
+
     bool trimVideo(
         const std::string& inputPath,
         const std::string& outputPath,

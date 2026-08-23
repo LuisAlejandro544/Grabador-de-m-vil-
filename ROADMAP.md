@@ -1,102 +1,34 @@
-# 🗺️ Roadmap: De Grabador de Pantalla a Vortex Studio
+# 🗺️ Roadmap de Desarrollo — Vortex Studio
 
-Este documento detalla las fases de evolución del proyecto para transformar la aplicación en una suite completa de producción de video y transmisión en vivo móvil llamada **Vortex Studio**.
-
----
-
-## 📍 Fase 1: Motor Base y Grabación Móvil (Completada ✅)
-- [x] Captura de pantalla nativa con `MediaProjection` y `VirtualDisplay`.
-- [x] Configuración de resolución (1080p, 720p, 480p), FPS (60 / 30) y tasa de bits personalizada (1 a 12 Mbps) con slider continuo y accesos directos (1M, 2M, 4M, 6M, 8M, 10M, 12M).
-- [x] Servicio en primer plano (`ScreenRecordService`) con notificación persistente para control durante el juego.
-- [x] Lanzador de juegos integrado y galería con reproductor interno.
-- [x] Cimientos nativos: Módulos C++ (NDK/CMake) y Rust (Cargo/JNI) configurados con carga segura.
+Este documento detalla el progreso actual y las fases de desarrollo de **Vortex Studio**.
 
 ---
 
-## 📍 Fase 2: Control de Audio, Perfiles y Widget Flotante con Herramientas (Completada ✅)
-- [x] Selector, mezcla y procesamiento de audio pro:
-  - **📊 Vúmetro de Audio Flotante & Mezclador en Vivo:** Barras dinámicas de decibelios (dB) con gradiente verde-amarillo-rojo para juego y micrófono.
-  - **🎚️ Control de Ganancia Independiente:** Faders deslizantes en vivo para regular la ganancia del juego (0% - 200%) y de la voz (0% - 200%) en tiempo real.
-  - **Frecuencia de Muestreo (Sample Rate):** Selección entre 32.000 Hz, 44.100 Hz (CD), 48.000 Hz (broadcast gamer) y 96.000 Hz (Hi-Res).
-  - **Motor DSP en C++ Nativo:** Puerta de ruido (Noise Gate), Audio Ducking automático inteligente (-9 dB) y Soft Limiter / Saturation shaper anti-clipping.
-  - **Juego + Micrófono Conmutables (Dinámico):** Mezcla dual PCM en tiempo real con conmutador en vivo (`Voz ON` / `Solo Juego`) sin reiniciar la grabación.
-  - **Solo Audio del Juego (Interno):** Captura exclusiva del sonido de aplicaciones sin voz externa.
-  - **Micrófono:** Captura de voz y ambiente con filtrado DSP en caliente.
-  - **Mudo:** Video puro.
-- [x] Perfil "Modo Juego" con activación rápida de 60 FPS y 12 Mbps.
-- [x] Temporizador de cuenta atrás previo al inicio de grabación.
-- [x] **Widget Flotante Arrastrable (Burbuja en Pantalla):** Control en vivo con cronómetro, conmutador de voz/juego, pausa, reanudación y parada sobre cualquier juego vía `WindowManager`.
-- [x] **Menú de Herramientas en Vivo:**
-  - **Captura de Pantalla Instantánea:** Guardado directo en `Pictures/Screenshots` y registro en `MediaStore`.
-  - **Pincel / Lapicero en Pantalla:** Modo de dibujo interactivo con selector de colores, grosores y borrado rápido sobre la grabación activa.
+## 📌 Estado de Fases
+
+| Fase | Descripción | Estado |
+| :--- | :--- | :--- |
+| **Fase 1** | Captura 60 FPS, Bitrate Personalizable & Motor Base de Grabación | ✅ Completado |
+| **Fase 2** | Facecam Pro (FPS, RGB, Belleza) & Avatar 2D / PNGtuber Reactivo | ✅ Completado |
+| **Fase 3** | Audio DSP (Noise Gate, Ducking) & Vúmetro / Mezclador Flotante | ✅ Completado |
+| **Fase 4** | Overlays de Escena, Marca de Agua y Visualizador Táctil | ✅ Completado |
+| **Fase 5** | Editor de Video Avanzado (Recorte, División Split y Aspect Ratio 9:16) | ✅ Completado |
+| **Fase 6** | Transmisión en Vivo RTMP / SRT (Twitch, YouTube, Kick) con Rust | ⏳ En Progreso / Base Lista |
+| **Fase 7** | Buffer de Repetición Instantánea (Instant Replay / Clips de 30s) | 📅 Planificado |
 
 ---
 
-## 📍 Fase 3: Composición de Escenas, Facecam y Efectos Visuales (Completada ✅)
-- [x] **Facecam Flotante con FPS Configurable (30 - 60 FPS) y Diseños Geométricos (CameraX & WindowManager):**
-  - Superposición flotante arrastrable con cámara frontal y trasera en tiempo real.
-  - Tasa de cuadros por segundo de cámara seleccionable (30, 45, 50 y 60 FPS) vía `Camera2Interop`.
-  - Diseños configurables con clip nativo: Circular 1:1, Cuadrado redondeado, Cuadrado y Rectangular 16:9.
-  - Control de activación/desactivación dinámica desde la burbuja flotante del grabador y persistencia de estado.
-- [x] **Avatar 2D / PNGtuber Reactivo por Voz (VTuber Mode):**
-  - Sustituto ligero y privado del Facecam: avatar reactivo con apertura bucal sincrónica por nivel RMS y parpadeo aleatorio.
-  - Presets vectoriales nativos (Gamer Cat, Cyber Fox, Chibi Bot) y soporte de PNGs personalizados de 4 estados.
-  - Ventana flotante arrastrable y conmutador rápido desde la burbuja flotante.
-- [x] **Filtro de Belleza Facial y Suavizado de Piel:**
-  - Capa de filtro cosmético con balance cromático y reducción de asperezas faciales.
-  - Conmutable en Ajustes, en el Facecam y desde el menú rápido de la burbuja.
-- [x] **Borde RGB / Arcoíris Animado para Facecam:**
-  - Marco con gradiente rotativo continuo (`SweepGradient`) acelerado por hardware.
-  - Conmutador en vivo en Ajustes y en el submenú de herramientas de la burbuja.
-- [x] **Indicador de Toques Táctiles Animado (Touch Visualizer):**
-  - Ondas de feedback táctil sobre pantalla completa sin necesidad de habilitar opciones de desarrollador.
-  - 6 variantes de color neón/gamer configurables en Ajustes y conmutable en caliente desde la burbuja flotante.
-- [x] **Marca de Agua / Logo Personalizado Superpuesto:**
-  - Capa overlay arrastrable en tiempo real con soporte de texto estilizado, fuentes, paleta de colores y logos PNG.
-  - Ajuste de opacidad / transparencia y conmutador rápido desde el submenú de la burbuja flotante.
-- [x] **Overlays de Escena Personalizados (Marcos PNG y Alertas Estáticas):**
-  - Marcos Neón Gamer, Banners de Streamer, Badges "🔴 LIVE", Carteles de Pausa ("⏸️ STANDBY") e importación de marcos PNG transparentes.
-  - Integración completa en el servicio en primer plano y control en tiempo real desde la burbuja.
-- [x] **Motor Gráfico C++ con OpenGL ES 3.0 & EGL:**
-  - Contexto EGL nativo y renderizado acelerado por GPU a 60 FPS.
-  - Soporte de múltiples capas (*z-order*): Juego, Facecam, Overlays, Texto.
-  - Shaders GLSL de vértice y fragmento con mezcla alfa y soporte para recortes de forma.
-  - **Máscara Circular para Facecam:** Recorte circular con suavizado antialiasing (`smoothstep`) para la cámara frontal.
-  - **Filtro Chroma Key en GPU:** Eliminación de fondo verde en tiempo real con tolerancia y suavizado configurable.
-  - Métricas de rendimiento en tiempo real (FPS de renderizado del motor y tiempo de frame en ms).
+## 🌟 Detalle de la Fase 5: Suite de Edición de Video (Completada)
 
----
-
-## 📍 Fase 4: Transmisión en Vivo con Motor Rust (RTMP / SRT)
-- [ ] **Integración del cliente RTMP en Rust:**
-  - Handshake y conexión con plataformas de streaming (Twitch, YouTube Gaming, Kick, Servidores Personalizados).
-- [ ] **Codificación por Hardware `MediaCodec` + Pipe a Rust:**
-  - Extracción de paquetes NAL H.264/AAC y empaquetado seguro en memoria sin pasar por el Garbage Collector de Java.
-- [ ] **Bitrate Adaptativo Dinámico (ABR):**
-  - Ajuste automático de calidad según la estabilidad del Wi-Fi / red 5G para evitar cortes en el directo.
-
----
-
-## 📍 Fase 5: Motor de Edición y Post-Producción con FFmpeg y MediaMuxer (En Desarrollo 🚀)
-- [x] **Cimientos y Arquitectura de FFmpeg Nativo (`libav*`):**
-  - Estructura C++ (`ffmpeg_engine.hpp` / `ffmpeg_engine.cpp`) sin librerías descontinuadas ni wrappers externos.
-  - Puente JNI `NativeFFmpegBridge` con métodos de recorte, extracción de audio y compresión.
-- [x] **Recorte Rápido de Video (*Stream Copy / Trim Instantáneo*):**
-  - Motor `VideoEditorManager` con recorte sin renderizado ni recodificación mediante `MediaMuxer`/`MediaExtractor` y NDK FFmpeg, manteniendo el 100% de calidad original, 60 FPS y audio nítido en milisegundos.
-- [x] **Extractor de Miniaturas en HD (*Thumbnail Grabber*):**
-  - Captura y exportación de fotogramas en resolución máxima original (1080p/4K) hacia `Pictures/ScreenRecorder` para portadas de YouTube, TikTok y Shorts.
-- [x] **Línea de Tiempo Visual y Editor Móvil estilo CapCut (`VideoEditorDialog`):**
-  - Visor interactivo, scrubber con playhead, tira de fotogramas (filmstrip) y slider dual de rango in/out.
-- [ ] **Extracción y Procesamiento de Audio (Audio Stripper):**
-  - Separación de pistas de voz/juego y exportación directa a MP3/AAC.
-- [ ] **Conversión para Redes (Shorts / TikTok / Reels):**
-  - Adaptación inteligente de formato 16:9 a 9:16 con desenfoque de fondo.
-- [ ] **Generador de GIFs Animados:**
-  - Exportación de fragmentos de 3-8 segundos en GIF optimizado para Discord y WhatsApp.
-
----
-
-## 📍 Fase 6: Overlays y Widgets Interactivos
-- [ ] **Widgets de Chat en Tiempo Real:** Overlay transparente para leer mensajes del chat de Twitch/YouTube sobre la pantalla del juego.
-- [ ] **Alertas de Eventos:** Donaciones, seguidores y suscripciones mediante WebViews ligeras o texturas transparentes.
-- [ ] **Buffer de Repetición (Replay Buffer):** Guardar los últimos 30-60 segundos de jugadas destacadas con un botón flotante.
+- [x] **Recorte Rápido sin Renderizado (Stream Copy):**
+  - Recorte a nivel de contenedor MP4 con `MediaExtractor` / `MediaMuxer` y C++ NDK FFmpeg.
+  - Velocidad instantánea en milisegundos sin recompresión ni consumo excesivo de batería.
+- [x] **Conversor de Aspect Ratio con 1 Toque:**
+  - Conversión instantánea a **9:16 (TikTok, Shorts, Reels)**, **16:9 (YouTube)**, **1:1 (Feed)**, **4:5 (Portrait)** y **4:3 (Classic)**.
+  - Modos de encuadre con **Desenfoque Blur de fondo cinemático**, **Llenado completo (Crop)** y **Barras negras (Letterbox)**.
+- [x] **Herramienta de División (Split Tool):**
+  - Corte del video en el cursor de reproducción (*Playhead*), generando `Parte 1` y `Parte 2` independientes.
+- [x] **Extractor de Miniaturas HD:**
+  - Extracción de fotogramas exactos en 1080p/4K en formato JPEG de alta fidelidad.
+- [x] **Línea de Tiempo Interactiva:**
+  - Filmstrip dinámico de fotogramas con doble cursor táctil deslizable y sincronización de reproducción en tiempo real.

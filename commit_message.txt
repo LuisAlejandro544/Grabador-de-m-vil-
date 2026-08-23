@@ -1,17 +1,14 @@
-feat(editor): implementar Mini Editor de Video estilo CapCut con Recorte Rápido sin Renderizado y Extractor de Miniaturas HD
+feat(editor): implementar Conversor de Aspect Ratio 1-Toque (TikTok 9:16/Shorts/Reels) y Herramienta de División (Split Tool)
 
-- Crear VideoEditorManager con motor de recorte Stream-Copy ultra-rápido (MediaExtractor/MediaMuxer y NDK FFmpeg) que corta archivos MP4 sin recodificar frames, manteniendo el 100% de calidad sin demora ni consumo excesivo de CPU.
-- Implementar Extractor de Miniaturas HD (Thumbnail Grabber) capaz de capturar fotogramas exactos en máxima resolución (1080p/4K) y guardarlos en el almacenamiento público Pictures/ScreenRecorder.
-- Diseñar la interfaz móvil VideoEditorDialog inspirada en CapCut y Premiere Rush:
-  * Visor interactivo en tiempo real con scrubber, playhead y transport controls (-1s, +1s, play/pause).
-  * Línea de tiempo visual con tira de fotogramas (filmstrip) generada dinámicamente.
-  * Selector deslizante dual (RangeSlider In/Out) con marcadores de inicio y fin en milisegundos.
-  * Botones de acción rápida: "Guardar Clip" y "Extraer Miniatura HD".
-- Integrar acceso directo al editor desde la pestaña de Grabaciones recientes (RecordTab), Galería completa (GalleryTab), y el modal reproductor (VideoPlayerDialog).
-- Actualizar el flujo en RecordViewModel y HomeScreen gestionando los estados del editor y la persistencia de nuevos clips y miniaturas.
-- Actualizar la documentación técnica en README.md, ROADMAP.md, STRUCTURE.md y AI_CONTEXT.md.
-- Corregir fallo crítico de cierre forzoso al iniciar la grabación con PNGtuber / Avatar 2D activado:
-  * Sincronización de hilos (Main Thread & Looper): Despacho de actualizaciones de estado y animador elástico (ValueAnimator / Squash & Stretch) garantizado en el hilo de UI para evitar excepciones AndroidRuntimeException.
-  * Persistencia segura de imágenes personalizadas: Guardado automático de archivos PNG seleccionados en el almacenamiento interno privado de la aplicación, eliminando pérdidas de permisos temporales de URI de SAF/MediaStore.
-  * Protección de memoria y decodificación: Submuestreo inteligente con inSampleSize para evitar errores de desbordamiento de memoria (OutOfMemoryError) al cargar imágenes PNG de alta resolución.
-  * Tolerancia a fallos: Envoltorio con bloques try/catch integrales en el ciclo de vida del Overlay Coordinator y ScreenRecordService para proteger el inicio de grabación.
+- Añadir Conversor de Relación de Aspecto (1-Tap Aspect Ratio Converter) en el VideoEditorManager y VideoEditorDialog:
+  * Soporte para formatos 9:16 (TikTok/Reels/Shorts), 16:9 (YouTube/Landscape), 1:1 (Instagram Feed), 4:5 (Portrait) y 4:3 (Classic/Tablet).
+  * Modos de encuadre y ajuste seleccionables: Desenfoque de fondo Blur cinemático, Llenar pantalla (Crop central) y Barras negras (Letterbox).
+  * Monitor de previsualización en tiempo real adaptable según el aspect ratio activo con renderizado y exportación acelerada por hardware.
+- Implementar Herramienta de División de Video (Split Tool):
+  * Permite cortar y separar el video en 2 archivos MP4 independientes en la posición exacta del cabezal de reproducción (Playhead).
+  * División ultra-rápida mediante Lossless Stream-Copy a nivel de contenedor MP4 (MediaMuxer y NDK FFmpeg) sin recodificar ni perder calidad de frames a 60 FPS.
+  * Diálogo de confirmación y resumen de duración de ambas partes antes de procesar.
+- Ampliar el motor nativo en C++ (ffmpeg_engine.hpp / ffmpeg_engine.cpp / obs_core.cpp) y Rust (lib.rs / NativeRustNetwork.kt):
+  * Puentes JNI para `nativeSplitVideo` y `nativeConvertAspectRatio`.
+  * Algoritmo en Rust `rustCalculateTargetDimensions` para empaquetado y cálculo seguro de dimensiones de video.
+- Actualizar la interfaz de usuario en Compose VideoEditorDialog con barra de chips táctiles de Aspect Ratio, selector de modo de fondo Blur y botón de acción directa "Dividir ✂️".

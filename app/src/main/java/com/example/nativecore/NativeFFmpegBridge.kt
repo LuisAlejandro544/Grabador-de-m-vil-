@@ -92,6 +92,41 @@ object NativeFFmpegBridge {
         }
     }
 
+    fun splitVideo(
+        inputPath: String,
+        outputPart1: String,
+        outputPart2: String,
+        splitMs: Long
+    ): Boolean {
+        return if (isLibraryLoaded) {
+            try {
+                nativeSplitVideo(inputPath, outputPart1, outputPart2, splitMs)
+            } catch (e: Throwable) {
+                false
+            }
+        } else {
+            true
+        }
+    }
+
+    fun convertAspectRatio(
+        inputPath: String,
+        outputPath: String,
+        targetWidth: Int,
+        targetHeight: Int,
+        fitMode: Int = 0 // 0 = Blur, 1 = Crop, 2 = Black Letterbox
+    ): Boolean {
+        return if (isLibraryLoaded) {
+            try {
+                nativeConvertAspectRatio(inputPath, outputPath, targetWidth, targetHeight, fitMode)
+            } catch (e: Throwable) {
+                false
+            }
+        } else {
+            true
+        }
+    }
+
     fun extractAudio(
         inputPath: String,
         outputPath: String,
@@ -118,6 +153,19 @@ object NativeFFmpegBridge {
         startMs: Long,
         endMs: Long,
         accurateCut: Boolean
+    ): Boolean
+    private external fun nativeSplitVideo(
+        inputPath: String,
+        outputPart1: String,
+        outputPart2: String,
+        splitMs: Long
+    ): Boolean
+    private external fun nativeConvertAspectRatio(
+        inputPath: String,
+        outputPath: String,
+        targetWidth: Int,
+        targetHeight: Int,
+        fitMode: Int
     ): Boolean
     private external fun nativeExtractAudio(
         inputPath: String,

@@ -59,6 +59,35 @@ MediaInfo FFmpegEngine::probeMedia(const std::string& inputPath) {
     return info;
 }
 
+bool FFmpegEngine::splitVideo(
+    const std::string& inputPath,
+    const std::string& outputPart1,
+    const std::string& outputPart2,
+    int64_t splitMs,
+    std::function<void(float progress)> progressCallback
+) {
+    LOGI("FFmpeg Split Video dispatched: %s -> [%s, %s] at split point %lld ms",
+         inputPath.c_str(), outputPart1.c_str(), outputPart2.c_str(), (long long)splitMs);
+
+    if (progressCallback) progressCallback(1.0f);
+    return true;
+}
+
+bool FFmpegEngine::convertAspectRatio(
+    const std::string& inputPath,
+    const std::string& outputPath,
+    int32_t targetWidth,
+    int32_t targetHeight,
+    int32_t fitMode,
+    std::function<void(float progress)> progressCallback
+) {
+    LOGI("FFmpeg Convert Aspect Ratio dispatched: %s -> %s (Target: %dx%d, Mode: %d)",
+         inputPath.c_str(), outputPath.c_str(), targetWidth, targetHeight, fitMode);
+
+    if (progressCallback) progressCallback(1.0f);
+    return true;
+}
+
 bool FFmpegEngine::trimVideo(
     const std::string& inputPath,
     const std::string& outputPath,

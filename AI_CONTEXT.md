@@ -1,131 +1,51 @@
-# 🧠 AI Context & Domain Knowledge (Vortex Studio)
+# 🧠 Vortex Studio — Contexto de Inteligencia Artificial y Memoria del Proyecto
 
-Este documento provee el contexto de dominio y las restricciones técnicas fundamentales para cualquier asistente o modelo de IA que trabaje en esta base de código.
-
----
-
-## 🎯 Propósito del Proyecto
-Construir una suite de grabación de pantalla y streaming en vivo para Android llamada **Vortex Studio**, optimizada específicamente para teléfonos móviles, sesiones de videojuegos a 60 FPS, herramientas de anotación en tiempo real, efectos visuales (Filtro de Belleza, Borde RGB, Toques Táctiles) y consumo térmico eficiente.
+Este documento mantiene el estado de desarrollo, decisiones de arquitectura y mapa de componentes del proyecto **Vortex Studio**.
 
 ---
 
-## ⚠️ Reglas Críticas y Restricciones de Entorno
+## 📌 Resumen del Proyecto
 
-1. **Hardware Compartido (SoC) & Térmica:**
-   - En Android, la CPU y la GPU comparten energía y disipación pasiva.
-   - **PROHIBIDO:** Usar bucles intensivos de CPU para procesar píxeles en Kotlin o Python.
-   - **OBLIGATORIO:** Usar `MediaRecorder` o `MediaCodec` con buffers de hardware (`Surface`), overlays transparentes nativos en `WindowManager` y shaders en C++/OpenGL ES.
-
-2. **Prohibición de Propiedades Restringidas (`persist.sys.*`):**
-   - Nunca utilizar comandos `setprop persist.sys.*` ni hacks de sistema no estándar. La aplicación debe operar mediante APIs públicas de Android estándar para compatibilidad en tiendas y tiendas de terceros como Uptodown.
-
-3. **Arquitectura de Audio, Mezcla Dinámica con DSP C++ y Vúmetro Flotante:**
-   - **`FloatingVuMeterManager` & `VuMeterOverlayView`:** Monitoreo acústico en vivo sobre juegos con barras LED dinámicas en dB y faders táctiles independientes para regular la ganancia de audio del juego (0% - 200%) y de voz/micrófono (0% - 200%).
-   - **`AudioSourceType.INTERNAL_AND_MIC`:** Modo por defecto con mezcla dual PCM procesada mediante motor C++ DSP (`vortex::dsp::AudioDspEngine`). Captura `AudioPlaybackCapture` (juego) y `AudioRecord` (micrófono), aplicando **Noise Gate** para silenciar ruidos de ambiente, **Audio Ducking** (-9 dB en el juego cuando hablas) y **Soft Limiter** sin distorsión digital, permitiendo conmutar la voz en vivo (`Voz ON` / `Solo Juego`) sin reiniciar codificadores.
-   - **`AudioSourceType.INTERNAL_GAME`:** Captura exclusiva del sonido generado por las aplicaciones y juegos.
-   - **`AudioSourceType.MIC`:** Captura mediante micrófono con filtrado de ruido en C++ DSP.
-   - **`AudioSourceType.NONE`:** Modo silencioso sin pista de audio.
-
-4. **Herramientas en Vivo (Overlay Draw & Screenshot):**
-   - **`ScreenDrawingOverlay`:** Dibuja directamente sobre una ventana transparente acelerada por GPU (`Canvas`/`Path`), siendo capturada de inmediato por el stream de `MediaProjection` sin requerir recodificación en C++.
-   - **`ScreenshotHelper`:** Extracción de fotogramas e instantáneas guardadas en `Pictures/Screenshots` con indexación en `MediaStore`.
-
-5. **Facecam Flotante con Filtro de Belleza y Borde RGB:**
-   - **`FacecamOverlayManager`:** Despliega una vista de cámara flotante arrastrable con soporte de formas geométricas por hardware (`ViewOutlineProvider` y `GradientDrawable`): Circular 1:1, Cuadrado Redondeado, Cuadrado 1:1 y Rectangular 16:9.
-   - **Filtro de Belleza:** Capa cromática y difuminado suave para un acabado facial limpio sin sobrecargar el procesador.
-   - **Borde RGB:** Marco animado con gradiente circular `SweepGradient` continuo.
-   - **Ciclo de vida desacoplado:** Implementa un `LifecycleOwner` personalizado para CameraX (`FacecamLifecycleOwner`) dentro del contexto de `ScreenRecordService`.
-
-6. **Avatar 2D / PNGtuber Reactivo (VTuber Mode):**
-   - **`VtuberOverlayManager` & `VtuberOverlayView`:** Ventana flotante interactiva y arrastrable que sustituye el uso de cámara real.
-   - **`VtuberAudioReactor`:** Algoritmo en corrutina dedicada (`Dispatchers.Default`) que calcula la reactividad en función del nivel RMS del micrófono, aplicando decaimiento suave de apertura bucal (hold time 120ms, falloff 65ms) y parpadeos oculares probabilísticos periódicos (160ms de duración).
-   - **Presets Vectoriales & Custom PNGs:** Soporta presets nativos de alta velocidad (*Gamer Cat*, *Cyber Fox*, *Chibi Bot*) y 4 estados de imágenes personalizadas con transparencia.
-
-7. **Indicador de Toques Táctiles Animado (Touch Visualizer):**
-   - **`TouchVisualizerOverlay`:** Dibuja ondas táctiles fluidas en tiempo real sobre toda la pantalla sin requerir permisos de desarrollador ni depuración USB.
-   - **Colores Personalizables:** Azul Neón, Verde Gamer, Púrpura Neón, Rojo Fuego, Amarillo Eléctrico y Blanco Puro.
-
-8. **Marca de Agua / Logo Personalizado Superpuesto:**
-   - **`WatermarkOverlayManager`:** Superpone un logo propio o texto personal arrastrable (`WatermarkTouchHelper`) por el usuario sobre la pantalla con `FLAG_NOT_FOCUSABLE`.
-   - Permite control total de transparencia, color y tamaño sin interferir en los botones del juego.
-
-9. **Overlays de Escena Personalizados:**
-   - **`SceneOverlayManager`:** Proyecta marcos gamer cyberpunk, banners inferiores de streamer, badges "🔴 LIVE" o carteles de pausa con `FLAG_NOT_TOUCHABLE`, capturados íntegramente por `MediaProjection`.
-
-10. **Integración Nativa Segura (C++, DSP y Rust):**
-   - Toda llamada a librerías nativas debe estar envuelta con protección contra `UnsatisfiedLinkError` en sus respectivos puentes (`NativeOBSBridge.kt`, `NativeAudioDSPBridge.kt`, `NativeFFmpegBridge.kt`, `NativeRustNetwork.kt`).
-
-11. **Mini Editor de Video & Extractor de Miniaturas HD (`VideoEditorManager` / `VideoEditorDialog`):**
-   - **Stream-Copy Trim:** Recorte de video ultra-rápido sin renderizado (`MediaExtractor` + `MediaMuxer` con fallback a NDK FFmpeg) que preserva 100% de la calidad original (H.264/AAC), manteniendo el framerate a 60 FPS y procesando clips en fracciones de segundo.
-   - **Extractor HD:** `MediaMetadataRetriever` con captura de frames en resolución completa sin compresión destructiva guardado en `Pictures/ScreenRecorder`.
-   - **UI Móvil estilo CapCut:** Filmstrip interactivo, range slider dual in/out con milisegundos, transport controls y visor de video en tiempo real.
+**Vortex Studio** es una aplicación Android de grabación de pantalla de alto rendimiento, suite de edición rápida y transmisión en vivo para videojuegos, orientada a creadores de contenido móvil, streamers y gamers.
 
 ---
 
-## 📊 Modelo de Datos Clave
+## 🧱 Arquitectura y Módulos Clave
 
-```kotlin
-data class RecordingConfig(
-    val resolution: VideoResolution = VideoResolution.RES_1080P,
-    val fps: VideoFps = VideoFps.FPS_60,
-    val bitrate: VideoBitrate = VideoBitrate.BITRATE_8M,
-    val bitrateMbps: Int = 8,
-    val audioSource: AudioSourceType = AudioSourceType.INTERNAL_AND_MIC,
-    val audioSampleRate: AudioSampleRate = AudioSampleRate.RATE_48000,
-    val showFloatingVuMeter: Boolean = false,
-    val gameAudioGain: Float = 1.0f,
-    val micAudioGain: Float = 1.0f,
-    val noiseGateEnabled: Boolean = false,
-    val audioDuckingEnabled: Boolean = false,
-    val countdownSeconds: Int = 3,
-    val isGameMode: Boolean = true,
-    val showFloatingBubble: Boolean = true,
-    val showFacecam: Boolean = false,
-    val facecamShape: FacecamShape = FacecamShape.CIRCLE,
-    val facecamSize: FacecamSize = FacecamSize.MEDIUM,
-    val facecamFps: FacecamFps = FacecamFps.FPS_30,
-    val isFrontCamera: Boolean = true,
-    val beautyFilterEnabled: Boolean = false,
-    val facecamRgbBorder: Boolean = false,
-    val vtuberEnabled: Boolean = false,
-    val vtuberType: VtuberType = VtuberType.PRESET,
-    val vtuberPreset: VtuberPreset = VtuberPreset.GAMER_CAT,
-    val vtuberSize: VtuberSize = VtuberSize.MEDIUM,
-    val vtuberIdleOpenEyesUri: String? = null,
-    val vtuberTalkOpenEyesUri: String? = null,
-    val vtuberIdleBlinkUri: String? = null,
-    val vtuberTalkBlinkUri: String? = null,
-    val showTouchVisualizer: Boolean = false,
-    val touchVisualizerColor: TouchColorOption = TouchColorOption.CYAN,
-    val showWatermark: Boolean = false,
-    val watermarkType: WatermarkType = WatermarkType.TEXT,
-    val watermarkText: String = "🌪️ Vortex Studio",
-    val watermarkOpacity: Float = 0.85f,
-    val watermarkSize: WatermarkSize = WatermarkSize.MEDIUM,
-    val watermarkColor: TouchColorOption = TouchColorOption.CYAN,
-    val watermarkCustomImageUri: String? = null,
-    val showSceneOverlay: Boolean = false,
-    val sceneOverlayType: SceneOverlayType = SceneOverlayType.GAMER_NEON_FRAME,
-    val sceneOverlayText: String = "🔴 EN VIVO | @TuCanal",
-    val sceneOverlayOpacity: Float = 0.90f,
-    val sceneOverlayImageUri: String? = null
-)
+### 1. Módulo de Edición de Video (`com.example.editor` & `com.example.ui.editor`)
+- **`VideoEditorManager.kt`**:
+  * **Recorte Rápido (Lossless Stream-Copy):** Manipulación de paquetes a nivel de contenedor MP4 con `MediaExtractor` / `MediaMuxer` y fallback a NDK C++ FFmpeg.
+  * **Conversor de Aspect Ratio 1-Toque:** Convierte videos a 9:16 (TikTok/Shorts), 16:9 (YouTube), 1:1, 4:5 y 4:3 con modos de fondo desenfocado (Blur), relleno (Crop) y bandas negras (Letterbox).
+  * **División de Video (Split Tool):** Corta el video en 2 partes en el playhead (`Parte 1` y `Parte 2`) de forma instantánea.
+  * **Extractor de Miniaturas HD:** Captura fotogramas exactos en resolución nativa mediante `MediaMetadataRetriever`.
+  * **Generador de Filmstrip:** Genera miniaturas en segundo plano para la línea de tiempo.
+- **`VideoEditorDialog.kt`**:
+  * Visor interactivo adaptativo al aspect ratio seleccionado.
+  * Barra de chips de Aspect Ratio de 1-Toque y selector de modo de ajuste Blur/Crop/Letterbox.
+  * Botón directo de División (Split ✂️) con diálogo de confirmación y exportación de ambas partes.
+  * Transport controls (-1s, +1s, play/pause) y deslizador dual de rango (RangeSlider In/Out).
 
-data class RecordedVideo(
-    val id: String,
-    val title: String,
-    val filePath: String,
-    val durationMs: Long,
-    val sizeBytes: Long,
-    val dateModified: Long
-)
-```
+### 2. Motor Nativo C++ (`cpp/`) & JNI
+- **`ffmpeg_engine.hpp` / `ffmpeg_engine.cpp`**: Métodos nativos para `trimVideo`, `splitVideo`, `convertAspectRatio`, `extractAudio`, `compressVideo` y `applyWatermark`.
+- **`obs_compositor.hpp` / `obs_compositor.cpp`**: Pipeline de renderizado con OpenGL ES 3.0 para composición de capas y aceleración por hardware.
+- **`audio_dsp_engine.hpp` / `audio_dsp_engine.cpp`**: Puerta de ruido (Noise Gate), ducking automático (-9 dB) y limitador suave (Soft Limiter).
+
+### 3. Motor Nativo Rust (`rust/`)
+- **`lib.rs` / `NativeRustNetwork.kt`**:
+  * Gestión de sockets para streaming seguro en memoria RTMP/SRT.
+  * Función `rustCalculateTargetDimensions` para empaquetado seguro y cálculo de resoluciones de aspect ratio de video.
+
+### 4. Overlays Flotantes y Servicios en Segundo Plano
+- `ScreenRecordService.kt`: Servicio principal en primer plano para captura mediante `MediaProjection`.
+- `FacecamOverlayManager.kt`: Cámara frontal/trasera con CameraX, FPS configurable (30-60 FPS), marco RGB animado y filtro de belleza.
+- `VtuberOverlayManager.kt`: Avatar 2D reactivo a voz y parpadeo ocular automático.
+- `FloatingVuMeterManager.kt`: Vúmetro LED en vivo y mezclador de volumen flotante con control de ganancia.
+- `TouchVisualizerOverlay.kt`: Visualizador táctil con ripples animados sin necesidad de opciones de desarrollador.
+- `WatermarkOverlayManager.kt` y `SceneOverlayManager.kt`: Marca de agua arrastrable y overlays de escena.
 
 ---
 
-## 🎨 Pipeline Gráfico C++ (OpenGL ES 3.0 & EGL)
-
-- **Shaders GLSL:** Renderizado acelerado por hardware de capas ordenadas por `zOrder`.
-- **Facecam Circular:** Máscara de fragmento con `smoothstep` para bordes antialiasing suaves.
-- **Chroma Key GPU:** Supresión de color verde con parámetros dinámicos de similitud y suavizado sin impacto en la CPU.
-- **EGL Offscreen Surface:** Permite renderizar y componer frames a 60 FPS directamente hacia los buffers de video.
+## 🎯 Reglas de Calidad y Rendimiento
+- **60 FPS constantes:** Interfaz Jetpack Compose reactiva con `StateFlow` y sin bloqueos en el hilo principal.
+- **Independencia:** Cero dependencias de Google Play Services para permitir distribución en Uptodown y tiendas de terceros.
+- **Almacenamiento Público:** Los videos recortados, divididos y miniaturas se registran automáticamente en `MediaStore` / `MediaScannerConnection`.

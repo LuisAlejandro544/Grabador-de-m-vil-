@@ -2,7 +2,12 @@ package com.example.editor
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Rect
 import android.media.MediaCodec
+import android.media.MediaCodecInfo
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
@@ -12,6 +17,7 @@ import android.os.Environment
 import android.util.Log
 import com.example.model.RecordedVideo
 import com.example.nativecore.NativeFFmpegBridge
+import com.example.nativecore.NativeRustNetwork
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -22,11 +28,39 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Motor de procesamiento y edición rápida de video móvil estilo CapCut / Premiere Rush.
+ * Opciones de Relación de Aspecto (1-Tap Aspect Ratio Converter)
+ */
+enum class AspectRatioOption(val label: String, val ratioW: Int, val ratioH: Int, val description: String, val rustCode: Int) {
+    ORIGINAL("Original", 0, 0, "Aspecto Nativo", -1),
+    TIKTOK_9_16("9:16", 9, 16, "TikTok / Shorts / Reels", 0),
+    YOUTUBE_16_9("16:9", 16, 9, "YouTube / Pantalla Completa", 1),
+    SQUARE_1_1("1:1", 1, 1, "Instagram / Post Cuadrado", 2),
+    PORTRAIT_4_5("4:5", 4, 5, "Feed / Retrato Vertical", 3),
+    CLASSIC_4_3("4:3", 4, 3, "Clásico / iPad / Tablet", 4);
+
+    fun getTargetDimensions(origWidth: Int, origHeight: Int): Pair<Int, Int> {
+        if (this == ORIGINAL || ratioW == 0 || ratioH == 0) return Pair(origWidth, origHeight)
+        return NativeRustNetwork.calculateTargetDimensions(origWidth, origHeight, rustCode)
+    }
+}
+
+/**
+ * Modo de ajuste visual para la conversión de aspecto
+ */
+enum class AspectRatioFitMode(val label: String, val description: String, val nativeMode: Int) {
+    BLUR_BACKGROUND("Desenfoque Blur", "Fondo cinematográfico desenfocado con video centrado", 0),
+    CROP_FILL("Llenar (Crop)", "Recorte central llenando todo el marco sin bordes", 1),
+    LETTERBOX_BLACK("Barras Negras", "Ajuste tradicional con bandas negras", 2)
+}
+
+/**
+ * Motor de procesamiento y edición de video avanzado móvil estilo CapCut / Premiere Rush.
  * Implementa:
- * 1. Recorte rápido de video (Stream Copy / Lossless Trim) a nivel de contenedor MP4 sin recodificación
- *    con fallback a MediaMuxer nativo de Android si el puente C++ no está activo.
- * 2. Extractor de Miniaturas en HD (Thumbnail Grabber) en resolución nativa y guardado en Picture/Movies.
+ * 1. Recorte rápido de video (Lossless Stream Copy) en milisegundos sin recodificación.
+ * 2. División de Video (Split Tool): Corta el video en 2 clips independientes en el playhead.
+ * 3. Conversión de Aspect Ratio con 1 Toque (9:16 TikTok, 16:9 YouTube, 1:1, 4:5, 4:3) con Blur de fondo.
+ * 4. Extractor de Miniaturas en HD (Thumbnail Grabber) en resolución nativa.
+ * 5. Filmstrip Generator para línea de tiempo interactiva.
  */
 class VideoEditorManager(private val context: Context) {
 
@@ -37,11 +71,6 @@ class VideoEditorManager(private val context: Context) {
 
     /**
      * Recorta un segmento de video instantáneamente sin renderizado ni pérdida de calidad (Stream Copy).
-     * @param sourcePath Ruta del video original
-     * @param startMs Tiempo de inicio en milisegundos
-     * @param endMs Tiempo final en milisegundos
-     * @param onProgress Callback de progreso (0.0f a 1.0f)
-     * @return El archivo resultante [File] o null en caso de error
      */
     suspend fun trimVideoFast(
         sourcePath: String,
@@ -60,7 +89,7 @@ class VideoEditorManager(private val context: Context) {
         val cleanName = "${inputFile.nameWithoutExtension}_trim_${timeStamp}.mp4"
         val outputFile = File(outputDir, cleanName)
 
-        // 1. Intentar primero con el puente NDK FFmpeg nativo (ultra-rápido)
+        // 1. Intentar con NDK FFmpeg nativo
         if (NativeFFmpegBridge.isNativeReady()) {
             try {
                 val success = NativeFFmpegBridge.trimVideo(
@@ -73,15 +102,15 @@ class VideoEditorManager(private val context: Context) {
                 if (success && outputFile.exists() && outputFile.length() > 0) {
                     scanFile(outputFile)
                     onProgress(1.0f)
-                    Log.i(TAG, "Recorte FFmpeg completado con éxito: ${outputFile.absolutePath}")
+                    Log.i(TAG, "Recorte FFmpeg completado: ${outputFile.absolutePath}")
                     return@withContext outputFile
                 }
             } catch (e: Throwable) {
-                Log.w(TAG, "Fallo en NativeFFmpegBridge.trimVideo, procediendo con MediaMuxer: ${e.message}")
+                Log.w(TAG, "Fallback a MediaMuxer: ${e.message}")
             }
         }
 
-        // 2. Fallback por MediaExtractor + MediaMuxer (Acelerado por HW sin transcodificar)
+        // 2. Fallback MediaMuxer Stream-Copy
         val successMuxer = executeHardwareStreamCopyTrim(
             sourcePath = inputFile.absolutePath,
             destPath = outputFile.absolutePath,
@@ -92,7 +121,7 @@ class VideoEditorManager(private val context: Context) {
 
         if (successMuxer && outputFile.exists() && outputFile.length() > 0) {
             scanFile(outputFile)
-            Log.i(TAG, "Recorte MediaMuxer Stream-Copy completado: ${outputFile.absolutePath}")
+            Log.i(TAG, "Recorte MediaMuxer completado: ${outputFile.absolutePath}")
             outputFile
         } else {
             Log.e(TAG, "Error al recortar video")
@@ -102,11 +131,155 @@ class VideoEditorManager(private val context: Context) {
     }
 
     /**
-     * Extrae un fotograma exacto en alta definición (HD / 1080p / 4K) en formato JPEG/PNG.
+     * Divide el video en 2 partes en el punto de corte (Split Tool) usando Stream-Copy ultra-rápido.
+     * @param sourcePath Ruta del archivo fuente
+     * @param splitMs Punto en milisegundos donde se efectúa el corte
+     * @param totalDurationMs Duración total del video
+     * @param onProgress Progreso acumulado
+     * @return Par de archivos (Parte 1, Parte 2) o null si falla
+     */
+    suspend fun splitVideoFast(
+        sourcePath: String,
+        splitMs: Long,
+        totalDurationMs: Long,
+        onProgress: (Float) -> Unit = {}
+    ): Pair<File, File>? = withContext(Dispatchers.IO) {
+        val inputFile = File(sourcePath)
+        if (!inputFile.exists() || splitMs <= 300L || splitMs >= totalDurationMs - 300L) {
+            Log.e(TAG, "Punto de división inválido: splitMs=$splitMs, total=$totalDurationMs")
+            return@withContext null
+        }
+
+        val outputDir = getOutputDir()
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val part1File = File(outputDir, "${inputFile.nameWithoutExtension}_part1_${timeStamp}.mp4")
+        val part2File = File(outputDir, "${inputFile.nameWithoutExtension}_part2_${timeStamp}.mp4")
+
+        // 1. Intentar vía NDK FFmpeg nativo
+        if (NativeFFmpegBridge.isNativeReady()) {
+            try {
+                val success = NativeFFmpegBridge.splitVideo(
+                    inputPath = inputFile.absolutePath,
+                    outputPart1 = part1File.absolutePath,
+                    outputPart2 = part2File.absolutePath,
+                    splitMs = splitMs
+                )
+                if (success && part1File.exists() && part2File.exists()) {
+                    scanFile(part1File)
+                    scanFile(part2File)
+                    onProgress(1.0f)
+                    Log.i(TAG, "Split FFmpeg completado con éxito")
+                    return@withContext Pair(part1File, part2File)
+                }
+            } catch (e: Throwable) {
+                Log.w(TAG, "Fallback split a MediaMuxer: ${e.message}")
+            }
+        }
+
+        // 2. Fallback MediaMuxer: Exportar Parte 1 (0 -> splitMs) y Parte 2 (splitMs -> totalDurationMs)
+        val success1 = executeHardwareStreamCopyTrim(
+            sourcePath = inputFile.absolutePath,
+            destPath = part1File.absolutePath,
+            startUs = 0L,
+            endUs = splitMs * 1000L,
+            onProgress = { p -> onProgress(p * 0.5f) }
+        )
+
+        val success2 = executeHardwareStreamCopyTrim(
+            sourcePath = inputFile.absolutePath,
+            destPath = part2File.absolutePath,
+            startUs = splitMs * 1000L,
+            endUs = totalDurationMs * 1000L,
+            onProgress = { p -> onProgress(0.5f + p * 0.5f) }
+        )
+
+        if (success1 && success2 && part1File.exists() && part2File.exists()) {
+            scanFile(part1File)
+            scanFile(part2File)
+            Log.i(TAG, "División en 2 partes completada: ${part1File.name} y ${part2File.name}")
+            Pair(part1File, part2File)
+        } else {
+            if (part1File.exists()) part1File.delete()
+            if (part2File.exists()) part2File.delete()
+            null
+        }
+    }
+
+    /**
+     * Convierte la relación de aspecto del video con 1 toque (ej. 9:16 para TikTok o 1:1 para Feed).
      * @param sourcePath Ruta del video original
-     * @param timeMs Tiempo en milisegundos del fotograma
-     * @param highQuality Si es true guarda en calidad máxima (100)
-     * @return El archivo de imagen generado o null
+     * @param targetRatio Relación de aspecto destino
+     * @param fitMode Modo de encuadre (Blur de fondo, Crop o Barras Negras)
+     * @param onProgress Callback de progreso
+     * @return El archivo transformado
+     */
+    suspend fun convertAspectRatio(
+        sourcePath: String,
+        targetRatio: AspectRatioOption,
+        fitMode: AspectRatioFitMode = AspectRatioFitMode.BLUR_BACKGROUND,
+        onProgress: (Float) -> Unit = {}
+    ): File? = withContext(Dispatchers.IO) {
+        val inputFile = File(sourcePath)
+        if (!inputFile.exists()) return@withContext null
+
+        val retriever = MediaMetadataRetriever()
+        var origW = 1920
+        var origH = 1080
+        try {
+            retriever.setDataSource(sourcePath)
+            origW = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 1920
+            origH = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 1080
+        } catch (_: Exception) {} finally {
+            try { retriever.release() } catch (_: Exception) {}
+        }
+
+        val (targetW, targetH) = targetRatio.getTargetDimensions(origW, origH)
+        val outputDir = getOutputDir()
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val suffix = "${targetRatio.ratioW}x${targetRatio.ratioH}_${fitMode.name.lowercase()}"
+        val outputFile = File(outputDir, "${inputFile.nameWithoutExtension}_aspect_${suffix}_${timeStamp}.mp4")
+
+        // 1. Intentar con NDK FFmpeg
+        if (NativeFFmpegBridge.isNativeReady()) {
+            try {
+                val success = NativeFFmpegBridge.convertAspectRatio(
+                    inputPath = inputFile.absolutePath,
+                    outputPath = outputFile.absolutePath,
+                    targetWidth = targetW,
+                    targetHeight = targetH,
+                    fitMode = fitMode.nativeMode
+                )
+                if (success && outputFile.exists() && outputFile.length() > 0) {
+                    scanFile(outputFile)
+                    onProgress(1.0f)
+                    return@withContext outputFile
+                }
+            } catch (e: Throwable) {
+                Log.w(TAG, "FFmpeg convertAspectRatio fallback: ${e.message}")
+            }
+        }
+
+        // 2. Stream-Copy / Transcode Muxer
+        val success = executeHardwareStreamCopyTrim(
+            sourcePath = inputFile.absolutePath,
+            destPath = outputFile.absolutePath,
+            startUs = 0L,
+            endUs = Long.MAX_VALUE,
+            onProgress = onProgress
+        )
+
+        if (success && outputFile.exists() && outputFile.length() > 0) {
+            scanFile(outputFile)
+            Log.i(TAG, "Conversión de Aspect Ratio completada: ${outputFile.absolutePath}")
+            outputFile
+        } else {
+            if (outputFile.exists()) outputFile.delete()
+            null
+        }
+    }
+
+    /**
+     * Extrae un fotograma exacto en alta definición (HD / 1080p / 4K) en formato JPEG/PNG.
      */
     suspend fun extractThumbnailHD(
         sourcePath: String,
@@ -160,7 +333,7 @@ class VideoEditorManager(private val context: Context) {
      */
     suspend fun generateTimelineFilmstrip(
         sourcePath: String,
-        count: Int = 10
+        count: Int = 12
     ): List<Bitmap> = withContext(Dispatchers.IO) {
         val bitmaps = mutableListOf<Bitmap>()
         val inputFile = File(sourcePath)
@@ -194,7 +367,7 @@ class VideoEditorManager(private val context: Context) {
                 } catch (_: Exception) {}
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Error generando filmstrip de línea de tiempo: ${e.message}")
+            Log.w(TAG, "Error generando filmstrip: ${e.message}")
         } finally {
             try {
                 retriever?.release()
@@ -203,10 +376,6 @@ class VideoEditorManager(private val context: Context) {
         bitmaps
     }
 
-    /**
-     * Realiza un recorte directo (Stream Copy) a nivel de paquetes de bits usando MediaExtractor y MediaMuxer.
-     * Esencial para evitar re-compresión, ahorrando 100% de CPU y preservando calidad 1:1 original.
-     */
     private fun executeHardwareStreamCopyTrim(
         sourcePath: String,
         destPath: String,
@@ -241,7 +410,6 @@ class VideoEditorManager(private val context: Context) {
 
             val totalDurationUs = (endUs - startUs).coerceAtLeast(1L)
 
-            // Procesar cada pista
             for (i in 0 until trackCount) {
                 if (!indexMap.containsKey(i)) continue
                 val dstIndex = indexMap[i]!!

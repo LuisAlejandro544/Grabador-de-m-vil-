@@ -1,65 +1,65 @@
 package com.example.ui.editor
 
 import android.graphics.Bitmap
-import android.widget.MediaController
 import android.widget.VideoView
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AspectRatio
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.BlurOn
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CallSplit
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCut
-import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
-import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RangeSlider
-import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -72,23 +72,24 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.editor.AspectRatioFitMode
+import com.example.editor.AspectRatioOption
 import com.example.editor.VideoEditorManager
 import com.example.model.RecordedVideo
 import kotlinx.coroutines.Dispatchers
@@ -97,16 +98,16 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
 /**
- * Modal Completo de Edición Rápida estilo CapCut / Premiere Rush para dispositivos móviles.
+ * Modal Completo de Edición Avanzada estilo CapCut para dispositivos móviles.
  * Integra:
- * 1. Reproductor en tiempo real con scrubber y marcadores de recorte interactivos.
- * 2. Línea de tiempo visual (Filmstrip) con doble cabezal de entrada (In) y salida (Out).
- * 3. Recorte ultra-rápido sin renderizar (Lossless Stream Copy).
+ * 1. Conversión de Aspect Ratio con 1 Toque (9:16 TikTok, 16:9 YouTube, 1:1 Feed, 4:5, 4:3) con fondo desenfocado Blur.
+ * 2. Herramienta de División (Split Tool): Corta el video en 2 partes instantáneamente en el cabezal de reproducción.
+ * 3. Recorte ultra-rápido sin pérdida de calidad (Lossless Stream Copy).
  * 4. Extractor de Miniaturas HD con captura en fotograma exacto.
+ * 5. Filmstrip de miniaturas dinámico con scrubbing interactivo.
  */
 @Composable
 fun VideoEditorDialog(
@@ -121,6 +122,7 @@ fun VideoEditorDialog(
 
     var isProcessing by remember { mutableStateOf(false) }
     var processingTitle by remember { mutableStateOf("Procesando...") }
+    var processingSubtitle by remember { mutableStateOf("Operación ultra-rápida sin pérdida de calidad") }
     var processingProgress by remember { mutableFloatStateOf(0.0f) }
 
     val durationMs = remember(video) {
@@ -132,11 +134,18 @@ fun VideoEditorDialog(
     var currentPlaybackMs by remember { mutableLongStateOf(0L) }
     var isPlaying by remember { mutableStateOf(false) }
 
+    // Estado de Aspect Ratio 1-Tap
+    var selectedAspectRatio by remember { mutableStateOf(AspectRatioOption.ORIGINAL) }
+    var selectedFitMode by remember { mutableStateOf(AspectRatioFitMode.BLUR_BACKGROUND) }
+    var showAspectRatioMenu by remember { mutableStateOf(false) }
+
+    // Estado de División (Split)
+    var showSplitConfirmDialog by remember { mutableStateOf(false) }
+
     var filmstripBitmaps by remember { mutableStateOf<List<Bitmap>>(emptyList()) }
     var videoViewInstance by remember { mutableStateOf<VideoView?>(null) }
-    var capturedThumbPreview by remember { mutableStateOf<Bitmap?>(null) }
 
-    // Cargar tira de miniaturas de la línea de tiempo
+    // Cargar tira de miniaturas
     LaunchedEffect(video.filePath) {
         withContext(Dispatchers.IO) {
             filmstripBitmaps = editorManager.generateTimelineFilmstrip(video.filePath, count = 12)
@@ -181,22 +190,22 @@ fun VideoEditorDialog(
         Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF0F0F12))
+                .background(Color(0xFF0D0D11))
                 .testTag("video_editor_dialog"),
-            color = Color(0xFF0F0F12)
+            color = Color(0xFF0D0D11)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // 1. Barra Superior estilo CapCut
+                    // 1. Barra Superior con botones de acción y exportación
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 8.dp, bottom = 6.dp),
+                            .padding(top = 4.dp, bottom = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -217,45 +226,59 @@ fun VideoEditorDialog(
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(10.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Column {
                                 Text(
-                                    text = "Vortex Clip Editor",
-                                    fontSize = 16.sp,
+                                    text = "Vortex Video Studio Pro",
+                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
                                 )
                                 Text(
-                                    text = "${video.width}x${video.height} • ${video.formattedDuration()}",
+                                    text = if (selectedAspectRatio == AspectRatioOption.ORIGINAL)
+                                        "${video.width}x${video.height} • ${video.formattedDuration()}"
+                                    else
+                                        "Formato: ${selectedAspectRatio.label} • ${selectedFitMode.label}",
                                     fontSize = 11.sp,
-                                    color = Color(0xFF9E9EA4)
+                                    color = if (selectedAspectRatio != AspectRatioOption.ORIGINAL) Color(0xFF00E676) else Color(0xFF9E9EA4)
                                 )
                             }
                         }
 
-                        // Botón de Exportar Recorte Rápido
+                        // Botón de Guardar / Exportar Clip
                         Button(
                             onClick = {
                                 scope.launch {
                                     isProcessing = true
-                                    processingTitle = "Recortando clip al instante..."
-                                    processingProgress = 0.1f
-                                    val result = editorManager.trimVideoFast(
-                                        sourcePath = video.filePath,
-                                        startMs = startMs,
-                                        endMs = endMs,
-                                        onProgress = { p -> processingProgress = p }
-                                    )
-                                    isProcessing = false
-                                    if (result != null) {
-                                        onVideoEdited(result)
+                                    if (selectedAspectRatio != AspectRatioOption.ORIGINAL) {
+                                        processingTitle = "Adaptando formato a ${selectedAspectRatio.label}..."
+                                        processingSubtitle = "Generando video optimizado para redes sociales"
+                                        val converted = editorManager.convertAspectRatio(
+                                            sourcePath = video.filePath,
+                                            targetRatio = selectedAspectRatio,
+                                            fitMode = selectedFitMode,
+                                            onProgress = { p -> processingProgress = p }
+                                        )
+                                        isProcessing = false
+                                        if (converted != null) onVideoEdited(converted)
+                                    } else {
+                                        processingTitle = "Guardando clip recortado..."
+                                        processingSubtitle = "Stream Copy ultra-rápido sin pérdida de calidad"
+                                        val result = editorManager.trimVideoFast(
+                                            sourcePath = video.filePath,
+                                            startMs = startMs,
+                                            endMs = endMs,
+                                            onProgress = { p -> processingProgress = p }
+                                        )
+                                        isProcessing = false
+                                        if (result != null) onVideoEdited(result)
                                     }
                                 }
                             },
                             enabled = !isProcessing,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF00E676),
-                                contentColor = Color.Black
+                                containerColor = if (selectedAspectRatio != AspectRatioOption.ORIGINAL) Color(0xFF2979FF) else Color(0xFF00E676),
+                                contentColor = if (selectedAspectRatio != AspectRatioOption.ORIGINAL) Color.White else Color.Black
                             ),
                             shape = RoundedCornerShape(20.dp),
                             modifier = Modifier
@@ -263,26 +286,128 @@ fun VideoEditorDialog(
                                 .testTag("editor_export_trim_button")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.ContentCut,
+                                imageVector = if (selectedAspectRatio != AspectRatioOption.ORIGINAL) Icons.Default.FileDownload else Icons.Default.ContentCut,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
-                                tint = Color.Black
+                                tint = if (selectedAspectRatio != AspectRatioOption.ORIGINAL) Color.White else Color.Black
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Guardar Clip",
-                                fontSize = 13.sp,
+                                text = if (selectedAspectRatio != AspectRatioOption.ORIGINAL) "Exportar ${selectedAspectRatio.label}" else "Guardar Clip",
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
                     }
 
-                    // 2. Visor Central de Video (Player Monitor)
+                    // 2. Barra Rápida de Relación de Aspecto (1-Tap Aspect Ratio Selector)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Aspect Ratio:",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.LightGray,
+                            modifier = Modifier.padding(end = 2.dp)
+                        )
+                        AspectRatioOption.values().forEach { option ->
+                            val isSelected = selectedAspectRatio == option
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    selectedAspectRatio = option
+                                },
+                                label = {
+                                    Text(
+                                        text = option.label,
+                                        fontSize = 11.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                },
+                                leadingIcon = if (isSelected) {
+                                    {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                    }
+                                } else null,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = Color(0xFF1B1B22),
+                                    selectedContainerColor = Color(0xFF00E676),
+                                    selectedLabelColor = Color.Black,
+                                    labelColor = Color.White
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.testTag("aspect_ratio_chip_${option.name.lowercase()}")
+                            )
+                        }
+                    }
+
+                    // Si hay un Aspect Ratio no original seleccionado, mostrar selector de modo de ajuste (Blur / Crop / Letterbox)
+                    AnimatedVisibility(visible = selectedAspectRatio != AspectRatioOption.ORIGINAL) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AspectRatioFitMode.values().forEach { mode ->
+                                val isSelected = selectedFitMode == mode
+                                Surface(
+                                    modifier = Modifier
+                                        .padding(horizontal = 4.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { selectedFitMode = mode }
+                                        .border(
+                                            width = if (isSelected) 1.5.dp else 0.dp,
+                                            color = if (isSelected) Color(0xFF2979FF) else Color.Transparent,
+                                            shape = RoundedCornerShape(8.dp)
+                                        ),
+                                    color = if (isSelected) Color(0xFF1E2A4A) else Color(0xFF17171E),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = when(mode) {
+                                                AspectRatioFitMode.BLUR_BACKGROUND -> Icons.Default.BlurOn
+                                                AspectRatioFitMode.CROP_FILL -> Icons.Default.AspectRatio
+                                                AspectRatioFitMode.LETTERBOX_BLACK -> Icons.Default.Layers
+                                            },
+                                            contentDescription = null,
+                                            modifier = Modifier.size(13.dp),
+                                            tint = if (isSelected) Color(0xFF64B5F6) else Color.Gray
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = mode.label,
+                                            fontSize = 10.sp,
+                                            color = if (isSelected) Color.White else Color.Gray,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // 3. Visor Central de Video (Player Monitor Adaptativo)
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)
-                            .padding(vertical = 8.dp)
+                            .padding(vertical = 4.dp)
                             .shadow(8.dp, RoundedCornerShape(16.dp)),
                         shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(containerColor = Color.Black)
@@ -291,41 +416,79 @@ fun VideoEditorDialog(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            AndroidView(
-                                factory = { ctx ->
-                                    VideoView(ctx).apply {
-                                        setVideoPath(video.filePath)
-                                        setOnPreparedListener { mp ->
-                                            mp.isLooping = false
-                                            seekTo(startMs.toInt())
-                                        }
-                                        setOnCompletionListener {
-                                            isPlaying = false
-                                            seekTo(startMs.toInt())
-                                        }
-                                        videoViewInstance = this
-                                    }
-                                },
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clickable {
-                                        videoViewInstance?.let { vv ->
-                                            if (vv.isPlaying) {
-                                                vv.pause()
+                            // Fondo con efecto Blur si está activo
+                            if (selectedAspectRatio != AspectRatioOption.ORIGINAL && selectedFitMode == AspectRatioFitMode.BLUR_BACKGROUND && filmstripBitmaps.isNotEmpty()) {
+                                Image(
+                                    bitmap = filmstripBitmaps.first().asImageBitmap(),
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .blur(25.dp),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Black.copy(alpha = 0.45f))
+                                )
+                            }
+
+                            // Contenedor con aspect ratio reactivo simulado
+                            val aspectModifier = when (selectedAspectRatio) {
+                                AspectRatioOption.TIKTOK_9_16 -> Modifier.aspectRatio(9f / 16f, matchHeightConstraintsFirst = true)
+                                AspectRatioOption.YOUTUBE_16_9 -> Modifier.aspectRatio(16f / 9f)
+                                AspectRatioOption.SQUARE_1_1 -> Modifier.aspectRatio(1f)
+                                AspectRatioOption.PORTRAIT_4_5 -> Modifier.aspectRatio(4f / 5f, matchHeightConstraintsFirst = true)
+                                AspectRatioOption.CLASSIC_4_3 -> Modifier.aspectRatio(4f / 3f)
+                                AspectRatioOption.ORIGINAL -> Modifier.fillMaxSize()
+                            }
+
+                            Box(
+                                modifier = aspectModifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(
+                                        width = if (selectedAspectRatio != AspectRatioOption.ORIGINAL) 1.dp else 0.dp,
+                                        color = Color.White.copy(alpha = 0.2f),
+                                        shape = RoundedCornerShape(8.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                AndroidView(
+                                    factory = { ctx ->
+                                        VideoView(ctx).apply {
+                                            setVideoPath(video.filePath)
+                                            setOnPreparedListener { mp ->
+                                                mp.isLooping = false
+                                                seekTo(startMs.toInt())
+                                            }
+                                            setOnCompletionListener {
                                                 isPlaying = false
-                                            } else {
-                                                vv.start()
-                                                isPlaying = true
+                                                seekTo(startMs.toInt())
+                                            }
+                                            videoViewInstance = this
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clickable {
+                                            videoViewInstance?.let { vv ->
+                                                if (vv.isPlaying) {
+                                                    vv.pause()
+                                                    isPlaying = false
+                                                } else {
+                                                    vv.start()
+                                                    isPlaying = true
+                                                }
                                             }
                                         }
-                                    }
-                            )
+                                )
+                            }
 
                             // Botón Central flotante Play/Pause
                             if (!isPlaying) {
                                 Box(
                                     modifier = Modifier
-                                        .size(54.dp)
+                                        .size(52.dp)
                                         .clip(CircleShape)
                                         .background(Color.Black.copy(alpha = 0.65f))
                                         .clickable {
@@ -340,7 +503,7 @@ fun VideoEditorDialog(
                                         imageVector = Icons.Default.PlayArrow,
                                         contentDescription = "Reproducir",
                                         tint = Color.White,
-                                        modifier = Modifier.size(32.dp)
+                                        modifier = Modifier.size(30.dp)
                                     )
                                 }
                             }
@@ -351,7 +514,7 @@ fun VideoEditorDialog(
                                 shape = RoundedCornerShape(6.dp),
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .padding(10.dp)
+                                    .padding(8.dp)
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -360,14 +523,14 @@ fun VideoEditorDialog(
                                     Text(
                                         text = formatMs(currentPlaybackMs),
                                         color = Color(0xFF00E676),
-                                        fontSize = 12.sp,
+                                        fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         fontFamily = FontFamily.Monospace
                                     )
                                     Text(
                                         text = " / ${formatMs(endMs - startMs)}",
                                         color = Color.LightGray,
-                                        fontSize = 12.sp,
+                                        fontSize = 11.sp,
                                         fontFamily = FontFamily.Monospace
                                     )
                                 }
@@ -375,7 +538,7 @@ fun VideoEditorDialog(
                         }
                     }
 
-                    // 3. Controles de Reproducción y Recorte Fino
+                    // 4. Barra de Controles de Reproducción y Herramientas Rápidas (Split & Foto)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -417,7 +580,7 @@ fun VideoEditorDialog(
                                 }
                             },
                             modifier = Modifier
-                                .size(44.dp)
+                                .size(42.dp)
                                 .clip(CircleShape)
                                 .background(Color(0xFF2979FF))
                         ) {
@@ -449,12 +612,43 @@ fun VideoEditorDialog(
                             )
                         }
 
+                        // Botón DIVIDIR AQUÍ (Split Tool)
+                        Button(
+                            onClick = {
+                                if (currentPlaybackMs > 500L && currentPlaybackMs < durationMs - 500L) {
+                                    showSplitConfirmDialog = true
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF37474F),
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .height(36.dp)
+                                .testTag("editor_split_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CallSplit,
+                                contentDescription = "Dividir",
+                                modifier = Modifier.size(16.dp),
+                                tint = Color(0xFFFF9800)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Dividir ✂️",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
                         // Botón de Extraer Miniatura HD
                         Button(
                             onClick = {
                                 scope.launch {
                                     isProcessing = true
                                     processingTitle = "Extrayendo miniatura en HD..."
+                                    processingSubtitle = "Captura en fotograma exacto ${formatMs(currentPlaybackMs)}"
                                     processingProgress = 0.5f
                                     val thumb = editorManager.extractThumbnailHD(
                                         sourcePath = video.filePath,
@@ -479,54 +673,54 @@ fun VideoEditorDialog(
                             Icon(
                                 imageVector = Icons.Default.CameraAlt,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(15.dp),
                                 tint = Color(0xFFFFD54F)
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "Extraer Miniatura HD",
+                                text = "Foto HD",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
                     }
 
-                    // 4. Línea de Tiempo Visual (Timeline Filmstrip & Dual Slider)
+                    // 5. Línea de Tiempo Visual (Filmstrip & Dual Slider)
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 4.dp, bottom = 4.dp),
+                            .padding(vertical = 4.dp),
                         shape = RoundedCornerShape(14.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF16161C)),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF15151C)),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-                        Column(modifier = Modifier.padding(10.dp)) {
+                        Column(modifier = Modifier.padding(8.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Línea de Tiempo (Recorte sin renderizado)",
-                                    fontSize = 12.sp,
+                                    text = "Línea de Tiempo (Recorte / Selección)",
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = Color.White
                                 )
                                 Text(
                                     text = "Duración: ${formatMs(endMs - startMs)}",
-                                    fontSize = 12.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF00E676)
                                 )
                             }
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
 
                             // Filmstrip con cabezales de recorte interactivos
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(56.dp)
+                                    .height(52.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(Color.Black)
                             ) {
@@ -553,13 +747,13 @@ fun VideoEditorDialog(
                                             Text(
                                                 text = "Cargando fotogramas...",
                                                 color = Color.Gray,
-                                                fontSize = 11.sp
+                                                fontSize = 10.sp
                                             )
                                         }
                                     }
                                 }
 
-                                // Sombra fuera del rango recortado (Zona izquierda no seleccionada)
+                                // Sombra fuera del rango recortado
                                 val leftRatio = (startMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
                                 val rightRatio = ((durationMs - endMs).toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
 
@@ -592,7 +786,7 @@ fun VideoEditorDialog(
                                     }
                                 }
 
-                                // Indicador de aguja de reproducción actual (Playhead Cursor)
+                                // Indicador de aguja de reproducción actual (Playhead)
                                 val playheadRatio = (currentPlaybackMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
                                 Box(
                                     modifier = Modifier
@@ -609,7 +803,7 @@ fun VideoEditorDialog(
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
 
                             // Selector de rango deslizable dual
                             var sliderRange by remember(durationMs) {
@@ -647,6 +841,12 @@ fun VideoEditorDialog(
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
+                                    text = "Playhead: ${formatMs(currentPlaybackMs)}",
+                                    fontSize = 11.sp,
+                                    color = Color.White,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Text(
                                     text = "Out: ${formatMs(endMs)}",
                                     fontSize = 11.sp,
                                     color = Color(0xFFFF5252),
@@ -656,48 +856,86 @@ fun VideoEditorDialog(
                             }
                         }
                     }
+                }
 
-                    // 5. Herramientas Rápidas de Edición estilo CapCut
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        EditorToolButton(
-                            icon = Icons.Default.ContentCut,
-                            label = "Recortar In/Out",
-                            onClick = {
-                                // Resetear a la selección
-                                currentPlaybackMs = startMs
-                                videoViewInstance?.seekTo(startMs.toInt())
-                            }
-                        )
-                        EditorToolButton(
-                            icon = Icons.Default.CameraAlt,
-                            label = "Foto Frame HD",
-                            onClick = {
-                                scope.launch {
-                                    isProcessing = true
-                                    processingTitle = "Extrayendo miniatura HD..."
-                                    val thumb = editorManager.extractThumbnailHD(
-                                        sourcePath = video.filePath,
-                                        timeMs = currentPlaybackMs,
-                                        highQuality = true
+                // Diálogo de Confirmación para Dividir Video (Split)
+                if (showSplitConfirmDialog) {
+                    Dialog(onDismissRequest = { showSplitConfirmDialog = false }) {
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E28)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(20.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.CallSplit,
+                                        contentDescription = null,
+                                        tint = Color(0xFFFF9800),
+                                        modifier = Modifier.size(24.dp)
                                     )
-                                    isProcessing = false
-                                    if (thumb != null) onThumbnailExtracted(thumb)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Dividir Video en dos partes",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = "Se cortará el video exactamente en el punto actual (${formatMs(currentPlaybackMs)}):",
+                                    fontSize = 13.sp,
+                                    color = Color.LightGray
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "• Parte 1: 00:00 - ${formatMs(currentPlaybackMs)}\n• Parte 2: ${formatMs(currentPlaybackMs)} - ${formatMs(durationMs)}",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF00E676),
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    TextButton(onClick = { showSplitConfirmDialog = false }) {
+                                        Text("Cancelar", color = Color.Gray)
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Button(
+                                        onClick = {
+                                            showSplitConfirmDialog = false
+                                            scope.launch {
+                                                isProcessing = true
+                                                processingTitle = "Dividiendo video en 2 partes..."
+                                                processingSubtitle = "Generando archivos Parte 1 y Parte 2 sin re-encode"
+                                                val splitResult = editorManager.splitVideoFast(
+                                                    sourcePath = video.filePath,
+                                                    splitMs = currentPlaybackMs,
+                                                    totalDurationMs = durationMs,
+                                                    onProgress = { p -> processingProgress = p }
+                                                )
+                                                isProcessing = false
+                                                if (splitResult != null) {
+                                                    onVideoEdited(splitResult.first)
+                                                }
+                                            }
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFFFF9800),
+                                            contentColor = Color.Black
+                                        )
+                                    ) {
+                                        Text("Dividir y Guardar", fontWeight = FontWeight.Bold)
+                                    }
                                 }
                             }
-                        )
-                        EditorToolButton(
-                            icon = Icons.Default.Speed,
-                            label = "Stream Copy",
-                            badge = "Sin Re-encode",
-                            onClick = {
-                                // Informativo
-                            }
-                        )
+                        }
                     }
                 }
 
@@ -706,7 +944,7 @@ fun VideoEditorDialog(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.8f))
+                            .background(Color.Black.copy(alpha = 0.82f))
                             .clickable(enabled = false) {},
                         contentAlignment = Alignment.Center
                     ) {
@@ -719,7 +957,10 @@ fun VideoEditorDialog(
                                 modifier = Modifier.padding(24.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                CircularProgressIndicator(color = Color(0xFF00E676))
+                                CircularProgressIndicator(
+                                    color = Color(0xFF00E676),
+                                    modifier = Modifier.size(44.dp)
+                                )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
                                     text = processingTitle,
@@ -729,7 +970,7 @@ fun VideoEditorDialog(
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = "Operación ultra-rápida sin pérdida de calidad",
+                                    text = processingSubtitle,
                                     color = Color.Gray,
                                     fontSize = 12.sp
                                 )
@@ -738,51 +979,6 @@ fun VideoEditorDialog(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun EditorToolButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    badge: String? = null,
-    onClick: () -> Unit
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .clickable { onClick() }
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF1E1E24)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = Color.White,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = label,
-            fontSize = 11.sp,
-            color = Color.LightGray
-        )
-        if (badge != null) {
-            Text(
-                text = badge,
-                fontSize = 9.sp,
-                color = Color(0xFF00E676),
-                fontWeight = FontWeight.Bold
-            )
         }
     }
 }

@@ -227,6 +227,56 @@ Java_com_example_nativecore_NativeFFmpegBridge_nativeTrimVideo(
 }
 
 JNIEXPORT jboolean JNICALL
+Java_com_example_nativecore_NativeFFmpegBridge_nativeSplitVideo(
+    JNIEnv* env,
+    jobject /* this */,
+    jstring inputPath,
+    jstring outputPart1,
+    jstring outputPart2,
+    jlong splitMs
+) {
+    if (!gFFmpegEngine) {
+        gFFmpegEngine = std::make_unique<obs::ffmpeg::FFmpegEngine>();
+        gFFmpegEngine->initialize();
+    }
+    const char* inP = env->GetStringUTFChars(inputPath, nullptr);
+    const char* outP1 = env->GetStringUTFChars(outputPart1, nullptr);
+    const char* outP2 = env->GetStringUTFChars(outputPart2, nullptr);
+    std::string inStr(inP ? inP : "");
+    std::string outStr1(outP1 ? outP1 : "");
+    std::string outStr2(outP2 ? outP2 : "");
+    if (inP) env->ReleaseStringUTFChars(inputPath, inP);
+    if (outP1) env->ReleaseStringUTFChars(outputPart1, outP1);
+    if (outP2) env->ReleaseStringUTFChars(outputPart2, outP2);
+
+    return static_cast<jboolean>(gFFmpegEngine->splitVideo(inStr, outStr1, outStr2, splitMs, nullptr));
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_example_nativecore_NativeFFmpegBridge_nativeConvertAspectRatio(
+    JNIEnv* env,
+    jobject /* this */,
+    jstring inputPath,
+    jstring outputPath,
+    jint targetWidth,
+    jint targetHeight,
+    jint fitMode
+) {
+    if (!gFFmpegEngine) {
+        gFFmpegEngine = std::make_unique<obs::ffmpeg::FFmpegEngine>();
+        gFFmpegEngine->initialize();
+    }
+    const char* inP = env->GetStringUTFChars(inputPath, nullptr);
+    const char* outP = env->GetStringUTFChars(outputPath, nullptr);
+    std::string inStr(inP ? inP : "");
+    std::string outStr(outP ? outP : "");
+    if (inP) env->ReleaseStringUTFChars(inputPath, inP);
+    if (outP) env->ReleaseStringUTFChars(outputPath, outP);
+
+    return static_cast<jboolean>(gFFmpegEngine->convertAspectRatio(inStr, outStr, targetWidth, targetHeight, fitMode, nullptr));
+}
+
+JNIEXPORT jboolean JNICALL
 Java_com_example_nativecore_NativeFFmpegBridge_nativeExtractAudio(
     JNIEnv* env,
     jobject /* this */,

@@ -4,7 +4,7 @@
 //! and RTMP/SRT connection management with zero-cost memory safety.
 
 use jni::objects::{JClass, JString};
-use jni::sys::{jboolean, jint, jlong, jstring};
+use jni::sys::{jboolean, jint, jstring};
 use jni::JNIEnv;
 
 pub struct StreamSession {
@@ -38,7 +38,7 @@ impl StreamSession {
 
 #[no_mangle]
 pub extern "system" fn Java_com_example_nativecore_NativeRustNetwork_rustGetEngineVersion(
-    mut env: JNIEnv,
+    env: JNIEnv,
     _class: JClass,
 ) -> jstring {
     let version = "Vortex-RustNetwork-v0.1.0 (MemorySafe-RTMP/SRT)";
@@ -70,4 +70,26 @@ pub extern "system" fn Java_com_example_nativecore_NativeRustNetwork_rustGetBitr
     _class: JClass,
 ) -> jint {
     4500 // Default 4500 Kbps
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_example_nativecore_NativeRustNetwork_rustCalculateTargetDimensions(
+    _env: JNIEnv,
+    _class: JClass,
+    original_width: jint,
+    original_height: jint,
+    target_ratio_type: jint, // 0: 9:16 (TikTok), 1: 16:9 (YouTube), 2: 1:1, 3: 4:5, 4: 4:3
+) -> jint {
+    // Pack width (upper 16 bits) and height (lower 16 bits)
+    let (target_w, target_h) = match target_ratio_type {
+        0 => (1080, 1920), // 9:16 vertical TikTok/Shorts
+        1 => (1920, 1080), // 16:9 horizontal YouTube
+        2 => (1080, 1080), // 1:1 square
+        3 => (1080, 1350), // 4:5 portrait
+        4 => (1440, 1080), // 4:3 classic
+        _ => (original_width as u32, original_height as u32),
+    };
+
+    let packed = ((target_w & 0xFFFF) << 16) | (target_h & 0xFFFF);
+    packed as jint
 }
