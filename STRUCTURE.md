@@ -35,24 +35,42 @@ vortex-studio/
 │       │   │   │   ├── NativeOBSBridge.kt
 │       │   │   │   └── NativeRustNetwork.kt
 │       │   │   ├── service/                      # Servicio de Grabación y Overlays
-│       │   │   │   ├── ScreenRecordService.kt    # Orquestador con salvaguarda por batería/espacio
+│       │   │   │   ├── ScreenRecordService.kt    # Orquestador del Foreground Service
 │       │   │   │   ├── ScreenCaptureEngine.kt    # Coordinador con Shutdown Hook y cierre seguro
 │       │   │   │   ├── ScreenshotHelper.kt       # Capturador multiformato (PNG, JPG % y WebP)
+│       │   │   │   ├── ServiceParamsExtractor.kt # Validador y extractor de parámetros
 │       │   │   │   ├── FacecamOverlayManager.kt
 │       │   │   │   ├── FloatingBubbleManager.kt
 │       │   │   │   ├── TouchVisualizerOverlay.kt
 │       │   │   │   ├── WatermarkOverlayManager.kt
 │       │   │   │   ├── SceneOverlayManager.kt
+│       │   │   │   ├── receiver/                 # Receptores de Eventos del Sistema
+│       │   │   │   │   └── ServiceEmergencyReceiver.kt # Batería baja y almacenamiento crítico
+│       │   │   │   ├── timer/                    # Cronómetro y Monitoreo Periódico
+│       │   │   │   │   └── ServiceChronometerTimer.kt  # Tiempo y salvaguarda periódica de disco
+│       │   │   │   ├── dispatcher/               # Despachador de Acciones y Tipos de Servicio
+│       │   │   │   │   └── ServiceActionDispatcher.kt  # Foreground Types (A14+) y Overlays
 │       │   │   │   ├── vtuber/                   # Sistema de Avatar 2D / PNGtuber
 │       │   │   │   ├── vumeter/                  # Vúmetro LED y Mezclador Flotante
 │       │   │   │   └── capture/                  # Codificadores, DSP y MuxerManager (Graceful Finalize)
 │       │   │   └── ui/
 │       │   │       ├── HomeScreen.kt
-│       │   │       ├── RecordViewModel.kt
-│       │   │       ├── editor/                   # UI del Editor Avanzado
-│       │   │       │   └── VideoEditorDialog.kt  # Aspect ratio chips, split tool, filmstrip
+│       │   │       ├── RecordViewModel.kt        # Orquestador MVVM desacoplado
+│       │   │       ├── RecordCountdownManager.kt # Gestor del conteo regresivo
+│       │   │       ├── RecordServiceLauncher.kt  # Despachador de Intents del servicio
+│       │   │       ├── delegates/                # Delegados de Estado y Operaciones
+│       │   │       │   ├── VideoGalleryDelegate.kt     # Galería, reproducción y edición
+│       │   │       │   └── SettingsActionsDelegate.kt  # Ajustes de video, audio, facecam y avatares
+│       │   │       ├── editor/                   # UI Modular del Editor Avanzado
+│       │   │       │   ├── VideoEditorDialog.kt            # Contenedor orquestador del editor
+│       │   │       │   ├── VideoEditorHeader.kt            # Barra superior con exportación
+│       │   │       │   ├── AspectRatioSelectorRow.kt       # Selector 1-Tap y modos de ajuste
+│       │   │       │   ├── VideoEditorPreviewPlayer.kt     # Monitor central con Blur reactivo
+│       │   │       │   ├── VideoEditorPlaybackControls.kt  # Botones de transporte, Split y Foto HD
+│       │   │       │   ├── VideoEditorFilmstripScrubber.kt  # Timeline, RangeSlider y Filmstrip
+│       │   │       │   └── VideoEditorModals.kt            # Confirmación de Split y Overlay de Progreso
 │       │   │       ├── tabs/                     # Tabs de Grabación y Galería
-│       │   │       └── components/               # Tarjetas y controles Compose (DiskStorageMonitorCard, ImageFormatSettingsCard)
+│       │   │       └── components/               # Tarjetas y controles Compose
 │       │   └── res/                              # Recursos gráficos, iconos y estilos
 ├── AGENTS.md                   # Protocolo y roles de desarrollo
 ├── AI_CONTEXT.md               # Memoria de arquitectura del proyecto

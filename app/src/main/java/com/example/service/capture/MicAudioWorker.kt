@@ -99,14 +99,11 @@ class MicAudioWorker(
             var sampleCounter = 0
 
             while (isRecordingProvider()) {
-                if (isPausedProvider()) {
-                    SystemClock.sleep(20)
-                    continue
-                }
                 try {
                     val readBytes = record.read(buf, 0, BUFFER_SIZE)
                     if (readBytes > 0) {
-                        if (!isMicMutedInternal.get()) {
+                        val isPaused = isPausedProvider()
+                        if (!isMicMutedInternal.get() && !isPaused) {
                             val data = buf.copyOf(readBytes)
                             if (audioQueue.size >= MAX_QUEUE_CAPACITY) {
                                 audioQueue.poll() // Dropear buffer más antiguo

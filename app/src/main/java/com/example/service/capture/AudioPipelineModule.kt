@@ -177,20 +177,16 @@ class AudioPipelineModule(
             val bufferInfo = MediaCodec.BufferInfo()
 
             while (isRecordingProvider()) {
-                if (isPausedProvider()) {
-                    SystemClock.sleep(20)
-                    internalAudioWorker?.audioQueue?.clear()
-                    micAudioWorker?.audioQueue?.clear()
-                    continue
-                }
-
                 try {
+                    val isPaused = isPausedProvider()
                     val internalData = internalAudioWorker?.audioQueue?.poll()
                     val micData = if (micAudioWorker?.isMicMuted == false) {
                         micAudioWorker?.audioQueue?.poll()
                     } else null
 
                     if (internalData == null && micData == null) {
+                        // Si no hay datos inmediatos, drenar buffers de salida pendientes del codificador
+                        drainAudioEncoder(encoder, bufferInfo, isPaused)
                         SystemClock.sleep(5)
                         continue
                     }
@@ -211,7 +207,7 @@ class AudioPipelineModule(
                         finalSize = size
                     }
 
-                    if (finalBytes != null && finalSize > 0 && !isPausedProvider()) {
+                    if (finalBytes != null && finalSize > 0 && !isPaused) {
                         val inputBufferIndex = encoder.dequeueInputBuffer(TIMEOUT_USEC)
                         if (inputBufferIndex >= 0) {
                             val inputBuffer = encoder.getInputBuffer(inputBufferIndex)
@@ -223,30 +219,34 @@ class AudioPipelineModule(
                         }
                     }
 
-                    // Drenar encoder de audio
-                    while (true) {
-                        val outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 0)
-                        if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                            val newFormat = encoder.outputFormat
-                            muxerManager.addAudioTrack(newFormat)
-                        } else if (outputBufferIndex >= 0) {
-                            val outputBuffer = encoder.getOutputBuffer(outputBufferIndex)
-                            if (outputBuffer != null && bufferInfo.size > 0 && (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0) {
-                                if (!isPausedProvider()) {
-                                    muxerManager.writeAudioSample(outputBuffer, bufferInfo)
-                                }
-                            }
-                            encoder.releaseOutputBuffer(outputBufferIndex, false)
-                        } else {
-                            break
-                        }
-                    }
+                    // Drenar encoder de audio continuamente
+                    drainAudioEncoder(encoder, bufferInfo, isPaused)
                 } catch (e: Exception) {
                     Log.e(TAG, "Error en bucle de audio: ${e.message}")
                     break
                 }
             }
         }, "OBS_AudioEncoderWorker").apply { start() }
+    }
+
+    private fun drainAudioEncoder(encoder: MediaCodec, bufferInfo: MediaCodec.BufferInfo, isPaused: Boolean) {
+        while (true) {
+            val outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 0)
+            if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+                val newFormat = encoder.outputFormat
+                muxerManager.addAudioTrack(newFormat)
+            } else if (outputBufferIndex >= 0) {
+                val outputBuffer = encoder.getOutputBuffer(outputBufferIndex)
+                if (outputBuffer != null && bufferInfo.size > 0 && (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0) {
+                    if (!isPaused) {
+                        muxerManager.writeAudioSample(outputBuffer, bufferInfo)
+                    }
+                }
+                encoder.releaseOutputBuffer(outputBufferIndex, false)
+            } else {
+                break
+            }
+        }
     }
 
     fun stopWorker() {

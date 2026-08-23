@@ -27,6 +27,15 @@ class MuxerManager(
     private var isReleased = false
     private var samplesWrittenCount = 0L
 
+    // Sincronización continua de PTS para soportar Pausa / Reanudación sin saltos ni desincronización
+    private var videoPtsOffsetUs = 0L
+    private var lastVideoRawPtsUs = -1L
+    private var lastVideoWrittenPtsUs = -1L
+
+    private var audioPtsOffsetUs = 0L
+    private var lastAudioRawPtsUs = -1L
+    private var lastAudioWrittenPtsUs = -1L
+
     init {
         try {
             mediaMuxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
@@ -84,6 +93,25 @@ class MuxerManager(
             }
             if (muxerStarted && videoTrackIndex != -1 && !isReleased) {
                 try {
+                    val rawPts = bufferInfo.presentationTimeUs
+                    if (lastVideoRawPtsUs != -1L) {
+                        val gap = rawPts - lastVideoRawPtsUs
+                        // Si hubo una pausa o salto mayor a 100ms (100000us), compensar el desfase
+                        if (gap > 100_000L) {
+                            val normalIntervalUs = 16_666L // ~60fps
+                            videoPtsOffsetUs += (gap - normalIntervalUs)
+                        }
+                    }
+                    lastVideoRawPtsUs = rawPts
+
+                    var adjustedPts = rawPts - videoPtsOffsetUs
+                    // Garantizar monotonicidad estricta para evitar rechazo en el contenedor MP4
+                    if (adjustedPts <= lastVideoWrittenPtsUs) {
+                        adjustedPts = lastVideoWrittenPtsUs + 1000L // +1ms de seguridad
+                    }
+                    lastVideoWrittenPtsUs = adjustedPts
+                    bufferInfo.presentationTimeUs = adjustedPts
+
                     buffer.position(bufferInfo.offset)
                     buffer.limit(bufferInfo.offset + bufferInfo.size)
                     mediaMuxer?.writeSampleData(videoTrackIndex, buffer, bufferInfo)
@@ -105,6 +133,25 @@ class MuxerManager(
             }
             if (muxerStarted && audioTrackIndex != -1 && !isReleased) {
                 try {
+                    val rawPts = bufferInfo.presentationTimeUs
+                    if (lastAudioRawPtsUs != -1L) {
+                        val gap = rawPts - lastAudioRawPtsUs
+                        // Si hubo un salto mayor a 100ms, compensar en audio
+                        if (gap > 100_000L) {
+                            val normalAudioIntervalUs = 21_333L // ~1024 samples @ 48kHz
+                            audioPtsOffsetUs += (gap - normalAudioIntervalUs)
+                        }
+                    }
+                    lastAudioRawPtsUs = rawPts
+
+                    var adjustedPts = rawPts - audioPtsOffsetUs
+                    // Garantizar monotonicidad estricta
+                    if (adjustedPts <= lastAudioWrittenPtsUs) {
+                        adjustedPts = lastAudioWrittenPtsUs + 1000L
+                    }
+                    lastAudioWrittenPtsUs = adjustedPts
+                    bufferInfo.presentationTimeUs = adjustedPts
+
                     buffer.position(bufferInfo.offset)
                     buffer.limit(bufferInfo.offset + bufferInfo.size)
                     mediaMuxer?.writeSampleData(audioTrackIndex, buffer, bufferInfo)

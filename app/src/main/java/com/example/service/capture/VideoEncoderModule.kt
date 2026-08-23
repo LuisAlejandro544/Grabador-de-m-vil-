@@ -62,11 +62,6 @@ class VideoEncoderModule(
             val bufferInfo = MediaCodec.BufferInfo()
 
             while (isRecordingProvider()) {
-                if (isPausedProvider()) {
-                    SystemClock.sleep(20)
-                    continue
-                }
-
                 try {
                     val outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, TIMEOUT_USEC)
                     when (outputBufferIndex) {
@@ -75,16 +70,18 @@ class VideoEncoderModule(
                             muxerManager.addVideoTrack(newFormat)
                         }
                         MediaCodec.INFO_TRY_AGAIN_LATER -> {
-                            // Sin datos aún
+                            // Sin datos listos de inmediato en el codificador de video
                         }
                         else -> {
                             if (outputBufferIndex >= 0) {
                                 val outputBuffer = encoder.getOutputBuffer(outputBufferIndex)
                                 if (outputBuffer != null && bufferInfo.size > 0 && (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0) {
+                                    // Solo escribir al contenedor MP4 si la grabación NO está en pausa
                                     if (!isPausedProvider()) {
                                         muxerManager.writeVideoSample(outputBuffer, bufferInfo)
                                     }
                                 }
+                                // CRÍTICO: Siempre liberar el búfer de hardware inmediatamente para evitar bloquear el VirtualDisplay y que el sistema mate el proceso
                                 encoder.releaseOutputBuffer(outputBufferIndex, false)
                             }
                         }

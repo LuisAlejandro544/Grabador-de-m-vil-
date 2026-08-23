@@ -148,10 +148,10 @@ jobs:
           echo "=== APKs generados con éxito ==="
           ls -la app/build/outputs/apk/debug/
 
-      - name: 🗜️ Comprimir APK en formato 7z Ultra (Máxima Compresión LZMA2)
+      - name: 🗜️ Comprimir APK en formato .tar.7z Ultra (Máxima Compresión Sólida LZMA2)
         run: |
-          echo "=== Instalando 7z y comprimiendo APK con nivel máximo ==="
-          sudo apt-get update -y && sudo apt-get install -y p7zip-full
+          echo "=== Instalando 7z y empaquetando/comprimiendo APK a .tar.7z Ultra ==="
+          sudo apt-get update -y && sudo apt-get install -y p7zip-full tar
           
           APK_PATH=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
           if [ -z "$APK_PATH" ] || [ ! -f "$APK_PATH" ]; then
@@ -160,23 +160,33 @@ jobs:
           fi
 
           APK_ORIGINAL_SIZE=$(du -h "$APK_PATH" | cut -f1)
+          APK_DIR=$(dirname "$APK_PATH")
+          APK_FILE=$(basename "$APK_PATH")
           echo "APK Original ($APK_ORIGINAL_SIZE): $APK_PATH"
 
-          # Compresión Ultra LZMA2
-          ARCHIVE_NAME="Vortex-Studio-Debug-UltraCompressed.7z"
-          7z a -t7z -m0=lzma2 -mx=9 -mfb=64 -md=64m -ms=on "$ARCHIVE_NAME" "$APK_PATH"
+          # 1. Empaquetar en tar sin comprimir
+          TAR_FILE="Vortex-Studio-Debug.tar"
+          tar -cf "$TAR_FILE" -C "$APK_DIR" "$APK_FILE"
+
+          # 2. Compresión Ultra Sólida LZMA2 (.tar.7z)
+          ARCHIVE_NAME="Vortex-Studio-Debug-UltraCompressed.tar.7z"
+          rm -f "$ARCHIVE_NAME"
+          7z a -t7z -m0=lzma2 -mx=9 -mfb=273 -md=128m -ms=on "$ARCHIVE_NAME" "$TAR_FILE"
+          
+          # Limpiar archivo tar temporal
+          rm -f "$TAR_FILE"
 
           ARCHIVE_SIZE=$(du -h "$ARCHIVE_NAME" | cut -f1)
-          echo "=== Archivo 7z Ultra Comprimido generado: $ARCHIVE_NAME ($ARCHIVE_SIZE) ==="
+          echo "=== Archivo .tar.7z Ultra Comprimido generado: $ARCHIVE_NAME ($ARCHIVE_SIZE) ==="
           ls -lh "$ARCHIVE_NAME"
 
-      - name: ✈️ Enviar 7z Ultra Comprimido a Telegram (Bot API - Ahorro de Datos)
+      - name: ✈️ Enviar .tar.7z Ultra Comprimido a Telegram (Bot API - Ahorro de Datos)
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          echo "=== Preparando envío de 7z a Telegram ==="
-          ARCHIVE_PATH="Vortex-Studio-Debug-UltraCompressed.7z"
+          echo "=== Preparando envío de .tar.7z a Telegram ==="
+          ARCHIVE_PATH="Vortex-Studio-Debug-UltraCompressed.tar.7z"
           APK_PATH=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
 
           if [ ! -f "$ARCHIVE_PATH" ]; then
@@ -196,21 +206,24 @@ jobs:
             exit 1
           fi
 
-          CAPTION="🚀 <b>Vortex Studio - Nueva Compilación Debug</b>%0A%0A📦 <b>Paquete Ultra Comprimido:</b> <code>$ARCHIVE_PATH</code>%0A📱 <b>APK Interno:</b> <code>$APK_NAME</code>%0A🗜️ <b>Tamaño 7z:</b> <b>${ARCHIVE_SIZE}</b> <i>(Original: ${ORIGINAL_SIZE})</i>%0A🔖 <b>Commit:</b> <code>$COMMIT_HASH</code> - $COMMIT_MSG%0A🕒 <b>Fecha:</b> $(date '+%Y-%m-%d %H:%M:%S UTC')%0A%0A💡 <i>Descomprime el archivo .7z en tu teléfono usando ZArchiver o tu gestor de archivos favorito e instala el APK.</i>"
+          CAPTION="🚀 <b>Vortex Studio - Nueva Compilación Debug</b>%0A%0A📦 <b>Paquete Ultra Comprimido:</b> <code>$ARCHIVE_PATH</code>%0A📱 <b>APK Interno:</b> <code>$APK_NAME</code>%0A🗜️ <b>Tamaño .tar.7z:</b> <b>${ARCHIVE_SIZE}</b> <i>(Original: ${ORIGINAL_SIZE})</i>%0A🔖 <b>Commit:</b> <code>$COMMIT_HASH</code> - $COMMIT_MSG%0A🕒 <b>Fecha:</b> $(date '+%Y-%m-%d %H:%M:%S UTC')%0A%0A💡 <i>Descomprime el archivo .tar.7z en tu teléfono usando ZArchiver o tu gestor de archivos favorito e instala el APK.</i>"
 
-          echo "Enviando archivo 7z a Telegram..."
-          RESPONSE=$(curl -s -v -F chat_id="$TELEGRAM_CHAT_ID" \
+          echo "Enviando archivo .tar.7z a Telegram de forma segura..."
+          
+          # Realizar petición de forma silenciosa y segura sin registrar secretos ni respuestas sensibles en la consola
+          HTTP_STATUS=$(curl -sS -o /tmp/telegram_response.json -w "%{http_code}" \
+               -F chat_id="$TELEGRAM_CHAT_ID" \
                -F document=@"$ARCHIVE_PATH" \
                -F caption="$CAPTION" \
                -F parse_mode="HTML" \
                "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument")
 
-          echo "Respuesta de Telegram API: $RESPONSE"
-
-          if echo "$RESPONSE" | grep -q '"ok":true'; then
-            echo "✅ Archivo 7z enviado exitosamente a Telegram."
+          if [ "$HTTP_STATUS" -eq 200 ] && grep -q '"ok":true' /tmp/telegram_response.json; then
+            echo "✅ Archivo .tar.7z enviado exitosamente a Telegram."
+            rm -f /tmp/telegram_response.json
           else
-            echo "❌ Error al enviar el archivo a Telegram. Revisa el token y el chat_id."
+            echo "❌ Error en el envío (HTTP Status: $HTTP_STATUS). Revisa que TELEGRAM_BOT_TOKEN y TELEGRAM_CHAT_ID sean correctos."
+            rm -f /tmp/telegram_response.json
             exit 1
           fi
 

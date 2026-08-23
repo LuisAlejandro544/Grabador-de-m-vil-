@@ -93,18 +93,17 @@ class InternalAudioWorker(
 
             val buf = ByteArray(BUFFER_SIZE)
             while (isRecordingProvider()) {
-                if (isPausedProvider()) {
-                    SystemClock.sleep(20)
-                    continue
-                }
                 try {
                     val readBytes = record.read(buf, 0, BUFFER_SIZE)
                     if (readBytes > 0) {
-                        val data = buf.copyOf(readBytes)
-                        if (audioQueue.size >= MAX_QUEUE_CAPACITY) {
-                            audioQueue.poll() // Dropear buffer antiguo para evitar desincronización
+                        // Solo encolar si no está en pausa; si está en pausa, los datos se leen del hardware y se descartan para evitar Buffer Overrun en audioserver
+                        if (!isPausedProvider()) {
+                            val data = buf.copyOf(readBytes)
+                            if (audioQueue.size >= MAX_QUEUE_CAPACITY) {
+                                audioQueue.poll() // Dropear buffer antiguo para evitar desincronización
+                            }
+                            audioQueue.offer(data)
                         }
-                        audioQueue.offer(data)
                     } else {
                         SystemClock.sleep(5)
                     }

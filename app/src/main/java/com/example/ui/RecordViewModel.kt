@@ -16,18 +16,27 @@ import com.example.model.AudioSourceType
 import com.example.model.FacecamFps
 import com.example.model.FacecamShape
 import com.example.model.FacecamSize
+import com.example.model.ImageFormatOption
 import com.example.model.RecordedVideo
 import com.example.model.RecordingConfig
 import com.example.model.RecordingStatus
+import com.example.model.SceneOverlayType
+import com.example.model.TouchColorOption
 import com.example.model.VideoBitrate
 import com.example.model.VideoFps
 import com.example.model.VideoResolution
+import com.example.model.VtuberPreset
+import com.example.model.VtuberSize
+import com.example.model.WatermarkSize
+import com.example.model.WatermarkType
 import com.example.service.ScreenRecordService
+import com.example.ui.delegates.SettingsActionsDelegate
+import com.example.ui.delegates.VideoGalleryDelegate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import java.io.File
 
 data class UiState(
     val config: RecordingConfig = RecordingConfig(),
@@ -44,12 +53,18 @@ data class UiState(
     val isLoadingGames: Boolean = false,
     val errorMessage: String? = null,
     val infoMessage: String? = null,
-    val activeTab: Int = 0 // 0: Grabar, 1: Galería, 2: Ajustes, 3: Juegos
+    val activeTab: Int = 0 // 0: Grabar, 1: Galería, 2: Juegos, 3: Ajustes
 )
+
+data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
 /**
  * ViewModel modular y reactivo para la pantalla principal de Vortex Studio.
- * Desacopla la cuenta atrás en [RecordCountdownManager] y los comandos del servicio en [RecordServiceLauncher].
+ * Desacopla la lógica en delegados especializados:
+ * - [VideoGalleryDelegate]: Carga, eliminación, renombrado, reproducción y recorte de grabaciones.
+ * - [SettingsActionsDelegate]: Persistencia de ajustes audiovisuales, overlays, compresión y avatares 2D.
+ * - [RecordCountdownManager]: Temporizador de cuenta regresiva previo al inicio.
+ * - [RecordServiceLauncher]: Despacho seguro de comandos hacia el servicio en primer plano.
  */
 class RecordViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -58,18 +73,29 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     private val settingsRepository = SettingsRepository(application)
     private val countdownManager = RecordCountdownManager(application, viewModelScope)
 
+    private val _infoMessage = MutableStateFlow<String?>(null)
+    private val _activeTab = MutableStateFlow(0)
+    private val _installedGames = MutableStateFlow<List<InstalledAppItem>>(emptyList())
+    private val _isLoadingGames = MutableStateFlow(false)
+
+    // Delegados modulares
+    val galleryDelegate = VideoGalleryDelegate(
+        context = application,
+        repository = repository,
+        scope = viewModelScope,
+        onMessageEmitted = { msg -> _infoMessage.value = msg }
+    )
+
+    val settingsDelegate = SettingsActionsDelegate(
+        context = application,
+        settingsRepository = settingsRepository,
+        scope = viewModelScope
+    )
+
     private val _config = MutableStateFlow(settingsRepository.getConfig())
     private val _storageInfo = MutableStateFlow(
         StorageMonitorHelper.queryStorageInfo(application, _config.value.bitrate.bps)
     )
-    private val _videos = MutableStateFlow<List<RecordedVideo>>(emptyList())
-    private val _isLoadingVideos = MutableStateFlow(false)
-    private val _selectedVideoForPlay = MutableStateFlow<RecordedVideo?>(null)
-    private val _selectedVideoForEdit = MutableStateFlow<RecordedVideo?>(null)
-    private val _installedGames = MutableStateFlow<List<InstalledAppItem>>(emptyList())
-    private val _isLoadingGames = MutableStateFlow(false)
-    private val _activeTab = MutableStateFlow(0)
-    private val _infoMessage = MutableStateFlow<String?>(null)
 
     private var pendingLaunchGamePackage: String? = null
 
@@ -77,7 +103,12 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         combine(_config, ScreenRecordService.recordingState, ScreenRecordService.elapsedSeconds, countdownManager.countdownNumber) { config, state, elapsed, cd ->
             Quadruple(config, state, elapsed, cd)
         },
-        combine(countdownManager.isCountingDown, _storageInfo, _videos, combine(_isLoadingVideos, _selectedVideoForPlay, _selectedVideoForEdit) { lVids, play, edit -> Triple(lVids, play, edit) }) { isCd, storage, vids, extra ->
+        combine(
+            countdownManager.isCountingDown,
+            _storageInfo,
+            galleryDelegate.videos,
+            combine(galleryDelegate.isLoadingVideos, galleryDelegate.selectedVideoForPlay, galleryDelegate.selectedVideoForEdit) { lVids, play, edit -> Triple(lVids, play, edit) }
+        ) { isCd, storage, vids, extra ->
             Quadruple(isCd, storage, vids, extra)
         },
         combine(_installedGames, _isLoadingGames, ScreenRecordService.errorMessage, combine(_infoMessage, _activeTab) { info, tab -> Pair(info, tab) }) { games, loadingGames, err, infoTab ->
@@ -149,18 +180,19 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         _activeTab.value = tabIndex
     }
 
-    fun loadVideos() {
-        viewModelScope.launch {
-            _isLoadingVideos.value = true
-            try {
-                _videos.value = repository.loadSavedRecordings()
-            } catch (_: Exception) {
-            } finally {
-                _isLoadingVideos.value = false
-            }
-        }
-    }
+    // Delegaciones de Galería
+    fun loadVideos() = galleryDelegate.loadVideos()
+    fun deleteVideo(video: RecordedVideo) = galleryDelegate.deleteVideo(video)
+    fun renameVideo(video: RecordedVideo, newTitle: String) = galleryDelegate.renameVideo(video, newTitle)
+    fun playVideo(video: RecordedVideo) = galleryDelegate.playVideo(video)
+    fun closePlayer() = galleryDelegate.closePlayer()
+    fun openEditor(video: RecordedVideo) = galleryDelegate.openEditor(video)
+    fun closeEditor() = galleryDelegate.closeEditor()
+    fun onVideoEdited(file: File) = galleryDelegate.onVideoEdited(file)
+    fun onThumbnailExtracted(file: File) = galleryDelegate.onThumbnailExtracted(file)
+    fun shareVideo(context: Context, video: RecordedVideo) = galleryDelegate.shareVideo(context, video)
 
+    // Juegos y Lanzamiento
     fun loadInstalledGames() {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoadingGames.value = true
@@ -173,250 +205,60 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun updateResolution(resolution: VideoResolution) {
-        settingsRepository.updateResolution(resolution)
+    fun launchGame(packageName: String) {
+        gamesHelper.launchApp(packageName)
     }
 
-    fun updateFps(fps: VideoFps) {
-        settingsRepository.updateFps(fps)
-    }
+    // Delegaciones de Ajustes
+    fun updateResolution(resolution: VideoResolution) = settingsDelegate.updateResolution(resolution)
+    fun updateFps(fps: VideoFps) = settingsDelegate.updateFps(fps)
+    fun updateBitrate(bitrate: VideoBitrate) = settingsDelegate.updateBitrate(bitrate)
+    fun updateBitrateMbps(mbps: Int) = settingsDelegate.updateBitrateMbps(mbps)
+    fun updateFacecamFps(fps: FacecamFps) = settingsDelegate.updateFacecamFps(fps)
+    fun updateAudioSampleRate(sampleRate: AudioSampleRate) = settingsDelegate.updateAudioSampleRate(sampleRate)
+    fun updateAudioSource(source: AudioSourceType) = settingsDelegate.updateAudioSource(source)
+    fun toggleFloatingVuMeter(enabled: Boolean) = settingsDelegate.toggleFloatingVuMeter(enabled)
+    fun updateGameAudioGain(gain: Float) = settingsDelegate.updateGameAudioGain(gain)
+    fun updateMicAudioGain(gain: Float) = settingsDelegate.updateMicAudioGain(gain)
+    fun toggleNoiseGate(enabled: Boolean) = settingsDelegate.toggleNoiseGate(enabled)
+    fun toggleAudioDucking(enabled: Boolean) = settingsDelegate.toggleAudioDucking(enabled)
+    fun updateCountdown(seconds: Int) = settingsDelegate.updateCountdown(seconds)
+    fun updateImageFormat(format: ImageFormatOption) = settingsDelegate.updateImageFormat(format)
+    fun updateImageQuality(quality: Int) = settingsDelegate.updateImageQuality(quality)
+    fun toggleWebpLossless(lossless: Boolean) = settingsDelegate.toggleWebpLossless(lossless)
+    fun toggleFloatingBubble(enabled: Boolean) = settingsDelegate.toggleFloatingBubble(enabled)
+    fun toggleFacecam(enabled: Boolean) = settingsDelegate.toggleFacecam(enabled)
+    fun updateFacecamShape(shape: FacecamShape) = settingsDelegate.updateFacecamShape(shape)
+    fun updateFacecamSize(size: FacecamSize) = settingsDelegate.updateFacecamSize(size)
+    fun toggleFacecamCamera() = settingsDelegate.toggleFacecamCamera()
+    fun toggleBeautyFilter(enabled: Boolean) = settingsDelegate.toggleBeautyFilter(enabled)
+    fun toggleFacecamRgbBorder(enabled: Boolean) = settingsDelegate.toggleFacecamRgbBorder(enabled)
+    fun toggleTouchVisualizer(enabled: Boolean) = settingsDelegate.toggleTouchVisualizer(enabled)
+    fun updateTouchVisualizerColor(color: TouchColorOption) = settingsDelegate.updateTouchVisualizerColor(color)
+    fun toggleWatermark(enabled: Boolean) = settingsDelegate.toggleWatermark(enabled)
+    fun updateWatermarkType(type: WatermarkType) = settingsDelegate.updateWatermarkType(type)
+    fun updateWatermarkText(text: String) = settingsDelegate.updateWatermarkText(text)
+    fun updateWatermarkOpacity(opacity: Float) = settingsDelegate.updateWatermarkOpacity(opacity)
+    fun updateWatermarkSize(size: WatermarkSize) = settingsDelegate.updateWatermarkSize(size)
+    fun updateWatermarkColor(color: TouchColorOption) = settingsDelegate.updateWatermarkColor(color)
+    fun updateWatermarkImageUri(uri: String?) = settingsDelegate.updateWatermarkImageUri(uri)
+    fun toggleSceneOverlay(enabled: Boolean) = settingsDelegate.toggleSceneOverlay(enabled)
+    fun updateSceneOverlayType(type: SceneOverlayType) = settingsDelegate.updateSceneOverlayType(type)
+    fun updateSceneOverlayText(text: String) = settingsDelegate.updateSceneOverlayText(text)
+    fun updateSceneOverlayOpacity(opacity: Float) = settingsDelegate.updateSceneOverlayOpacity(opacity)
+    fun updateSceneOverlayImageUri(uri: String?) = settingsDelegate.updateSceneOverlayImageUri(uri)
+    fun toggleVtuber(enabled: Boolean) = settingsDelegate.toggleVtuber(enabled)
+    fun updateVtuberPreset(preset: VtuberPreset) = settingsDelegate.updateVtuberPreset(preset)
+    fun updateVtuberSize(size: VtuberSize) = settingsDelegate.updateVtuberSize(size)
+    fun updateVtuberSensitivity(sensitivity: Float) = settingsDelegate.updateVtuberSensitivity(sensitivity)
+    fun toggleVtuberBounce(enabled: Boolean) = settingsDelegate.toggleVtuberBounce(enabled)
+    fun updateVtuberIdleImage(uriString: String?) = settingsDelegate.updateVtuberIdleImage(uriString)
+    fun updateVtuberTalkImage(uriString: String?) = settingsDelegate.updateVtuberTalkImage(uriString)
+    fun updateVtuberBlinkImage(uriString: String?) = settingsDelegate.updateVtuberBlinkImage(uriString)
+    fun updateVtuberBlinkTalkImage(uriString: String?) = settingsDelegate.updateVtuberBlinkTalkImage(uriString)
+    fun toggleGameMode(enabled: Boolean) = settingsDelegate.toggleGameMode(enabled)
 
-    fun updateBitrate(bitrate: VideoBitrate) {
-        settingsRepository.updateBitrate(bitrate)
-    }
-
-    fun updateBitrateMbps(mbps: Int) {
-        settingsRepository.updateBitrateMbps(mbps)
-    }
-
-    fun updateFacecamFps(fps: FacecamFps) {
-        settingsRepository.updateFacecamFps(fps)
-    }
-
-    fun updateAudioSampleRate(sampleRate: AudioSampleRate) {
-        settingsRepository.updateAudioSampleRate(sampleRate)
-    }
-
-    fun updateAudioSource(source: AudioSourceType) {
-        settingsRepository.updateAudioSource(source)
-    }
-
-    fun toggleFloatingVuMeter(enabled: Boolean) {
-        settingsRepository.toggleFloatingVuMeter(enabled)
-    }
-
-    fun updateGameAudioGain(gain: Float) {
-        settingsRepository.updateGameAudioGain(gain)
-    }
-
-    fun updateMicAudioGain(gain: Float) {
-        settingsRepository.updateMicAudioGain(gain)
-    }
-
-    fun toggleNoiseGate(enabled: Boolean) {
-        settingsRepository.toggleNoiseGate(enabled)
-    }
-
-    fun toggleAudioDucking(enabled: Boolean) {
-        settingsRepository.toggleAudioDucking(enabled)
-    }
-
-    fun updateCountdown(seconds: Int) {
-        settingsRepository.updateCountdown(seconds)
-    }
-
-    fun updateImageFormat(format: com.example.model.ImageFormatOption) {
-        settingsRepository.updateImageFormat(format)
-    }
-
-    fun updateImageQuality(quality: Int) {
-        settingsRepository.updateImageQuality(quality)
-    }
-
-    fun toggleWebpLossless(lossless: Boolean) {
-        settingsRepository.toggleImageWebpLossless(lossless)
-    }
-
-    fun toggleFloatingBubble(enabled: Boolean) {
-        settingsRepository.toggleFloatingBubble(enabled)
-    }
-
-    fun toggleFacecam(enabled: Boolean) {
-        settingsRepository.toggleFacecam(enabled)
-    }
-
-    fun updateFacecamShape(shape: FacecamShape) {
-        settingsRepository.updateFacecamShape(shape)
-    }
-
-    fun updateFacecamSize(size: FacecamSize) {
-        settingsRepository.updateFacecamSize(size)
-    }
-
-    fun toggleFacecamCamera() {
-        settingsRepository.toggleFacecamCamera()
-    }
-
-    fun toggleBeautyFilter(enabled: Boolean) {
-        settingsRepository.toggleBeautyFilter(enabled)
-    }
-
-    fun toggleFacecamRgbBorder(enabled: Boolean) {
-        settingsRepository.toggleFacecamRgbBorder(enabled)
-    }
-
-    fun toggleTouchVisualizer(enabled: Boolean) {
-        settingsRepository.toggleTouchVisualizer(enabled)
-    }
-
-    fun updateTouchVisualizerColor(color: com.example.model.TouchColorOption) {
-        settingsRepository.updateTouchVisualizerColor(color)
-    }
-
-    fun toggleWatermark(enabled: Boolean) {
-        settingsRepository.toggleWatermark(enabled)
-    }
-
-    fun updateWatermarkType(type: com.example.model.WatermarkType) {
-        settingsRepository.updateWatermarkType(type)
-    }
-
-    fun updateWatermarkText(text: String) {
-        settingsRepository.updateWatermarkText(text)
-    }
-
-    fun updateWatermarkOpacity(opacity: Float) {
-        settingsRepository.updateWatermarkOpacity(opacity)
-    }
-
-    fun updateWatermarkSize(size: com.example.model.WatermarkSize) {
-        settingsRepository.updateWatermarkSize(size)
-    }
-
-    fun updateWatermarkColor(color: com.example.model.TouchColorOption) {
-        settingsRepository.updateWatermarkColor(color)
-    }
-
-    fun updateWatermarkImageUri(uri: String?) {
-        settingsRepository.updateWatermarkImageUri(uri)
-    }
-
-    fun toggleSceneOverlay(enabled: Boolean) {
-        settingsRepository.toggleSceneOverlay(enabled)
-    }
-
-    fun updateSceneOverlayType(type: com.example.model.SceneOverlayType) {
-        settingsRepository.updateSceneOverlayType(type)
-    }
-
-    fun updateSceneOverlayText(text: String) {
-        settingsRepository.updateSceneOverlayText(text)
-    }
-
-    fun updateSceneOverlayOpacity(opacity: Float) {
-        settingsRepository.updateSceneOverlayOpacity(opacity)
-    }
-
-    fun updateSceneOverlayImageUri(uri: String?) {
-        settingsRepository.updateSceneOverlayImageUri(uri)
-    }
-
-    fun toggleVtuber(enabled: Boolean) {
-        settingsRepository.toggleVtuber(enabled)
-    }
-
-    fun updateVtuberPreset(preset: com.example.model.VtuberPreset) {
-        settingsRepository.updateVtuberPreset(preset)
-    }
-
-    fun updateVtuberSize(size: com.example.model.VtuberSize) {
-        settingsRepository.updateVtuberSize(size)
-    }
-
-    fun updateVtuberSensitivity(sensitivity: Float) {
-        settingsRepository.updateVtuberSensitivity(sensitivity)
-    }
-
-    fun toggleVtuberBounce(enabled: Boolean) {
-        settingsRepository.toggleVtuberBounce(enabled)
-    }
-
-    fun updateVtuberIdleImage(uriString: String?) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val finalPath = if (!uriString.isNullOrBlank()) {
-                val uri = android.net.Uri.parse(uriString)
-                if (uri.scheme == "content") {
-                    com.example.service.vtuber.VtuberPresetDrawables.saveImageToInternalStorage(
-                        getApplication(), uri, "idle"
-                    ) ?: uriString
-                } else {
-                    uriString
-                }
-            } else {
-                null
-            }
-            settingsRepository.updateVtuberIdleUri(finalPath)
-        }
-    }
-
-    fun updateVtuberTalkImage(uriString: String?) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val finalPath = if (!uriString.isNullOrBlank()) {
-                val uri = android.net.Uri.parse(uriString)
-                if (uri.scheme == "content") {
-                    com.example.service.vtuber.VtuberPresetDrawables.saveImageToInternalStorage(
-                        getApplication(), uri, "talk"
-                    ) ?: uriString
-                } else {
-                    uriString
-                }
-            } else {
-                null
-            }
-            settingsRepository.updateVtuberTalkUri(finalPath)
-        }
-    }
-
-    fun updateVtuberBlinkImage(uriString: String?) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val finalPath = if (!uriString.isNullOrBlank()) {
-                val uri = android.net.Uri.parse(uriString)
-                if (uri.scheme == "content") {
-                    com.example.service.vtuber.VtuberPresetDrawables.saveImageToInternalStorage(
-                        getApplication(), uri, "blink"
-                    ) ?: uriString
-                } else {
-                    uriString
-                }
-            } else {
-                null
-            }
-            settingsRepository.updateVtuberBlinkUri(finalPath)
-        }
-    }
-
-    fun updateVtuberBlinkTalkImage(uriString: String?) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val finalPath = if (!uriString.isNullOrBlank()) {
-                val uri = android.net.Uri.parse(uriString)
-                if (uri.scheme == "content") {
-                    com.example.service.vtuber.VtuberPresetDrawables.saveImageToInternalStorage(
-                        getApplication(), uri, "blink_talk"
-                    ) ?: uriString
-                } else {
-                    uriString
-                }
-            } else {
-                null
-            }
-            settingsRepository.updateVtuberBlinkTalkUri(finalPath)
-        }
-    }
-
-    fun toggleGameMode(enabled: Boolean) {
-        settingsRepository.toggleGameMode(enabled)
-    }
-
+    // Grabación y Control de Flujo
     fun startRecordingFlow(
         resultCode: Int,
         resultData: Intent,
@@ -426,7 +268,6 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         val countdown = config.countdownSeconds
         pendingLaunchGamePackage = targetGamePackage
 
-        // Iniciar el Foreground Service de inmediato mientras la Activity está en primer plano
         RecordServiceLauncher.startService(
             context = getApplication(),
             resultCode = resultCode,
@@ -464,71 +305,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         RecordServiceLauncher.sendAction(getApplication(), ScreenRecordService.ACTION_RESUME)
     }
 
-    fun deleteVideo(video: RecordedVideo) {
-        viewModelScope.launch {
-            val success = repository.deleteRecording(video.filePath)
-            if (success) {
-                _infoMessage.value = "Video eliminado"
-                loadVideos()
-            }
-        }
-    }
-
-    fun renameVideo(video: RecordedVideo, newTitle: String) {
-        viewModelScope.launch {
-            val success = repository.renameRecording(video.filePath, newTitle)
-            if (success) {
-                _infoMessage.value = "Video renombrado"
-                loadVideos()
-            } else {
-                _infoMessage.value = "No se pudo renombrar el archivo"
-            }
-        }
-    }
-
-    fun playVideo(video: RecordedVideo) {
-        _selectedVideoForPlay.value = video
-    }
-
-    fun closePlayer() {
-        _selectedVideoForPlay.value = null
-    }
-
-    fun openEditor(video: RecordedVideo) {
-        _selectedVideoForPlay.value = null
-        _selectedVideoForEdit.value = video
-    }
-
-    fun closeEditor() {
-        _selectedVideoForEdit.value = null
-    }
-
-    fun onVideoEdited(file: java.io.File) {
-        _selectedVideoForEdit.value = null
-        _infoMessage.value = "¡Clip recortado guardado: ${file.name}!"
-        loadVideos()
-    }
-
-    fun onThumbnailExtracted(file: java.io.File) {
-        _infoMessage.value = "¡Miniatura HD guardada en Pictures: ${file.name}!"
-    }
-
-    fun shareVideo(context: Context, video: RecordedVideo) {
-        val shareIntent = repository.createShareIntent(video.filePath)
-        if (shareIntent != null) {
-            context.startActivity(Intent.createChooser(shareIntent, "Compartir grabación"))
-        } else {
-            _infoMessage.value = "No se pudo preparar el video para compartir"
-        }
-    }
-
-    fun launchGame(packageName: String) {
-        gamesHelper.launchApp(packageName)
-    }
-
     fun clearInfoMessage() {
         _infoMessage.value = null
     }
 }
-
-data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)

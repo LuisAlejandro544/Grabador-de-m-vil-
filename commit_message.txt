@@ -1,34 +1,34 @@
-feat(capture): implementar Protección contra Corrupción de Archivo (Graceful Finalize) y Monitor de Espacio en Disco en Tiempo Real
+refactor(architecture): desarrollo modular de VideoEditorDialog, RecordViewModel y ScreenRecordService
 
-- Implementar Protección contra Corrupción de Archivo (Graceful Finalize):
-  * Cierre seguro y sincronizado de MediaMuxer en MuxerManager garantizando la escritura adecuada del encabezado/átomo 'moov' y evitando archivos MP4 dañados.
-  * Añadir salvaguarda automática ante eventos críticos del sistema en ScreenRecordService:
-    - BroadcastReceiver para `Intent.ACTION_BATTERY_LOW` (batería crítica) y `Intent.ACTION_DEVICE_STORAGE_LOW` (almacenamiento lleno).
-    - Manejador de `onTaskRemoved` para finalizar y guardar la grabación activa si el usuario cierra la aplicación desde la vista de multitarea / recientes.
-    - Manejador de `onTrimMemory` ante presión extrema de memoria RAM en el dispositivo.
-    - Registro de JVM Shutdown Hook en ScreenCaptureEngine como salvaguarda final ante detención forzada del proceso.
-  * Validación de integridad del archivo MP4 resultante y escaneo automático en MediaStore.
+- Modularización de VideoEditorDialog.kt:
+  * Descomposición de la vista monolítica (~985 líneas) en 6 submódulos desacoplados y reutilizables bajo `com.example.ui.editor`:
+    - `VideoEditorHeader.kt`: Barra superior con metadatos de video/formato y botón contextual de exportación o recorte.
+    - `AspectRatioSelectorRow.kt`: Barra interactiva con chips de relación de aspecto 1-Tap (9:16, 16:9, 1:1, 4:5, 4:3) y selector de modos de ajuste (Blur, Crop, Letterbox).
+    - `VideoEditorPreviewPlayer.kt`: Monitor central de video con `AndroidView` `VideoView`, renderizado reactivo de fondo difuminado (Blur) y badge de tiempo flotante.
+    - `VideoEditorPlaybackControls.kt`: Controles de transporte (-1s, Play/Pause, +1s) y botones de acción rápida para División instantánea (Split ✂️) y Captura de Fotograma HD.
+    - `VideoEditorFilmstripScrubber.kt`: Línea de tiempo visual con tira de miniaturas, sombreado de límites, aguja de reproducción (playhead), `RangeSlider` dual y marcadores In/Out.
+    - `VideoEditorModals.kt`: Diálogo modal de confirmación de división de video y overlay de progreso de procesamiento.
+  * Reducción de `VideoEditorDialog.kt` a un orquestador limpio y declarativo de ~170 líneas.
 
-- Integrar Monitor de Espacio en Disco en Tiempo Real:
-  * Crear `StorageMonitorHelper` y modelo `StorageSpaceInfo`:
-    - Detección precisa de bytes disponibles, bytes totales y porcentaje de ocupación en el volumen de almacenamiento de grabaciones.
-    - Cálculo dinámico del tiempo estimado de grabación restante en horas/minutos según la tasa de bits (bitrate) configurada.
-    - Definición de umbrales preventivos: Advertencia de espacio bajo (< 1 GB) y Parada de Emergencia (< 150 MB).
-  * Verificación periódica activa cada 4 segundos dentro del bucle del cronómetro de grabación en ScreenRecordService.
-  * Crear componente Material 3 `DiskStorageMonitorCard`:
-    - Barra de progreso reactiva con código de colores según nivel de ocupación (Verde estándar, Ámbar advertencia, Rojo crítico).
-    - Chips informativos con tiempo restante estimado (`~ Xh Ym`) y distintivo de Protección Anti-Corrupción Activa.
-    - Botón de actualización rápida y panel de alerta animado ante espacio reducido.
-  * Conexión reactiva en `RecordViewModel`, `RecordTab` y `HomeScreen`.
+- Modularización de RecordViewModel.kt:
+  * Extracción de responsabilidades en delegados especializados bajo `com.example.ui.delegates`:
+    - `VideoGalleryDelegate.kt`: Gestión del ciclo de vida de videos (carga asíncrona, eliminación, renombrado, reproducción, compartición y recepción de clips/miniaturas).
+    - `SettingsActionsDelegate.kt`: Persistencia reactiva de configuración audiovisual, DSP (Noise Gate, Ducking, Ganancias), compresión de screenshots, overlays y avatares 2D PNGtuber con guardado en disco en `Dispatchers.IO`.
+  * Reducción de `RecordViewModel.kt` a ~180 líneas manteniendo integración con `StateFlow`, `InstalledGamesHelper` y `StorageMonitorHelper`.
 
-- Añadir Selector de Formato y Compresión de Imagen (Screenshots / Capturas):
-  * Crear modelo `ImageFormatOption` (PNG sin pérdida, JPEG con calidad configurable 10-100%, WebP lossy/lossless).
-  * Crear componente Material 3 `ImageFormatSettingsCard` con slider interactivo de calidad %, presets rápidos (50%, 70%, 80% recomendado, 90%, 100%), switch de WebP Lossless y resumen de ventajas de compresión.
-  * Actualizar `ScreenshotHelper` y `SettingsRepository` para guardar instantáneas con el formato, compresión y extensión especificada (`.png`, `.jpg`, `.webp`) y emitir feedback detallado al usuario.
-  * Integrar controles reactivos en `SettingsView`, `HomeScreen` y `RecordViewModel`.
+- Modularización de ScreenRecordService.kt:
+  * Extracción de componentes auxiliares bajo paquetes dedicados:
+    - `ServiceEmergencyReceiver.kt` (`service.receiver`): Manejo y registro seguro de broadcasts de emergencia del sistema (`ACTION_BATTERY_LOW` y `ACTION_DEVICE_STORAGE_LOW`).
+    - `ServiceChronometerTimer.kt` (`service.timer`): Temporizador de grabación en tiempo real, sincronización con la notificación y burbuja, y sondeo periódico de salvaguarda de almacenamiento.
+    - `ServiceActionDispatcher.kt` (`service.dispatcher`): Gestión de tipos de servicio en primer plano para Android 14+ (`FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION`, `MICROPHONE`, `CAMERA`) e inicialización de overlays.
+  * Reducción de `ScreenRecordService.kt` de >530 líneas a un servicio conciso y ordenado de ~220 líneas.
 
-- Configurar Despliegue Automatizado a Telegram en CI/CD (GitHub Actions):
-  * Modificar `.github/workflows/build-apk.yml` para sustituir la subida como artefacto por el empaquetado en archivo `.7z` Ultra Comprimido (LZMA2 nivel 9) y su envío directo a Telegram vía Bot API (`sendDocument`).
-  * Optimización máxima de transferencia para conexiones lentas o móviles, reportando tamaño original vs tamaño comprimido y guía de extracción.
-  * Soporte de almacenamiento de hasta 2 GB por archivo y notificación automática con formato HTML (nombre del archivo, hash/mensaje del commit y fecha de compilación).
+- Actualización de Documentación:
+  * Reflejo de los nuevos paquetes (`ui/editor/`, `ui/delegates/`, `service/receiver/`, `service/timer/`, `service/dispatcher/`) en `STRUCTURE.md`.
+
+- Corrección de Estabilidad en Pausa y Reanudación de Grabación (Hardware Buffer Drainage & PTS Sync):
+  * `VideoEncoderModule.kt`: Eliminación de `SystemClock.sleep()` y omisión de drenaje durante la pausa. Implementación de drenaje y liberación continua e inmediata de buffers (`releaseOutputBuffer`) del codificador `MediaCodec` AVC/H.264 para evitar el bloqueo del `BufferQueue` en `VirtualDisplay` y el cierre forzado del proceso por el watchdog del sistema.
+  * `InternalAudioWorker.kt` & `MicAudioWorker.kt`: Lectura continua e ininterrumpida de `AudioRecord` para vaciar los buffers nativos del HAL/kernel durante la pausa, descartando muestras en lugar de bloquear los hilos, previniendo desbordamientos de búfer (*buffer overruns*) y desconexiones de `audioserver`.
+  * `AudioPipelineModule.kt`: Drenaje constante de las salidas del codificador AAC (`drainAudioEncoder`) y enrutamiento selectivo al Muxer únicamente cuando la grabación esté activa.
+  * `MuxerManager.kt`: Integración de compensación automática de Presentation Time Stamps (`PTS`) para video y audio en pausas/desfases (>100ms), manteniendo la monotonicidad estricta y asegurando una sincronización A/V fluida en el contenedor MP4 al reanudar.
 

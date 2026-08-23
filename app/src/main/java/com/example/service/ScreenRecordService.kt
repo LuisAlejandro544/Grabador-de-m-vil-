@@ -1,34 +1,32 @@
 package com.example.service
 
 import android.app.Service
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
-import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import com.example.data.SettingsRepository
-import com.example.data.StorageMonitorHelper
 import com.example.model.AudioSourceType
 import com.example.model.RecordingStatus
+import com.example.service.dispatcher.OverlayActionCallbacks
+import com.example.service.dispatcher.ServiceActionDispatcher
 import com.example.service.overlay.ServiceOverlayCoordinator
+import com.example.service.receiver.ServiceEmergencyReceiver
+import com.example.service.timer.ServiceChronometerTimer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 
 /**
  * Servicio en primer plano modular y desacoplado para la grabación de pantalla.
- * Coordina [ScreenCaptureEngine], [RecordNotificationHelper], [RecordStorageHelper]
- * y delega el ciclo de vida de interfaces flotantes a [ServiceOverlayCoordinator].
- * Cuenta con Protección contra Corrupción de Archivo (Graceful Finalize) ante batería baja o falta de espacio.
+ * Coordina:
+ * - [ScreenCaptureEngine]: Motor de codificación y captura multimedia.
+ * - [ServiceChronometerTimer]: Cronómetro en tiempo real y salvaguarda de espacio en disco.
+ * - [ServiceEmergencyReceiver]: Manejador de eventos de batería y almacenamiento crítico.
+ * - [ServiceActionDispatcher]: Enrutamiento y lanzamiento de tipos de Foreground Service y Overlays.
+ * - [ServiceOverlayCoordinator]: Coordinador de interfaces flotantes y vistas en pantalla.
  */
 class ScreenRecordService : Service() {
 
@@ -110,31 +108,15 @@ class ScreenRecordService : Service() {
     private lateinit var notificationHelper: RecordNotificationHelper
     private lateinit var overlayCoordinator: ServiceOverlayCoordinator
     private lateinit var settingsRepository: SettingsRepository
+    private lateinit var emergencyReceiver: ServiceEmergencyReceiver
+    private lateinit var chronometerTimer: ServiceChronometerTimer
+    private lateinit var actionDispatcher: ServiceActionDispatcher
 
-    private var timerJob: Job? = null
     private val serviceScope = CoroutineScope(Dispatchers.Main)
     private var currentActiveFile: File? = null
     private var currentRecWidth = 1080
     private var currentRecHeight = 1920
     private var currentDensityDpi = 480
-    private var isReceiverRegistered = false
-
-    private val emergencyBroadcastReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            when (intent?.action) {
-                Intent.ACTION_BATTERY_LOW -> {
-                    Log.w(TAG, "Alerta del sistema: Batería crítica baja. Ejecutando Graceful Finalize de grabación...")
-                    _errorMessage.value = "Grabación salvaguardada por batería baja del dispositivo."
-                    handleStopAction()
-                }
-                Intent.ACTION_DEVICE_STORAGE_LOW -> {
-                    Log.w(TAG, "Alerta del sistema: Almacenamiento casi lleno. Ejecutando Graceful Finalize de grabación...")
-                    _errorMessage.value = "Grabación salvaguardada por falta de espacio en almacenamiento."
-                    handleStopAction()
-                }
-            }
-        }
-    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -161,39 +143,45 @@ class ScreenRecordService : Service() {
             onAudioFiltersChanged = { noiseGate, ducking ->
                 captureEngine.setAudioFilters(noiseGate, ducking)
             },
-            onMicMuteToggled = {
-                handleToggleMicAction()
-            },
+            onMicMuteToggled = { handleToggleMicAction() },
             isMicMutedProvider = { captureEngine.isMicrophoneMuted },
             audioLevelsProvider = { captureEngine.getAudioLevels() }
         )
 
+        actionDispatcher = ServiceActionDispatcher(
+            service = this,
+            captureEngine = captureEngine,
+            overlayCoordinator = overlayCoordinator,
+            notificationHelper = notificationHelper
+        )
+
+        chronometerTimer = ServiceChronometerTimer(
+            context = this,
+            scope = serviceScope,
+            captureEngine = captureEngine,
+            overlayCoordinator = overlayCoordinator,
+            notificationHelper = notificationHelper,
+            settingsRepository = settingsRepository,
+            elapsedSecondsFlow = _elapsedSeconds,
+            onEmergencyStorageStop = { errorMsg ->
+                _errorMessage.value = errorMsg
+                handleStopAction()
+            }
+        )
+
+        emergencyReceiver = ServiceEmergencyReceiver(
+            onEmergencyBatteryLow = {
+                _errorMessage.value = "Grabación salvaguardada por batería baja del dispositivo."
+                handleStopAction()
+            },
+            onEmergencyStorageLow = {
+                _errorMessage.value = "Grabación salvaguardada por falta de espacio en almacenamiento."
+                handleStopAction()
+            }
+        )
+
         observeSettingsChanges()
-        registerEmergencyReceivers()
-    }
-
-    private fun registerEmergencyReceivers() {
-        if (!isReceiverRegistered) {
-            val filter = IntentFilter().apply {
-                addAction(Intent.ACTION_BATTERY_LOW)
-                addAction(Intent.ACTION_DEVICE_STORAGE_LOW)
-            }
-            try {
-                registerReceiver(emergencyBroadcastReceiver, filter)
-                isReceiverRegistered = true
-            } catch (e: Exception) {
-                Log.w(TAG, "No se pudo registrar emergency receiver: ${e.message}")
-            }
-        }
-    }
-
-    private fun unregisterEmergencyReceivers() {
-        if (isReceiverRegistered) {
-            try {
-                unregisterReceiver(emergencyBroadcastReceiver)
-            } catch (_: Exception) {}
-            isReceiverRegistered = false
-        }
+        emergencyReceiver.register(this)
     }
 
     private fun observeSettingsChanges() {
@@ -243,7 +231,7 @@ class ScreenRecordService : Service() {
             isPaused = false,
             isMicrophoneEnabled = isAudioEnabled
         )
-        startForegroundWithType(initialNotification, isAudioEnabled, params.showFacecam)
+        actionDispatcher.startForegroundWithType(initialNotification, isAudioEnabled, params.showFacecam)
 
         // 2. Preparar archivo de destino
         val outputFile = RecordStorageHelper.prepareOutputFile(this)
@@ -261,9 +249,7 @@ class ScreenRecordService : Service() {
             audioSource = params.audioSource,
             sampleRate = params.sampleRate,
             outputFile = outputFile,
-            onAudioAmplitude = { amp ->
-                overlayCoordinator.onAudioAmplitude(amp)
-            },
+            onAudioAmplitude = { amp -> overlayCoordinator.onAudioAmplitude(amp) },
             onError = { errorMsg ->
                 Log.e(TAG, "Error en captura: $errorMsg")
                 _errorMessage.value = errorMsg
@@ -282,77 +268,21 @@ class ScreenRecordService : Service() {
             _errorMessage.value = null
             _isMicMuted.value = captureEngine.isMicrophoneMuted
 
-            // 4. Iniciar Overlays configurados de forma tolerante a fallos
-            try {
-                if (params.showFacecam) overlayCoordinator.launchFacecam(params.savedConfig)
-            } catch (t: Throwable) {
-                Log.e(TAG, "Error iniciando Facecam: ${t.message}")
-            }
+            // 4. Lanzar interfaces y overlays configurados
+            actionDispatcher.launchActiveOverlays(
+                params = params,
+                onActionCallbacks = OverlayActionCallbacks(
+                    onPause = { handlePauseAction() },
+                    onResume = { handleResumeAction() },
+                    onStop = { handleStopAction() },
+                    onToggleMic = { handleToggleMicAction() },
+                    onScreenshot = { handleScreenshotAction() }
+                )
+            )
 
-            try {
-                if (params.savedConfig.showVtuber) overlayCoordinator.launchVtuber(params.savedConfig)
-            } catch (t: Throwable) {
-                Log.e(TAG, "Error iniciando PNGtuber: ${t.message}")
-            }
-
-            try {
-                if (params.savedConfig.showFloatingVuMeter) overlayCoordinator.launchVuMeter(params.savedConfig)
-            } catch (t: Throwable) {
-                Log.e(TAG, "Error iniciando Vúmetro Flotante: ${t.message}")
-            }
-
-            try {
-                if (params.savedConfig.showTouchVisualizer) overlayCoordinator.launchTouchVisualizer(params.savedConfig)
-            } catch (t: Throwable) {
-                Log.e(TAG, "Error iniciando Toques: ${t.message}")
-            }
-
-            try {
-                if (params.savedConfig.showWatermark) overlayCoordinator.launchWatermark(params.savedConfig)
-            } catch (t: Throwable) {
-                Log.e(TAG, "Error iniciando Marca de Agua: ${t.message}")
-            }
-
-            try {
-                if (params.savedConfig.showSceneOverlay) overlayCoordinator.launchSceneOverlay(params.savedConfig)
-            } catch (t: Throwable) {
-                Log.e(TAG, "Error iniciando Overlay de Escena: ${t.message}")
-            }
-
-            // 5. Iniciar Burbuja Flotante si estaba activada
-            if (params.showFloatingBubble) {
-                try {
-                    overlayCoordinator.setupFloatingBubble(
-                        isMicMuted = captureEngine.isMicrophoneMuted,
-                        isBeautyActive = params.savedConfig.beautyFilterEnabled,
-                        isRgbActive = params.savedConfig.facecamRgbBorder,
-                        onPauseClicked = { handlePauseAction() },
-                        onResumeClicked = { handleResumeAction() },
-                        onStopClicked = { handleStopAction() },
-                        onMicToggleClicked = { handleToggleMicAction() },
-                        onScreenshotRequested = { handleScreenshotAction() }
-                    )
-                } catch (t: Throwable) {
-                    Log.e(TAG, "Error iniciando Burbuja Flotante: ${t.message}")
-                }
-            }
-
-            startChronometerTimer()
+            chronometerTimer.start()
         } else {
             cleanupAndStop()
-        }
-    }
-
-    private fun startForegroundWithType(notification: android.app.Notification, isAudioEnabled: Boolean, showFacecam: Boolean) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            var serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-            if (isAudioEnabled) serviceType = serviceType or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            if (showFacecam) serviceType = serviceType or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
-            startForeground(RecordNotificationHelper.NOTIFICATION_ID, notification, serviceType)
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(RecordNotificationHelper.NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
-        } else {
-            startForeground(RecordNotificationHelper.NOTIFICATION_ID, notification)
         }
     }
 
@@ -365,7 +295,7 @@ class ScreenRecordService : Service() {
             isPaused = captureEngine.isPaused,
             isMicrophoneEnabled = !newMuted
         )
-        Log.i(TAG, "Micrófono conmutado: ${if (newMuted) "Silenciado (Solo Juego)" else "Activo (Juego + Voz)"}")
+        Log.i(TAG, "Micrófono conmutado: ${if (newMuted) "Silenciado" else "Activo"}")
     }
 
     private fun handlePauseAction() {
@@ -428,8 +358,7 @@ class ScreenRecordService : Service() {
 
     private fun handleStopAction() {
         _recordingState.value = RecordingStatus.SAVING
-        timerJob?.cancel()
-
+        chronometerTimer.stop()
         overlayCoordinator.dismissAll()
 
         val savedFile = captureEngine.stopCapture()
@@ -447,52 +376,9 @@ class ScreenRecordService : Service() {
         cleanupAndStop()
     }
 
-    private fun startChronometerTimer() {
-        timerJob?.cancel()
-        timerJob = serviceScope.launch {
-            var checkStorageCounter = 0
-            while (isActive) {
-                delay(1000)
-                if (captureEngine.isRecording && !captureEngine.isPaused) {
-                    _elapsedSeconds.value += 1
-                    val currentSec = _elapsedSeconds.value
-                    overlayCoordinator.updateBubbleTime(currentSec)
-                    notificationHelper.updateNotification(
-                        currentSec.toLong(),
-                        isPaused = false,
-                        isMicrophoneEnabled = !captureEngine.isMicrophoneMuted
-                    )
-
-                    // Monitor de espacio en disco en tiempo real durante la grabación activa
-                    checkStorageCounter++
-                    if (checkStorageCounter >= 4) {
-                        checkStorageCounter = 0
-                        checkDiskSpaceSafeguard()
-                    }
-                }
-            }
-        }
-    }
-
-    private fun checkDiskSpaceSafeguard() {
-        try {
-            val storageInfo = StorageMonitorHelper.queryStorageInfo(
-                context = this,
-                bitrateBps = settingsRepository.getConfig().bitrate.bps
-            )
-            if (storageInfo.availableBytes <= StorageMonitorHelper.EMERGENCY_STOP_THRESHOLD_BYTES) {
-                Log.w(TAG, "¡EMERGENCIA! Espacio crítico alcanzado (${storageInfo.formattedAvailable}). Salvaguardando MP4...")
-                _errorMessage.value = "Grabación salvada: Espacio en disco casi lleno (${storageInfo.formattedAvailable} restantes)."
-                handleStopAction()
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Error verificando espacio en disco: ${e.message}")
-        }
-    }
-
     private fun cleanupAndStop() {
-        timerJob?.cancel()
-        unregisterEmergencyReceivers()
+        chronometerTimer.stop()
+        emergencyReceiver.unregister(this)
         if (::overlayCoordinator.isInitialized) {
             overlayCoordinator.dismissAll()
         }
@@ -506,7 +392,7 @@ class ScreenRecordService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        Log.w(TAG, "onTaskRemoved invocado: verificando y salvaguardando grabación activa...")
+        Log.w(TAG, "onTaskRemoved invocado: salvaguardando grabación activa...")
         if (isRecording()) {
             handleStopAction()
         }
@@ -520,7 +406,7 @@ class ScreenRecordService : Service() {
     }
 
     override fun onDestroy() {
-        unregisterEmergencyReceivers()
+        emergencyReceiver.unregister(this)
         if (isRecording()) {
             handleStopAction()
         } else {
