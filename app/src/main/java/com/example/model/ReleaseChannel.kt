@@ -84,6 +84,17 @@ enum class ReleaseChannel(
 
     fun getBadgeColor(): Color = Color(badgeColorHex)
 
+    fun matchesRelease(tagName: String, releaseName: String, isPrerelease: Boolean): Boolean {
+        val lowerTag = tagName.lowercase()
+        val lowerName = releaseName.lowercase()
+        return when (this) {
+            BETA -> (lowerTag.contains("beta") || lowerName.contains("beta"))
+            CANARY -> (lowerTag.contains("canary") || lowerName.contains("canary"))
+            DEV -> (lowerTag.contains("dev") || lowerName.contains("dev"))
+            STABLE -> (!isPrerelease && !lowerTag.contains("beta") && !lowerTag.contains("canary") && !lowerTag.contains("dev"))
+        }
+    }
+
     fun getFullVersionName(baseVersion: String = BASE_VERSION_NAME): String {
         return "$baseVersion$versionSuffix"
     }

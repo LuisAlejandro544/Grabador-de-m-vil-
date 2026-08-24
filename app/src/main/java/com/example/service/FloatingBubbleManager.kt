@@ -19,6 +19,7 @@ import android.view.WindowManager
  */
 class FloatingBubbleManager(
     private val context: Context,
+    private val hideInFinalVideo: Boolean = false,
     private val onPauseClicked: () -> Unit,
     private val onResumeClicked: () -> Unit,
     private val onStopClicked: () -> Unit,
@@ -74,16 +75,26 @@ class FloatingBubbleManager(
                 WindowManager.LayoutParams.TYPE_PHONE
             }
 
+            var flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+            if (hideInFinalVideo && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                // En Android 14+ (API 34+), FLAG_SECURE o exclusión de ventana evita que VirtualDisplay capture la vista del overlay
+                flags = flags or WindowManager.LayoutParams.FLAG_SECURE
+            }
+
             val p = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 layoutType,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                flags,
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
                 x = dpToPx(16)
                 y = dpToPx(120)
+                if (hideInFinalVideo && Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    // En versiones anteriores a Android 14, se aplica un nivel de transparencia sutil/mínimo para minimizar intrusión en el video
+                    alpha = 0.25f
+                }
             }
             this.params = p
 

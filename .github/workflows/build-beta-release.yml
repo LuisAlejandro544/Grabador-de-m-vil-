@@ -2,7 +2,11 @@ name: Build & Sign Android Beta Release APK
 
 on:
   release:
-    types: [prereleased]
+    types: [prereleased, published]
+  push:
+    tags:
+      - 'v*'
+      - 'beta-*'
   workflow_dispatch:
     inputs:
       vortex_channel:
@@ -33,20 +37,23 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: 📝 Actualizar Notas de Pre-Release desde Changelog Markdown
-        if: github.event_name == 'release'
+      - name: 📝 Actualizar Notas de Release desde Changelog Markdown
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "=== Sincronizando notas del Pre-Release desde changelog Markdown ==="
-          TAG_NAME="${{ github.event.release.tag_name }}"
-          
+          echo "=== Sincronizando notas de la Release desde changelog Markdown ==="
+          TAG_NAME="${{ github.event.release.tag_name || github.ref_name }}"
           CHANGELOG_FILE="$GITHUB_WORKSPACE/changelog-beta-release.md"
 
           if [ -f "$CHANGELOG_FILE" ] && [ -n "$TAG_NAME" ]; then
-            echo "Actualizando descripción de la release $TAG_NAME con el contenido de $CHANGELOG_FILE..."
-            gh release edit "$TAG_NAME" --notes-file "$CHANGELOG_FILE"
-            echo "✅ Descripción de la Pre-Release actualizada con éxito."
+            if gh release view "$TAG_NAME" &>/dev/null; then
+              echo "Actualizando descripción de la release $TAG_NAME con el contenido de $CHANGELOG_FILE..."
+              gh release edit "$TAG_NAME" --notes-file "$CHANGELOG_FILE"
+              echo "✅ Descripción de la Release actualizada con éxito."
+            else
+              echo "ℹ️ La release aún no está creada en GitHub. Se creará al adjuntar los assets."
+            fi
           else
             echo "⚠️ No se encontró archivo de changelog o tag de release."
           fi
@@ -155,20 +162,30 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
-      - name: 🏷️ Adjuntar APK Release a la Pre-Release de GitHub
-        if: github.event_name == 'release'
+      - name: 🏷️ Adjuntar APK Release a GitHub Release
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "=== Subiendo APK firmado directamente como Asset de la Pre-Release ==="
-          TAG_NAME="${{ github.event.release.tag_name }}"
+          echo "=== Subiendo APK firmado directamente como Asset de GitHub Release ==="
+          TAG_NAME="${{ github.event.release.tag_name || github.ref_name }}"
           APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
           
           if [ -n "$TAG_NAME" ] && [ -f "$APK_PATH" ]; then
-            gh release upload "$TAG_NAME" "$APK_PATH" --clobber
-            echo "✅ APK firmado subido a la release $TAG_NAME exitosamente."
+            if gh release view "$TAG_NAME" &>/dev/null; then
+              gh release upload "$TAG_NAME" "$APK_PATH" --clobber
+              echo "✅ APK firmado adjuntado a la release existente $TAG_NAME exitosamente."
+            else
+              CHANGELOG_FILE="$GITHUB_WORKSPACE/changelog-beta-release.md"
+              NOTES_ARG=()
+              if [ -f "$CHANGELOG_FILE" ]; then
+                NOTES_ARG=(--notes-file "$CHANGELOG_FILE")
+              fi
+              gh release create "$TAG_NAME" "$APK_PATH" --title "Vortex Studio $TAG_NAME" --prerelease "${NOTES_ARG[@]}"
+              echo "✅ Pre-Release $TAG_NAME creada con el APK firmado adjunto."
+            fi
           else
-            echo "No se detectó tag de release o el archivo APK no existe."
+            echo "ℹ️ No se detectó tag de release formal o el archivo APK no existe."
           fi
 
       - name: ✈️ Enviar APK Beta Release a Telegram
@@ -188,14 +205,22 @@ jobs:
           APK_SIZE=$(du -h "$APK_PATH" | cut -f1)
           COMMIT_MSG=$(git log -1 --pretty=%B | head -n 1)
           COMMIT_HASH=$(git rev-parse --short HEAD)
-          RELEASE_TAG="${{ github.event.release.tag_name || 'Beta-Build' }}"
+          TARGET_CHANNEL="${{ inputs.vortex_channel || 'beta' }}"
+
+          if [ "${{ github.event_name }}" = "release" ] || [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            RELEASE_TAG="${{ github.event.release.tag_name || github.ref_name }}"
+            HEADER="🔥 <b>Vortex Studio - APK Release Oficial ($RELEASE_TAG)</b>"
+          else
+            RELEASE_TAG="Compilación Manual ($TARGET_CHANNEL)"
+            HEADER="⚡ <b>Vortex Studio - APK Beta Release (Manual / Artifacts)</b>"
+          fi
 
           if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
             echo "⚠️ TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID no configurados. Omitiendo envío a Telegram."
             exit 0
           fi
 
-          CAPTION="🔥 <b>Vortex Studio - APK Beta Release (Pre-Release)</b>%0A%0A🏷️ <b>Versión / Tag:</b> <code>$RELEASE_TAG</code>%0A📱 <b>Archivo APK:</b> <code>$APK_NAME</code>%0A⚖️ <b>Tamaño APK:</b> <b>${APK_SIZE}</b>%0A🔖 <b>Commit:</b> <code>$COMMIT_HASH</code> - $COMMIT_MSG%0A🕒 <b>Fecha:</b> $(date '+%Y-%m-%d %H:%M:%S UTC')%0A%0A⚡ <i>Canal Beta listo para instalación directa en dispositivos reales, Uptodown y tiendas alternativas.</i>"
+          CAPTION="${HEADER}%0A%0A🏷️ <b>Origen / Modo:</b> <code>$RELEASE_TAG</code>%0A📱 <b>Archivo APK:</b> <code>$APK_NAME</code>%0A⚖️ <b>Tamaño APK:</b> <b>${APK_SIZE}</b>%0A🔖 <b>Commit:</b> <code>$COMMIT_HASH</code> - $COMMIT_MSG%0A🕒 <b>Fecha:</b> $(date '+%Y-%m-%d %H:%M:%S UTC')%0A%0A⚡ <i>APK firmado en modo Release listo para instalación directa en dispositivos reales, Uptodown y tiendas de terceros.</i>"
 
           echo "Enviando APK a Telegram..."
           HTTP_STATUS=$(curl -sS -o /tmp/telegram_response.json -w "%{http_code}" \

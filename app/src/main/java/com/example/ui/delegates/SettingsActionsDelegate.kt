@@ -54,6 +54,7 @@ class SettingsActionsDelegate(
     fun toggleWebpLossless(lossless: Boolean) = settingsRepository.toggleImageWebpLossless(lossless)
 
     fun toggleFloatingBubble(enabled: Boolean) = settingsRepository.toggleFloatingBubble(enabled)
+    fun toggleHideBubbleInFinalVideo(enabled: Boolean) = settingsRepository.toggleHideBubbleInFinalVideo(enabled)
     fun toggleFacecam(enabled: Boolean) = settingsRepository.toggleFacecam(enabled)
     fun updateFacecamShape(shape: FacecamShape) = settingsRepository.updateFacecamShape(shape)
     fun updateFacecamSize(size: FacecamSize) = settingsRepository.updateFacecamSize(size)

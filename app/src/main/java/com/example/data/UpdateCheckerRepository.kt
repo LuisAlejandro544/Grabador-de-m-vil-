@@ -162,29 +162,8 @@ class UpdateCheckerRepository(private val context: Context) {
 
             if (isDraft) continue
 
-            when (channel) {
-                ReleaseChannel.BETA -> {
-                    // Para el canal Beta, solo aceptar releases con identificador 'beta'
-                    if (tagName.contains("beta") || releaseName.contains("beta")) {
-                        return release
-                    }
-                }
-                ReleaseChannel.CANARY -> {
-                    // Para el canal Canary, solo aceptar releases 'canary'
-                    if (tagName.contains("canary") || releaseName.contains("canary")) {
-                        return release
-                    }
-                }
-                ReleaseChannel.STABLE -> {
-                    // Para el canal Estable, aceptar releases que no sean beta ni canary ni dev
-                    if (!isPrerelease && !tagName.contains("beta") && !tagName.contains("canary") && !tagName.contains("dev")) {
-                        return release
-                    }
-                }
-                ReleaseChannel.DEV -> {
-                    // En modo Dev acepta cualquier release previa para pruebas
-                    return release
-                }
+            if (channel.matchesRelease(tagName, releaseName, isPrerelease)) {
+                return release
             }
         }
         return null

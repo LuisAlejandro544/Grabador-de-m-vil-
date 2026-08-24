@@ -19,11 +19,7 @@ Este documento mantiene el estado de desarrollo, decisiones de arquitectura y ma
   * **División de Video (Split Tool):** Corta el video en 2 partes en el playhead (`Parte 1` y `Parte 2`) de forma instantánea.
   * **Extractor de Miniaturas HD:** Captura fotogramas exactos en resolución nativa mediante `MediaMetadataRetriever`.
   * **Generador de Filmstrip:** Genera miniaturas en segundo plano para la línea de tiempo.
-- **`VideoEditorDialog.kt`**:
-  * Visor interactivo adaptativo al aspect ratio seleccionado.
-  * Barra de chips de Aspect Ratio de 1-Toque y selector de modo de ajuste Blur/Crop/Letterbox.
-  * Botón directo de División (Split ✂️) con diálogo de confirmación y exportación de ambas partes.
-  * Transport controls (-1s, +1s, play/pause) y deslizador dual de rango (RangeSlider In/Out).
+- **`VideoEditorDialog.kt`**: Visor interactivo con Blur reactivo, selector de aspecto, botón Split y Scrubber dual.
 
 ### 2. Motor Nativo C++ (`cpp/`) & JNI
 - **`ffmpeg_engine.hpp` / `ffmpeg_engine.cpp`**: Métodos nativos para `trimVideo`, `splitVideo`, `convertAspectRatio`, `extractAudio`, `compressVideo` y `applyWatermark`.
@@ -33,14 +29,18 @@ Este documento mantiene el estado de desarrollo, decisiones de arquitectura y ma
 ### 3. Motor Nativo Rust (`rust/`)
 - **`lib.rs` / `NativeRustNetwork.kt`**:
   * Gestión de sockets para streaming seguro en memoria RTMP/SRT.
-  * Función `rustCalculateTargetDimensions` para empaquetado seguro y cálculo de resoluciones de aspect ratio de video.
+  * Función `rustCalculateTargetDimensions` para cálculo de resoluciones y aspect ratio de video.
 
-### 4. Overlays Flotantes, Captura y Sincronización A/V
+### 4. Overlays Flotantes, Burbuja Invisible y Sincronización A/V
 - `ScreenRecordService.kt`: Servicio principal en primer plano para captura mediante `MediaProjection`. Posee salvaguardas reactivas contra batería baja (`ACTION_BATTERY_LOW`), almacenamiento lleno (`ACTION_DEVICE_STORAGE_LOW`), `onTaskRemoved` y `onTrimMemory`.
+- `FloatingBubbleManager.kt` & `ServiceOverlayCoordinator.kt`:
+  * **Modo Invisible en Grabación Final:** Soporte para excluir la burbuja flotante del video final manteniendo su visibilidad y controles para el jugador.
+  * **Android 14+ (API 34+):** Exclusión de ventana mediante `FLAG_SECURE` / flags de compositor sobre `VirtualDisplay`.
+  * **Android < 14:** Atenuación automática de opacidad para no interferir con la grabación del juego.
 - `ScreenCaptureEngine.kt` & `MuxerManager.kt`: Coordinación de codificadores con **Protección contra Corrupción de Archivo (Graceful Finalize)**, asegurando la escritura del átomo `moov` y cierre de pistas en contenedores MP4 con JVM Shutdown Hook.
-- `Zero-Latency AV Sync Engine` (`MuxerManager.kt`, `VideoEncoderModule.kt`, `AudioEncoderWorker.kt`): Eliminación de desincronizaciones entre video y audio mediante anclaje de reloj al primer fotograma, eliminación de gaps erróneos en pantallas estáticas mediante `KEY_REPEAT_PREVIOUS_FRAME_AFTER`, cálculo de PTS lineal continuo por muestras PCM y compensador de delay manual calibrable (`avSyncOffsetMs` de -200ms a +200ms).
-- `StorageMonitorHelper.kt` & `DiskStorageMonitorCard.kt`: Monitorización de espacio en disco en tiempo real con estimación de tiempo de grabación restante según la tasa de bits y alerta visual interactiva.
-- `ScreenshotHelper.kt` & `ImageFormatSettingsCard.kt`: Selector y motor de compresión multiformato para capturas de pantalla (PNG sin pérdida, JPEG 10-100% configurable, WebP lossy y WebP lossless), integrado en `SettingsRepository`.
+- `Zero-Latency AV Sync Engine` (`MuxerManager.kt`, `VideoEncoderModule.kt`, `AudioEncoderWorker.kt`): Eliminación de desincronizaciones entre video y audio mediante anclaje de reloj al primer fotograma, inyección de fotogramas repetidos `KEY_REPEAT_PREVIOUS_FRAME_AFTER`, cálculo de PTS lineal continuo por muestras PCM y compensador de delay manual calibrable (`avSyncOffsetMs` de -200ms a +200ms).
+- `StorageMonitorHelper.kt` & `DiskStorageMonitorCard.kt`: Monitorización de espacio en disco en tiempo real con estimación de tiempo de grabación restante según la tasa de bits.
+- `ScreenshotHelper.kt` & `ImageFormatSettingsCard.kt`: Selector y motor de compresión multiformato para capturas de pantalla (PNG, JPEG 10-100% y WebP lossless).
 - `FacecamOverlayManager.kt`: Cámara frontal/trasera con CameraX, FPS configurable (30-60 FPS), marco RGB animado y filtro de belleza.
 - `VtuberOverlayManager.kt`: Avatar 2D reactivo a voz y parpadeo ocular automático.
 - `FloatingVuMeterManager.kt`: Vúmetro LED en vivo y mezclador de volumen flotante con control de ganancia.
@@ -49,27 +49,21 @@ Este documento mantiene el estado de desarrollo, decisiones de arquitectura y ma
 
 ### 5. Flujo de Bienvenida (Onboarding) y Centro de Permisos (`com.example.ui.onboarding`)
 - **`OnboardingScreen.kt`**: Orquestador visual con transiciones horizontales animadas entre pasos informativos y el centro de permisos.
-- **`OnboardingStepPage.kt`**: Diapositivas explicativas que detallan las ventajas gamer: Grabación a 60 FPS con Bitrate Granular, Facecam Pro RGB/Avatar VTuber con DSP, y Conversión 9:16 para TikTok/Shorts.
-- **`PermissionsSetupPage.kt`**: Centro interactivo con detección en tiempo real (`onResume` / `LifecycleEventObserver`) de permisos de Superposición (`SYSTEM_ALERT_WINDOW`), Micrófono, Cámara, Notificaciones y Almacenamiento, permitiendo su concesión individual o en lote con 1 toque.
-- **Persistencia Reactiva**: Gestionado por `SettingsRepository` (`KEY_ONBOARDING_COMPLETED`), propagado mediante `StateFlow` en `RecordViewModel` y con acceso directo de reapertura desde la pestaña de Ajustes.
+- **`PermissionsSetupPage.kt`**: Centro interactivo con detección en tiempo real de permisos de Superposición, Micrófono, Cámara, Notificaciones y Almacenamiento.
 
 ### 6. Matriz de Canales de Lanzamiento Multi-Instalación y Logo Adaptativo
-- **Identidad Visual Adaptativa (`VortexAppLogo.kt` & `ic_launcher`):** Sistema de logo en vórtice dinámico con tres aspas neón en espiral convergentes al centro de captura *REC*. Adapta sus tonos reactivamente según el canal de la aplicación (Dev: Púrpura/Magenta, Canary: Naranja/Ámbar, Beta: Azul/Cian, Stable: Verde/Menta).
-- **Canal DEV (`com.vortexstudio.recorder.dev` | `0.1.0-dev` | `1000`):** Exclusivo para depuración local, logs y profiling NDK.
-- **Canal CANARY (`com.vortexstudio.recorder.canary` | `0.1.0-canary.1` | `1001`):** Canal experimental para pruebas tempranas de la comunidad y recopilación de feedback.
-- **Canal BETA (`com.vortexstudio.recorder.beta` | `0.1.0-beta.1` | `1002`):** Versión candidata a lanzamiento para validación de compatibilidad multi-dispositivo.
-- **Canal STABLE (`com.vortexstudio.recorder` | `0.1.0` | `1003`):** Versión oficial de producción para tiendas de APKs (Uptodown, GitHub Releases).
+- **Identidad Visual Adaptativa (`VortexAppLogo.kt` & `ic_launcher`):** Sistema de logo en vórtice dinámico con tres aspas neón en espiral convergentes al centro de captura *REC*.
+- **Canales Multi-Instalación:** DEV (`com.vortexstudio.recorder.dev`), CANARY (`com.vortexstudio.recorder.canary`), BETA (`com.vortexstudio.recorder.beta`), STABLE (`com.vortexstudio.recorder`).
 
 ### 7. Integración Continua y Despliegue Automatizado (CI/CD)
-- `.github/workflows/build-apk.yml`: Compilación de APKs Debug con soporte de caché de dependencias y empaquetado `.tar.7z` LZMA2 entregado a Telegram.
-- `.github/workflows/build-beta-release.yml`: Flujo de **Release Beta** activado automáticamente ante **Pre-releases de GitHub** (`on.release.types: [prereleased]`), inyección automática de notas desde `changelog-beta-release.md`, compilación limpia sin caché (Clean Build), firma criptográfica de release, subida directa de archivos `.apk` sin comprimir a los Assets de GitHub y entrega directa a Telegram.
+- `.github/workflows/build-apk.yml`: Compilación de APKs Debug con entrega a Telegram.
+- `.github/workflows/build-beta-release.yml`: Flujo de **Release Beta** activado ante **Pre-releases de GitHub** o **ejecución manual (workflow_dispatch)**, inyección automática de notas desde `changelog-beta-release.md`, compilación limpia, firma de producción y entrega directa a Telegram.
 
 ---
 
 ## 🎯 Reglas de Calidad y Rendimiento
+- **Burbuja Invisible en Grabación:** El jugador mantiene acceso al cronómetro y botones flotantes sin que aparezcan en el video grabado.
 - **Protección Anti-Corrupción Garantizada:** Ninguna interrupción de batería, espacio o cierre de multitarea deja un archivo MP4 corrupto o ilegible.
 - **60 FPS constantes:** Interfaz Jetpack Compose reactiva con `StateFlow` y sin bloqueos en el hilo principal.
-- **Independencia y Cero Basura de Google:** Eliminadas dependencias obsoletas de Firebase, Auth, Play Services y Firestore. 100% autosuficiente para distribución en Uptodown, GitHub Releases y APKs de terceros.
-- **Almacenamiento Público:** Los videos recortados, divididos y miniaturas se registran automáticamente en `MediaStore` / `MediaScannerConnection`.
-- **Licencia & Distribución:** Licenciado bajo **GNU General Public License v3 (GPLv3)** con archivo `LICENSE`. Se cuenta con `CONTRIBUTING.md` detallando la política actual de contribución (PRs en pausa temporal mientras se estabiliza la base, permitiendo forks y experimentación libre bajo GPLv3).
-
+- **Independencia de Google:** Sin dependencias de Play Services o Firebase; 100% autosuficiente para distribución en Uptodown, GitHub Releases y APKs independientes.
+- **Licencia:** Licenciado bajo **GNU General Public License v3 (GPLv3)**.

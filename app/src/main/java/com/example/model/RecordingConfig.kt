@@ -157,7 +157,8 @@ data class RecordingConfig(
     val avSyncOffsetMs: Int = 0,
     val imageFormat: ImageFormatOption = ImageFormatOption.PNG,
     val imageQuality: Int = 80,
-    val imageWebpLossless: Boolean = false
+    val imageWebpLossless: Boolean = false,
+    val hideBubbleInFinalVideo: Boolean = false
 ) {
     fun getEffectiveBitrateBps(): Int = bitrateMbps * 1_000_000
 }

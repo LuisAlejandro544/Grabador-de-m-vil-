@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ControlCamera
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -47,6 +48,8 @@ import androidx.compose.ui.unit.sp
 fun FloatingBubbleSettingsCard(
     showFloatingBubble: Boolean,
     onToggleFloatingBubble: (Boolean) -> Unit,
+    hideBubbleInFinalVideo: Boolean = false,
+    onToggleHideBubbleInFinalVideo: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -110,55 +113,108 @@ fun FloatingBubbleSettingsCard(
                 )
             }
 
-            if (showFloatingBubble && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (showFloatingBubble) {
                 Spacer(modifier = Modifier.height(10.dp))
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
                 Spacer(modifier = Modifier.height(10.dp))
 
+                // Opción: Ocultar burbuja en la grabación final
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Icon(
-                            imageVector = if (hasOverlayPermission) Icons.Default.CheckCircle else Icons.Default.Warning,
+                            imageVector = Icons.Default.VisibilityOff,
                             contentDescription = null,
-                            tint = if (hasOverlayPermission) Color(0xFF10B981) else Color(0xFFF59E0B),
-                            modifier = Modifier.size(18.dp)
+                            tint = if (hideBubbleInFinalVideo) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(22.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (hasOverlayPermission) "Permiso de superposición activo" else "Requiere permiso para mostrarse sobre juegos",
-                            fontSize = 12.sp,
-                            color = if (hasOverlayPermission) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Ocultar burbuja en el video final",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                                    "Exclusión nativa de ventana (Android 14+): la ves mientras juegas, pero no aparece grabada"
+                                } else {
+                                    "Oculta la interfaz durante la captura para evitar que aparezca en el video final"
+                                },
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Switch(
+                        checked = hideBubbleInFinalVideo,
+                        onCheckedChange = onToggleHideBubbleInFinalVideo,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary
+                        ),
+                        modifier = Modifier.testTag("hide_bubble_in_video_switch")
+                    )
+                }
 
-                    if (!hasOverlayPermission) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        FilledTonalButton(
-                            onClick = {
-                                try {
-                                    val intent = Intent(
-                                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                        Uri.parse("package:${context.packageName}")
-                                    )
-                                    context.startActivity(intent)
-                                } catch (e: Exception) {
-                                    val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
-                                    context.startActivity(intent)
-                                }
-                            },
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                                contentColor = MaterialTheme.colorScheme.primary
-                            ),
-                            modifier = Modifier.testTag("grant_overlay_perm_btn")
-                        ) {
-                            Text("Activar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Icon(
+                                imageVector = if (hasOverlayPermission) Icons.Default.CheckCircle else Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = if (hasOverlayPermission) Color(0xFF10B981) else Color(0xFFF59E0B),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (hasOverlayPermission) "Permiso de superposición activo" else "Requiere permiso para mostrarse sobre juegos",
+                                fontSize = 12.sp,
+                                color = if (hasOverlayPermission) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        if (!hasOverlayPermission) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            FilledTonalButton(
+                                onClick = {
+                                    try {
+                                        val intent = Intent(
+                                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                            Uri.parse("package:${context.packageName}")
+                                        )
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+                                        context.startActivity(intent)
+                                    }
+                                },
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                    contentColor = MaterialTheme.colorScheme.primary
+                                ),
+                                modifier = Modifier.testTag("grant_overlay_perm_btn")
+                            ) {
+                                Text("Activar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
+                            }
                         }
                     }
                 }

@@ -1,10 +1,17 @@
 # 🌪️ Vortex Studio & Game Recorder
 
-> **Vortex Studio** es una suite completa de grabación de pantalla de alto rendimiento, edición rápida y transmisión en vivo para Android, diseñada para capturar partidas de videojuegos a 60 FPS con audio interno exclusivo, overlays visuales, herramientas en vivo, **Filtro de Belleza facial**, **Borde RGB Arcoíris animado**, **Indicador de Toques Táctiles animado**, **Editor de Video con Conversor de Aspect Ratio 1-Toque y División de Clips**, y cimientos nativos en **C++ (OpenGL ES 3.0 / FFmpeg Core)** y **Rust (RTMP/SRT)**.
+> **Vortex Studio** es una suite completa de grabación de pantalla de alto rendimiento, edición rápida y transmisión en vivo para Android, diseñada para capturar partidas de videojuegos a 60 FPS con audio interno exclusivo, overlays visuales, herramientas en vivo, **Burbuja Flotante con Exclusión Automática en el Video Final (Android 14+ y versiones anteriores)**, **Filtro de Belleza facial**, **Borde RGB Arcoíris animado**, **Indicador de Toques Táctiles animado**, **Editor de Video con Conversor de Aspect Ratio 1-Toque y División de Clips**, y cimientos nativos en **C++ (OpenGL ES 3.0 / FFmpeg Core)** y **Rust (RTMP/SRT)**.
 
 ---
 
 ## 🚀 Características Principales
+
+### 🕹️ Burbuja de Control Flotante con Modo Invisible en el Video Final
+- **👁️ Exclusión en Grabación (Visible para el Jugador, Invisible en el Video):**
+  - Permite tener la burbuja flotante en pantalla con cronómetro, pausa, reanudación y controles de herramientas activos mientras juegas sin que aparezca en el archivo de video final resultante.
+  - **Android 14+ (API 34+):** Exclusión nativa a nivel de compositor y `VirtualDisplay` mediante flags de ventana sin degradar el rendimiento ni el refresco de pantalla.
+  - **Versiones Anteriores:** Atenuación de opacidad y minimización inteligente durante la captura para evitar obstrucción del metraje del juego.
+- **⚡ Control Rápido:** Pausa, reanudar, silenciar micrófono, cambiar fuente de audio, activar dibujo en pantalla o Facecam con 1 toque sobre cualquier videojuego.
 
 ### ✂️ Editor de Video Móvil Avanzado (Vortex Studio Pro)
 - **📱 Conversión de Relación de Aspecto con 1 Toque (1-Tap Aspect Ratio Converter):**
@@ -25,10 +32,7 @@
 
 ### 🎮 Grabación y Rendimiento Gamer
 - **🖼️ Selector y Compresor de Imagen (PNG / JPG % / WebP):**
-  - Configura el formato exacto de las capturas de pantalla tomadas durante el juego o desde el menú de la app.
-  - **PNG:** Calidad máxima sin pérdida fotograma a fotograma.
-  - **JPEG Personalizable (10% - 100%):** Ahorra hasta un 70% de espacio eligiendo compresiones equilibradas (como 80% recomendado).
-  - **WebP:** Formato de última generación con soporte para compresión con pérdida y compresión pura sin pérdida (*WebP Lossless*).
+  - Configura el formato exacto de las capturas de pantalla tomadas durante el juego o desde el menú de la app (PNG sin pérdida, JPEG 10%-100% y WebP lossless).
 - **🛡️ Protección contra Corrupción de Archivo (Graceful Finalize):**
   - Cierre seguro del contenedor MP4 y escritura garantizada del átomo `moov` ante batería baja, falta de almacenamiento, cierre de la app desde multitarea (`onTaskRemoved`) o presión extrema de memoria RAM.
   - Salvaguarda mediante JVM Shutdown Hook para evitar la pérdida o corrupción de videos de partidas largas.
@@ -37,22 +41,22 @@
   - Cálculo dinámico de horas/minutos restantes de grabación según el bitrate de video configurado.
   - Salvaguarda automática preventiva si el espacio restante desciende del umbral de seguridad (150 MB).
 - **🎮 Modo Optimizado para Juegos:** Configuración instantánea a 1080p Full HD, 60 FPS y 12 Mbps con un solo toque.
-- **⚡ Tasa de Bits Personalizada (1 - 12 Mbps):** Control milimétrico de bitrate mediante un deslizador interactivo con saltos enteros y botones de acceso rápido (1M, 2M, 4M, 6M, 8M, 10M, 12M).
+- **⚡ Tasa de Bits Personalizada (1 - 12 Mbps):** Control milimétrico de bitrate mediante un deslizador interactivo con saltos enteros y botones de acceso rápido.
 - **✨ Filtro de Belleza & Suavizado de Piel:** Capa de post-procesado facial que atenúa imperfecciones, suaviza texturas y balancea la luminosidad del rostro.
 - **🌈 Borde RGB / Arcoíris Gamer Animado:** Marco con gradiente `SweepGradient` rotativo continuo que bordea la ventana flotante del Facecam adaptándose automáticamente a su forma.
 - **📹 Facecam / Cámara Flotante con FPS Configurable (30 - 60 FPS):** Superposición de cámara en tiempo real mediante **CameraX** y `WindowManager` sin cortes de fluidez.
-- **🎭 Avatar 2D / PNGtuber Reactivo por Voz:** Alternativa ligera y privada a la cámara real: sustituye el Facecam por un avatar 2D animado interactivo que reacciona al volumen RMS del micrófono y parpadea de forma natural.
-- **👆 Indicador de Toques Táctiles Animado (Touch Visualizer):** Ondas y ripples dinámicos de alta respuesta que se renderizan sobre la pantalla mediante overlay `WindowManager` transparente sin requerir opciones de desarrollador.
-- **🏷️ Marca de Agua / Logo Personalizado:** Superpone tu marca personal, tag de streamer o logo en pantalla con posición libre (arrastrable con el dedo) y opacidad ajustable.
+- **🎭 Avatar 2D / PNGtuber Reactivo por Voz:** Alternativa ligera y privada a la cámara real: sustituye el Facecam por un avatar 2D animado interactivo que reacciona al volumen RMS del micrófono.
+- **👆 Indicador de Toques Táctiles Animado (Touch Visualizer):** Ondas y ripples dinámicos de alta respuesta que se renderizan sobre la pantalla mediante overlay `WindowManager` transparente.
+- **🏷️ Marca de Agua / Logo Personalizado:** Superpone tu marca personal, tag de streamer o logo en pantalla con posición libre y opacidad ajustable.
 - **🖼️ Overlays de Escena Personalizados:** Marcos Neón Cyberpunk, Banners de Redes Sociales inferiores, Badges animados "🔴 EN VIVO" y carteles de pausa.
 
 ### 🔊 Sistema de Audio Profesional y DSP
 - **🔄 Calibración y Sincronización A/V con Cero Desfase (Zero-Latency Sync Engine):**
   - Motor de sincronización exacta entre pistas de video H.264 y audio AAC anclado al reloj de inicio.
   - Eliminación de jitter y desfase mediante cálculo lineal y continuo de PTS por recuento de muestras PCM.
-  - Control de compensación manual configurable (-200 ms a +200 ms) en los ajustes de audio para calibrar diferencias de hardware o latencias de composición de pantalla en GPU.
+  - Control de compensación manual configurable (-200 ms a +200 ms) en los ajustes de audio.
 - **📊 Vúmetro de Audio Flotante & Mezclador en Vivo:** Widget superpuesto interactivo con barras LED dinámicas de decibelios (dB) con gradiente verde-amarillo-rojo.
-- **🎛️ Motor Nativo de Audio DSP (C++):** Procesamiento estéreo con **Noise Gate** (puerta de ruido para respiración y ventiladores), **Audio Ducking Automático** (baja el juego -9 dB cuando hablas) y **Soft Limiter** para evitar distorsión digital.
+- **🎛️ Motor Nativo de Audio DSP (C++):** Procesamiento estéreo con **Noise Gate**, **Audio Ducking Automático** y **Soft Limiter**.
 - **🎙️ Conmutador Dinámico de Voz en Vivo:** Conmuta con un toque si deseas grabar tu voz (`Voz ON`) o dejar únicamente el sonido limpio del juego (`Solo Juego`).
 
 ---
@@ -70,7 +74,7 @@ vortex-studio/
 │   │   │   │   └── VideoEditorDialog.kt # Aspect ratio chips, monitor adaptativo, split y scrubber
 │   │   │   ├── tabs/                # Tabs principales (RecordTab, GalleryTab)
 │   │   │   └── components/          # Componentes Jetpack Compose (settings, cards, controls)
-│   │   ├── service/                 # Servicios en segundo plano y overlays flotantes
+│   │   ├── service/                 # Servicios en segundo plano, burbuja flotante y overlays
 │   │   └── nativecore/              # Puentes JNI con módulos C++ y Rust
 │   ├── cpp/                         # Motor C++ NDK (FFmpeg Core, OBS Compositor, Audio DSP)
 │   └── rust/                        # Motor Rust (RTMP/SRT Streaming y cálculo de aspect ratio)
@@ -112,30 +116,7 @@ Vortex Studio cuenta con una arquitectura de 4 canales de distribución con `app
 
 El proyecto cuenta con dos flujos de trabajo de GitHub Actions automatizados:
 1. **Compilación Debug (`.github/workflows/build-apk.yml`):** Compilación rápida para desarrollo con caché opcional y entrega comprimida a Telegram.
-2. **Compilación Beta Release Firmada (`.github/workflows/build-beta-release.yml`):** Activación estricta ante **Pre-releases de GitHub** (`on.release.types: [prereleased]`), inyección automática del contenido de `changelog-beta-release.md` en la descripción del pre-release, compilación limpia sin caché (Clean Build), firma criptográfica de producción, subida directa del archivo APK a los Assets de GitHub y entrega directa a Telegram para instalación inmediata en teléfonos.
-
-### 🔑 Secretos de GitHub (GitHub Secrets)
-Para habilitar la firma de producción y el envío automático a Telegram, configura en **Settings -> Secrets and variables -> Actions**:
-
-| Secreto | Obligatorio | Descripción | Ejemplo / Formato |
-| :--- | :--- | :--- | :--- |
-| `KEYSTORE_BASE64` | Recomendado | Archivo Keystore (`.jks` o `.keystore`) codificado en Base64 | `base64 -w 0 Vortex-key.jks` |
-| `KEYSTORE_PASSWORD` | Recomendado | Contraseña del almacén de claves (Store Password) | `TuContraseñaSegura123` |
-| `KEY_ALIAS` | Recomendado | Alias de la clave de firma | `Vortex` o `upload` |
-| `KEY_PASSWORD` | Recomendado | Contraseña de la clave individual (Key Password) | `TuContraseñaClave123` |
-| `TELEGRAM_BOT_TOKEN` | Opcional | Token de acceso del Bot de Telegram de [@BotFather](https://t.me/BotFather) | `123456789:ABCdefGhIJKlmNoPQRstuVWXyz` |
-| `TELEGRAM_CHAT_ID` | Opcional | ID numérico del chat o canal de Telegram receptor | `987654321` o `-100123456789` |
-
-### 🏷️ Cómo disparar la compilación Beta Release:
-1. Edita o actualiza el archivo `changelog-beta-release.md` con los cambios de tu versión.
-2. Ve a la pestaña **Releases** en GitHub y pulsa **"Draft a new release"**.
-3. Asigna una etiqueta de versión previa (ejemplo: `v0.1.0-beta.1` o `v1.0.0-beta.1`).
-4. Marca la casilla **☑ "Set as a pre-release"**.
-5. Pulsa **"Publish release"**. El workflow sincronizará el changelog en la descripción, compilará el APK release sin caché, lo firmará, lo adjuntará directamente como APK en los Assets de la release y lo enviará a tu Telegram listo para instalar.
-
-### 📱 Cómo instalar desde tu teléfono:
-1. Descarga el archivo `.apk` adjunto en tu chat de Telegram o desde los Assets de la Pre-Release de GitHub.
-2. Pulsa sobre el archivo `.apk` para instalar directamente en tu teléfono sin necesidad de extraer archivos.
+2. **Compilación Beta Release Firmada (`.github/workflows/build-beta-release.yml`):** Activación ante **Pre-releases de GitHub** (`on.release.types: [prereleased]`) o **ejecución manual (workflow_dispatch)** para generar el APK Release sin crear una release formal. Cuenta con inyección automática de `changelog-beta-release.md`, compilación limpia (Clean Build), firma de producción y entrega directa a Telegram.
 
 ---
 
@@ -146,5 +127,3 @@ Por el momento no estamos aceptando Pull Requests (PRs) mientras estabilizamos l
 
 ## 📄 Licencia
 Este proyecto está distribuido y protegido bajo los términos de la **Licencia Pública General de GNU v3 (GPLv3)**. Consulta el archivo [LICENSE](LICENSE) para ver el texto legal completo.
-
-

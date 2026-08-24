@@ -1,10 +1,7 @@
-ci: configuración y optimización de ProGuard y R8 para APK Beta Release
+feat: modo para ocultar la burbuja flotante en el video final con soporte Android 14+ y versiones anteriores
 
-- Optimización y Reducción de Tamaño de APK:
-  * Activación de `isMinifyEnabled = true` y `isShrinkResources = true` en el buildType `release` de `app/build.gradle.kts` para el canal Beta.
-  * Implementación de reglas completas en `app/proguard-rules.pro` para eliminación de código muerto (tree shaking) y ofuscación segura.
-
-- Protección de Puentes Nativos JNI y Componentes del Sistema:
-  * Preservación estricta de métodos nativos (`native <methods>`) y clases de `com.example.nativecore.**` para garantizar compatibilidad con librerías C++ (NDK) y Rust.
-  * Conservación de modelos de datos, anotaciones de Moshi (`@JsonClass`) y entidades de Room.
-  * Reglas dedicadas para Jetpack Compose, CameraX, Kotlin Coroutines y Services/BroadcastReceivers del sistema.
+- Implementación del modo "Ocultar burbuja en el video final":
+  * En Android 14+ (API 34+), exclusión nativa de la vista de superposición mediante flags de ventana (`FLAG_SECURE` / exclusión de `VirtualDisplay`), permitiendo que el usuario vea la burbuja mientras juega pero no aparezca grabada en el video final.
+  * En versiones anteriores a Android 14, atenuación y minimización visual automática durante la captura para evitar intrusiones en el gameplay grabado.
+  * Adición de la opción conmutable en la configuración de la burbuja flotante (`hideBubbleInFinalVideo`), integrada en `RecordingConfig`, `OverlaySettingsStore`, `SettingsRepository`, `RecordViewModel`, `SettingsView` y `FloatingBubbleSettingsCard`.
+  * Integración en el servicio de grabación en primer plano (`ScreenRecordService`, `ServiceOverlayCoordinator`, `FloatingBubbleManager` y `ServiceActionDispatcher`).

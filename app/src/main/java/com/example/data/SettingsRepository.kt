@@ -110,7 +110,8 @@ class SettingsRepository(context: Context) {
             avSyncOffsetMs = videoAudioSlice.avSyncOffsetMs,
             imageFormat = gameImageSlice.imageFormat,
             imageQuality = gameImageSlice.imageQuality,
-            imageWebpLossless = gameImageSlice.imageWebpLossless
+            imageWebpLossless = gameImageSlice.imageWebpLossless,
+            hideBubbleInFinalVideo = overlaySlice.hideBubbleInFinalVideo
         )
     }
 
@@ -262,6 +263,10 @@ class SettingsRepository(context: Context) {
 
     fun toggleFloatingBubble(enabled: Boolean) {
         saveConfig(_configFlow.value.copy(showFloatingBubble = enabled))
+    }
+
+    fun toggleHideBubbleInFinalVideo(enabled: Boolean) {
+        saveConfig(_configFlow.value.copy(hideBubbleInFinalVideo = enabled))
     }
 
     fun toggleFacecam(enabled: Boolean) {

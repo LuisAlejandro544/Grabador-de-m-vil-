@@ -90,7 +90,9 @@ fun SettingsView(
         // Burbuja Flotante y Permiso de Superposición
         FloatingBubbleSettingsCard(
             showFloatingBubble = config.showFloatingBubble,
-            onToggleFloatingBubble = generalEvents.onToggleFloatingBubble
+            onToggleFloatingBubble = generalEvents.onToggleFloatingBubble,
+            hideBubbleInFinalVideo = config.hideBubbleInFinalVideo,
+            onToggleHideBubbleInFinalVideo = generalEvents.onToggleHideBubbleInFinalVideo
         )
 
         // Guía de Inicio y Centro de Permisos
@@ -246,6 +248,7 @@ fun SettingsView(
     onUpdateCountdown: (Int) -> Unit,
     onToggleGameMode: (Boolean) -> Unit,
     onToggleFloatingBubble: (Boolean) -> Unit = {},
+    onToggleHideBubbleInFinalVideo: (Boolean) -> Unit = {},
     onToggleFacecam: (Boolean) -> Unit = {},
     onUpdateFacecamShape: (FacecamShape) -> Unit = {},
     onUpdateFacecamSize: (FacecamSize) -> Unit = {},
@@ -343,6 +346,7 @@ fun SettingsView(
         generalEvents = GeneralSettingsEvents(
             onToggleGameMode = onToggleGameMode,
             onToggleFloatingBubble = onToggleFloatingBubble,
+            onToggleHideBubbleInFinalVideo = onToggleHideBubbleInFinalVideo,
             onUpdateCountdown = onUpdateCountdown,
             onReopenOnboarding = onReopenOnboarding,
             onCheckForUpdates = onCheckForUpdates,
