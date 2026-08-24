@@ -128,6 +128,10 @@ jobs:
               -validity 10000 \
               -dname "CN=Vortex Beta Release,O=Vortex Studio,C=ES"
           fi
+          # Copiar también en app/ y raíz para garantizar detección en cualquier contexto de ejecución
+          cp -f "$GITHUB_WORKSPACE/Vortex-key.jks" "$GITHUB_WORKSPACE/app/Vortex-key.jks" 2>/dev/null || true
+          echo "Keystore verificado en: $GITHUB_WORKSPACE/Vortex-key.jks"
+          ls -la "$GITHUB_WORKSPACE/Vortex-key.jks" "$GITHUB_WORKSPACE/app/Vortex-key.jks" 2>/dev/null || true
 
       - name: ⚙️ Configurar Gradle Wrapper
         run: |
@@ -139,7 +143,7 @@ jobs:
         env:
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.configuration-cache=false -Dkotlin.compiler.execution.strategy=in-process"
           ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.1.10909125
-          KEYSTORE_PATH: "Vortex-key.jks"
+          KEYSTORE_PATH: "${{ github.workspace }}/Vortex-key.jks"
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'Vortex' }}

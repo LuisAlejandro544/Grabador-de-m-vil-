@@ -1,7 +1,8 @@
-feat: modo para ocultar la burbuja flotante en el video final con soporte Android 14+ y versiones anteriores
+fix(ci): corregir resolución de ruta del Keystore para la firma del APK Release en GitHub Actions
 
-- Implementación del modo "Ocultar burbuja en el video final":
-  * En Android 14+ (API 34+), exclusión nativa de la vista de superposición mediante flags de ventana (`FLAG_SECURE` / exclusión de `VirtualDisplay`), permitiendo que el usuario vea la burbuja mientras juega pero no aparezca grabada en el video final.
-  * En versiones anteriores a Android 14, atenuación y minimización visual automática durante la captura para evitar intrusiones en el gameplay grabado.
-  * Adición de la opción conmutable en la configuración de la burbuja flotante (`hideBubbleInFinalVideo`), integrada en `RecordingConfig`, `OverlaySettingsStore`, `SettingsRepository`, `RecordViewModel`, `SettingsView` y `FloatingBubbleSettingsCard`.
-  * Integración en el servicio de grabación en primer plano (`ScreenRecordService`, `ServiceOverlayCoordinator`, `FloatingBubbleManager` y `ServiceActionDispatcher`).
+- Diagnóstico y causa raíz del fallo en el flujo de CI/CD:
+  * El proceso fallaba en la tarea `:app:validateSigningRelease` debido a que `KEYSTORE_PATH` se pasaba como ruta relativa `"Vortex-key.jks"`. En el subproyecto `:app`, Gradle resolvía la ruta dentro de `/app/` (`/home/runner/work/***/***/app/***-key.jks`) en lugar de la raíz del repositorio donde se decodificaba el archivo.
+- Solución aplicada:
+  * En `.github/workflows/build-beta-release.yml`, se configuró `KEYSTORE_PATH` con la ruta absoluta canónica `${{ github.workspace }}/Vortex-key.jks`.
+  * Se añadió una copia de seguridad automática tanto en la raíz como en el directorio `app/` para asegurar compatibilidad absoluta con cualquier contexto de ejecución.
+  * Se incluyó verificación explícita mediante `ls -la` en el log de GitHub Actions previa a la ejecución de `assembleRelease`.
