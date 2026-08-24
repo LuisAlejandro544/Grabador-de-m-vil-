@@ -52,6 +52,13 @@ Este documento mantiene el estado de desarrollo, decisiones de arquitectura y ma
 - **`PermissionsSetupPage.kt`**: Centro interactivo con detección en tiempo real (`onResume` / `LifecycleEventObserver`) de permisos de Superposición (`SYSTEM_ALERT_WINDOW`), Micrófono, Cámara, Notificaciones y Almacenamiento, permitiendo su concesión individual o en lote con 1 toque.
 - **Persistencia Reactiva**: Gestionado por `SettingsRepository` (`KEY_ONBOARDING_COMPLETED`), propagado mediante `StateFlow` en `RecordViewModel` y con acceso directo de reapertura desde la pestaña de Ajustes.
 
+### 6. Matriz de Canales de Lanzamiento Multi-Instalación y Logo Adaptativo
+- **Identidad Visual Adaptativa (`VortexAppLogo.kt` & `ic_launcher`):** Sistema de logo en vórtice dinámico con tres aspas neón en espiral convergentes al centro de captura *REC*. Adapta sus tonos reactivamente según el canal de la aplicación (Dev: Púrpura/Magenta, Canary: Naranja/Ámbar, Beta: Azul/Cian, Stable: Verde/Menta).
+- **Canal DEV (`com.vortexstudio.recorder.dev` | `0.1.0-dev` | `1000`):** Exclusivo para depuración local, logs y profiling NDK.
+- **Canal CANARY (`com.vortexstudio.recorder.canary` | `0.1.0-canary.1` | `1001`):** Canal experimental para pruebas tempranas de la comunidad y recopilación de feedback.
+- **Canal BETA (`com.vortexstudio.recorder.beta` | `0.1.0-beta.1` | `1002`):** Versión candidata a lanzamiento para validación de compatibilidad multi-dispositivo.
+- **Canal STABLE (`com.vortexstudio.recorder` | `0.1.0` | `1003`):** Versión oficial de producción para tiendas de APKs (Uptodown, GitHub Releases).
+
 ---
 
 ## 🎯 Reglas de Calidad y Rendimiento

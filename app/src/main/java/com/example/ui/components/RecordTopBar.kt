@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -46,28 +47,36 @@ fun RecordTopBar(
         modifier = modifier,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.Videocam,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(12.dp))
+                val channel = com.example.model.ReleaseChannel.getCurrentChannel()
+                VortexAppLogo(
+                    size = 38.dp,
+                    channel = channel,
+                    modifier = Modifier.padding(end = 4.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Column {
-                    Text(
-                        text = "Vortex Studio",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Vortex Studio",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Surface(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp),
+                            color = channel.getBadgeColor().copy(alpha = 0.2f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, channel.getBadgeColor().copy(alpha = 0.5f)),
+                            modifier = Modifier.padding(start = 6.dp)
+                        ) {
+                            Text(
+                                text = channel.tag,
+                                color = channel.getBadgeColor(),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                            )
+                        }
+                    }
                     val statusText = when (status) {
                         RecordingStatus.RECORDING -> "Grabando (${formatSeconds(elapsedSeconds)})"
                         RecordingStatus.PAUSED -> "En pausa"

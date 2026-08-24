@@ -27,7 +27,8 @@ vortex-studio/
 │       │   │   │       └── VideoThumbnailEngine.kt    # Captura de fotogramas HD y Filmstrip
 │       │   │   ├── model/
 │       │   │   │   ├── RecordedVideo.kt
-│       │   │   │   └── RecordingConfig.kt        # Modelo con ImageFormatOption, Bitrate y Overlays
+│       │   │   │   ├── RecordingConfig.kt        # Modelo con ImageFormatOption, Bitrate y Overlays
+│       │   │   │   └── ReleaseChannel.kt         # Canales de versión (Dev, Canary, Beta, Estable) y Package IDs
 │       │   │   ├── data/
 │       │   │   │   ├── InstalledGamesHelper.kt
 │       │   │   │   ├── RecordingsRepository.kt
@@ -47,11 +48,14 @@ vortex-studio/
 │       │   │   │   ├── ScreenCaptureEngine.kt    # Coordinador con Shutdown Hook y cierre seguro
 │       │   │   │   ├── ScreenshotHelper.kt       # Capturador multiformato (PNG, JPG % y WebP)
 │       │   │   │   ├── ServiceParamsExtractor.kt # Validador y extractor de parámetros
-│       │   │   │   ├── FacecamOverlayManager.kt
-│       │   │   │   ├── FloatingBubbleManager.kt
-│       │   │   │   ├── TouchVisualizerOverlay.kt
-│       │   │   │   ├── WatermarkOverlayManager.kt
-│       │   │   │   ├── SceneOverlayManager.kt
+│       │   │   │   ├── FacecamOverlayManager.kt  # Orquestador de la ventana flotante de cámara
+│       │   │   │   ├── FloatingBubbleManager.kt  # Gestor de burbuja y menú de herramientas
+│       │   │   │   ├── TouchVisualizerOverlay.kt # Indicador táctil de pantalla
+│       │   │   │   ├── WatermarkOverlayManager.kt # Marca de agua y logotipo dinámico
+│       │   │   │   ├── SceneOverlayManager.kt    # Marcos PNG y alertas de escena
+│       │   │   │   ├── controller/               # Controladores de Notificaciones y Screenshots
+│       │   │   │   │   ├── ServiceNotificationController.kt # Actualización reactiva de notificación
+│       │   │   │   │   └── ServiceScreenshotController.kt   # Captura dual (ImageReader / Video Fallback)
 │       │   │   │   ├── state/                    # Gestor de Estado Centralizado
 │       │   │   │   │   └── ServiceStateManager.kt      # StateFlows reactivos desacoplados
 │       │   │   │   ├── receiver/                 # Receptores de Eventos del Sistema
@@ -60,6 +64,15 @@ vortex-studio/
 │       │   │   │   │   └── ServiceChronometerTimer.kt  # Tiempo y salvaguarda periódica de disco
 │       │   │   │   ├── dispatcher/               # Despachador de Acciones y Tipos de Servicio
 │       │   │   │   │   └── ServiceActionDispatcher.kt  # Foreground Types (A14+) y Overlays
+│       │   │   │   ├── facecam/                  # Submódulos de la Facecam Flotante
+│       │   │   │   │   ├── FacecamCameraEngine.kt      # Streaming CameraX, lente y target FPS
+│       │   │   │   │   ├── FacecamWindowHost.kt        # LayoutParams y gestión en WindowManager
+│       │   │   │   │   ├── FacecamViewHierarchy.kt     # Jerarquía de vistas, RGB y controles
+│       │   │   │   │   ├── FacecamControlsBar.kt       # Botonera desplegable de acciones
+│       │   │   │   │   ├── FacecamLifecycleOwner.kt    # LifecycleOwner desacoplado de Compose
+│       │   │   │   │   ├── FacecamRgbBorderView.kt     # Borde animado RGB arcoíris
+│       │   │   │   │   ├── FacecamShapeHelper.kt       # Recorte geométrico y dimensiones
+│       │   │   │   │   └── FacecamTouchDragHelper.kt   # Arrastre táctil y snap magnético
 │       │   │   │   ├── vtuber/                   # Sistema de Avatar 2D / PNGtuber
 │       │   │   │   ├── vumeter/                  # Vúmetro LED y Mezclador Flotante
 │       │   │   │   └── capture/                  # Codificadores, DSP y MuxerManager (Graceful Finalize)
@@ -94,7 +107,11 @@ vortex-studio/
 │       │   │       │   └── PermissionsSetupPage.kt     # Centro interactivo de concesión de permisos
 │       │   │       ├── tabs/                     # Tabs de Grabación y Galería
 │       │   │       └── components/               # Tarjetas y controles Compose
-│       │   │           ├── HomeModalsHost.kt               # Hospedaje modular de diálogos (Player y Editor)
+│       │   │           ├── RecordTopBar.kt                 # Barra superior con estado, logo adaptativo y timer
+│       │   │           ├── VortexAppLogo.kt                # Logo vectorial adaptativo (Vórtice neón multi-canal)
+│       │   │           ├── SettingsView.kt                 # Vista modular de configuración tipada
+│       │   │           ├── HomeModalsHost.kt               # Hospedaje modular de diálogos (Player, Editor y Countdown)
+│       │   │           ├── CountdownOverlayModal.kt        # Modal animado de cuenta atrás global y preparación
 │       │   │           ├── GameLauncherCard.kt             # Pantalla orquestadora de juegos
 │       │   │           ├── gamelauncher/                   # Componentes modulares del lanzador
 │       │   │           │   ├── GameLauncherHeaderBanner.kt # Banner y botón de refresco
@@ -102,6 +119,22 @@ vortex-studio/
 │       │   │           │   ├── GameLauncherItemCard.kt     # Tarjeta individual con lanzamiento directo
 │       │   │           │   └── GameLauncherEmptyState.kt   # Estado vacío y acciones rápidas
 │       │   │           └── settings/                       # Paneles modulares de configuración
+│       │   │               ├── SettingsEventHolders.kt     # Contenedores tipados de eventos de ajustes
+│       │   │               ├── OnboardingTutorialCard.kt   # Acceso directo al tutorial y permisos
+│       │   │               ├── VideoQualitySettingsCard.kt # Resolución, FPS y Bitrate
+│       │   │               ├── ImageFormatSettingsCard.kt  # PNG, JPG % y WebP Lossless
+│       │   │               ├── AudioSettingsCard.kt        # Audio DSP, Noise Gate y Ducking
+│       │   │               ├── FacecamSettingsCard.kt      # Facecam, RGB y Belleza
+│       │   │               ├── VtuberSettingsCard.kt       # PNGtuber 2D reactivo
+│       │   │               ├── TouchVisualizerSettingsCard.kt # Toques táctiles
+│       │   │               ├── WatermarkSettingsCard.kt    # Marca de agua superpuesta
+│       │   │               ├── SceneOverlaySettingsCard.kt # Marcos y alertas de escena
+│       │   │               ├── FloatingBubbleSettingsCard.kt # Burbuja flotante
+│       │   │               ├── GameModeCard.kt             # Modo juego
+│       │   │               ├── CountdownSettingsCard.kt    # Conteo regresivo
+│       │   │               ├── NativeModulesStatusCard.kt  # Monitor C++ y Rust
+│       │   │               ├── ReleaseChannelInfoCard.kt   # Canales de versión, Package IDs y ciclo de vida
+│       │   │               └── SettingsCard.kt             # Contenedor base de tarjeta
 │       │   └── res/                              # Recursos gráficos, iconos y estilos
 │       └── test/                                 # Tests unitarios y de arquitectura
 ├── AGENTS.md                   # Protocolo y roles de desarrollo

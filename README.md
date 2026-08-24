@@ -74,6 +74,29 @@ vortex-studio/
 
 ---
 
+## 🎨 Identidad Visual y Logo: «Vórtice Dinámico Adaptativo» (Multi-Canal)
+
+Vortex Studio utiliza un diseño de logo basado en un vórtice geométrico con tres aspas neón en espiral convergentes hacia un punto central de captura (*REC*). El icono es adaptativo a nivel de sistema (`adaptive-icon`) y a nivel de interfaz Jetpack Compose (`VortexAppLogo.kt`), adaptando su paleta de colores reactivamente según el canal de la aplicación instalada:
+- 🟣 **Canal Dev:** Vórtice en púrpura eléctrico y magenta neón (`#9C27B0` / `#E040FB`).
+- 🟠 **Canal Canary:** Vórtice en naranja ámbar y amarillo cálido (`#FF9800` / `#FFD54F`).
+- 🔵 **Canal Beta:** Vórtice en azul zafiro y cian brillante (`#2196F3` / `#00E5FF`).
+- 🟢 **Canal Estable:** Vórtice en verde esmeralda y menta fluorescente (`#4CAF50` / `#69F0AE`).
+
+---
+
+## 🏷️ Canales de Lanzamiento y Distribución Multi-Instalación (v0.1.0)
+
+Vortex Studio cuenta con una arquitectura de 4 canales de distribución con `applicationId` independientes, permitiendo tener instaladas las 4 versiones al mismo tiempo en el teléfono:
+
+| Canal | Nombre Visible | `applicationId` (Package) | Versión (`versionName`) | `versionCode` | Propósito |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 🟣 **Desarrollador (Dev)** | `Vortex (Dev)` | `com.vortexstudio.recorder.dev` | `0.1.0-dev` | `1000` | Exclusivo para compilación debug local, logs detallados e inspección NDK. |
+| 🟠 **Canary (Lab / Exp.)** | `Vortex Canary` | `com.vortexstudio.recorder.canary` | `0.1.0-canary.1` | `1001` | Funciones experimentales tempranas para recopilar feedback de la comunidad. |
+| 🔵 **Beta (RC)** | `Vortex Beta` | `com.vortexstudio.recorder.beta` | `0.1.0-beta.1` | `1002` | Versión candidata para pruebas de rendimiento en juegos y compatibilidad. |
+| 🟢 **Estable (Release)** | `Vortex Studio` | `com.vortexstudio.recorder` | `0.1.0` | `1003` | Versión oficial probada para tiendas de APKs (Uptodown, GitHub Releases). |
+
+---
+
 ## 📦 Distribución y Compatibilidad
 - **100% Autónomo y Autosuficiente:** No depende de Google Play Services ni servicios propietarios, ideal para distribución directa en APK, Uptodown o tiendas de terceros.
 - **Jetpack Compose + Material Design 3:** Interfaz fluida a 60 FPS.

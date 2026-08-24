@@ -15,8 +15,24 @@ Este documento detalla el progreso actual y las fases de desarrollo de **Vortex 
 | **Fase 5** | Editor de Video Avanzado (Recorte, División Split y Aspect Ratio 9:16) | ✅ Completado |
 | **Fase 6** | Protección Anti-Corrupción, Monitor de Disco & Formato de Imagen Multiformato | ✅ Completado |
 | **Fase 7** | Flujo de Onboarding, Centro de Permisos & Limpieza de Dependencias Google | ✅ Completado |
-| **Fase 8** | Despliegue Automatizado a Telegram (CI/CD) & Transmisión en Vivo RTMP / SRT con Rust | ⏳ En Progreso / Base Lista |
-| **Fase 9** | Buffer de Repetición Instantánea (Instant Replay / Clips de 30s) | 📅 Planificado |
+| **Fase 8** | Matriz de 4 Canales (Dev, Canary, Beta, Estable) & Despliegue CI/CD a Telegram | ✅ Completado |
+| **Fase 9** | Transmisión en Vivo RTMP / SRT con Rust & Buffer de Repetición (Clips 30s) | ⏳ En Progreso / Base Lista |
+
+---
+
+## 🌟 Detalle de la Fase 8: Matriz de 4 Canales de Distribución (Completada)
+
+- [x] **Arquitectura de 4 Canales Multi-Instalación:**
+  - `DEV` (`com.vortexstudio.recorder.dev` | `0.1.0-dev` | `1000`): Compilación debug y herramientas de diagnóstico.
+  - `CANARY` (`com.vortexstudio.recorder.canary` | `0.1.0-canary.1` | `1001`): Canal experimental para recopilar feedback de la comunidad.
+  - `BETA` (`com.vortexstudio.recorder.beta` | `0.1.0-beta.1` | `1002`): Versión candidata para pruebas de compatibilidad y 60 FPS en juegos.
+  - `STABLE` (`com.vortexstudio.recorder` | `0.1.0` | `1003`): Versión oficial para tiendas de APKs (Uptodown, GitHub Releases).
+- [x] **Identidad Visual Adaptativa (Opción 5: «Vórtice Dinámico Adaptativo»):**
+  - Icono adaptativo del sistema (`adaptive-icon`) y composable vectorial `VortexAppLogo` que adapta sus tonos de neón y vórtice según el canal activo (Púrpura Dev, Naranja Canary, Azul Beta, Verde Estable).
+- [x] **Visualización en UI y Ajustes:**
+  - Tarjeta `ReleaseChannelInfoCard` en los ajustes y badge identificador reactivo en la barra superior `RecordTopBar`.
+- [x] **Despliegue Automatizado a Telegram en CI/CD:**
+  - Empaquetado `.7z` con compresión ultra LZMA2 (Nivel 9) y entrega directa a Telegram sin depender de Google Play.
 
 ---
 

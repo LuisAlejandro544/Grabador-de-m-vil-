@@ -7,6 +7,8 @@ import android.util.Log
 import com.example.data.SettingsRepository
 import com.example.model.AudioSourceType
 import com.example.model.RecordingStatus
+import com.example.service.controller.ServiceNotificationController
+import com.example.service.controller.ServiceScreenshotController
 import com.example.service.dispatcher.OverlayActionCallbacks
 import com.example.service.dispatcher.ServiceActionDispatcher
 import com.example.service.overlay.ServiceOverlayCoordinator
@@ -24,6 +26,8 @@ import java.io.File
  * Coordina:
  * - [ScreenCaptureEngine]: Motor de codificación y captura multimedia.
  * - [ServiceStateManager]: Gestor centralizado del estado reactivo del servicio.
+ * - [ServiceNotificationController]: Gestión de notificaciones en primer plano.
+ * - [ServiceScreenshotController]: Captura de instantáneas dual (ImageReader / Video Frame).
  * - [ServiceChronometerTimer]: Cronómetro en tiempo real y salvaguarda de espacio en disco.
  * - [ServiceEmergencyReceiver]: Manejador de eventos de batería y almacenamiento crítico.
  * - [ServiceActionDispatcher]: Enrutamiento y lanzamiento de tipos de Foreground Service y Overlays.
@@ -80,6 +84,8 @@ class ScreenRecordService : Service() {
 
     private lateinit var captureEngine: ScreenCaptureEngine
     private lateinit var notificationHelper: RecordNotificationHelper
+    private lateinit var notificationController: ServiceNotificationController
+    private lateinit var screenshotController: ServiceScreenshotController
     private lateinit var overlayCoordinator: ServiceOverlayCoordinator
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var emergencyReceiver: ServiceEmergencyReceiver
@@ -98,6 +104,8 @@ class ScreenRecordService : Service() {
         super.onCreate()
         captureEngine = ScreenCaptureEngine(this)
         notificationHelper = RecordNotificationHelper(this)
+        notificationController = ServiceNotificationController(notificationHelper)
+        screenshotController = ServiceScreenshotController(this, captureEngine)
         settingsRepository = SettingsRepository(this)
 
         overlayCoordinator = ServiceOverlayCoordinator(
@@ -200,11 +208,7 @@ class ScreenRecordService : Service() {
         val isAudioEnabled = params.audioSource != AudioSourceType.NONE.name
 
         // 1. Iniciar Foreground Service con tipos específicos (Android 14+)
-        val initialNotification = notificationHelper.buildForegroundNotification(
-            0,
-            isPaused = false,
-            isMicrophoneEnabled = isAudioEnabled
-        )
+        val initialNotification = notificationController.buildInitialNotification(isAudioEnabled)
         actionDispatcher.startForegroundWithType(initialNotification, isAudioEnabled, params.showFacecam)
 
         // 2. Preparar archivo de destino
@@ -264,8 +268,7 @@ class ScreenRecordService : Service() {
         val newMuted = captureEngine.toggleMicrophoneMuted()
         ServiceStateManager.setMicMuted(newMuted)
         overlayCoordinator.updateBubbleMicStatus(newMuted)
-        notificationHelper.updateNotification(
-            ServiceStateManager.elapsedSeconds.value.toLong(),
+        notificationController.updateNotification(
             isPaused = captureEngine.isPaused,
             isMicrophoneEnabled = !newMuted
         )
@@ -276,8 +279,7 @@ class ScreenRecordService : Service() {
         if (captureEngine.pauseCapture()) {
             ServiceStateManager.setRecordingState(RecordingStatus.PAUSED)
             overlayCoordinator.updateBubbleStatus(isPaused = true)
-            notificationHelper.updateNotification(
-                ServiceStateManager.elapsedSeconds.value.toLong(),
+            notificationController.updateNotification(
                 isPaused = true,
                 isMicrophoneEnabled = !captureEngine.isMicrophoneMuted
             )
@@ -288,8 +290,7 @@ class ScreenRecordService : Service() {
         if (captureEngine.resumeCapture()) {
             ServiceStateManager.setRecordingState(RecordingStatus.RECORDING)
             overlayCoordinator.updateBubbleStatus(isPaused = false)
-            notificationHelper.updateNotification(
-                ServiceStateManager.elapsedSeconds.value.toLong(),
+            notificationController.updateNotification(
                 isPaused = false,
                 isMicrophoneEnabled = !captureEngine.isMicrophoneMuted
             )
@@ -297,37 +298,12 @@ class ScreenRecordService : Service() {
     }
 
     private fun handleScreenshotAction() {
-        if (captureEngine.activeProjection != null) {
-            captureEngine.takeScreenshot(
-                context = this,
-                width = currentRecWidth,
-                height = currentRecHeight,
-                densityDpi = currentDensityDpi,
-                onSuccess = { shotFile ->
-                    Log.i(TAG, "Screenshot tomado exitosamente: ${shotFile.absolutePath}")
-                },
-                onError = { err ->
-                    Log.w(TAG, "Fallo ImageReader, intentando fallback: $err")
-                    currentActiveFile?.let { videoFile ->
-                        ScreenshotHelper.captureFrameFromVideo(
-                            context = this,
-                            videoFile = videoFile,
-                            onSuccess = { f -> Log.i(TAG, "Screenshot fallback OK: ${f.absolutePath}") },
-                            onError = { e -> Log.e(TAG, "Screenshot fallback falló: $e") }
-                        )
-                    }
-                }
-            )
-        } else {
-            currentActiveFile?.let { videoFile ->
-                ScreenshotHelper.captureFrameFromVideo(
-                    context = this,
-                    videoFile = videoFile,
-                    onSuccess = { shotFile -> Log.i(TAG, "Screenshot tomado desde video: ${shotFile.absolutePath}") },
-                    onError = { err -> Log.w(TAG, "Screenshot no capturado: $err") }
-                )
-            }
-        }
+        screenshotController.captureScreenshot(
+            width = currentRecWidth,
+            height = currentRecHeight,
+            densityDpi = currentDensityDpi,
+            activeFile = currentActiveFile
+        )
     }
 
     private fun handleStopAction() {
@@ -389,4 +365,3 @@ class ScreenRecordService : Service() {
         super.onDestroy()
     }
 }
-

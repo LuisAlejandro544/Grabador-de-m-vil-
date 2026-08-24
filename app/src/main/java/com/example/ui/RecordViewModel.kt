@@ -270,36 +270,27 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         val countdown = config.countdownSeconds
         pendingLaunchGamePackage = targetGamePackage
 
-        if (targetGamePackage != null) {
-            // 1. Iniciar el Foreground Service PRIMERO mientras la app aún está en primer plano (actividad visible).
-            // Esto garantiza que Android 14+ autorice el uso del micrófono y media projection sin restricciones 'while-in-use'.
+        if (countdown > 0) {
+            countdownManager.startCountdown(countdown) {
+                // 1. Iniciar el Foreground Service al completar la cuenta atrás
+                RecordServiceLauncher.startService(
+                    context = getApplication(),
+                    resultCode = resultCode,
+                    resultData = resultData,
+                    config = _config.value
+                )
+
+                // 2. Si se solicitó grabar un juego o aplicación específica, lanzarla ahora
+                launchPendingGame()
+            }
+        } else {
             RecordServiceLauncher.startService(
                 context = getApplication(),
                 resultCode = resultCode,
                 resultData = resultData,
                 config = config
             )
-
-            // 2. Abrir el juego inmediatamente
             launchPendingGame()
-        } else {
-            if (countdown > 0) {
-                countdownManager.startCountdown(countdown) {
-                    RecordServiceLauncher.startService(
-                        context = getApplication(),
-                        resultCode = resultCode,
-                        resultData = resultData,
-                        config = _config.value
-                    )
-                }
-            } else {
-                RecordServiceLauncher.startService(
-                    context = getApplication(),
-                    resultCode = resultCode,
-                    resultData = resultData,
-                    config = config
-                )
-            }
         }
     }
 

@@ -9,12 +9,28 @@ android {
   namespace = "com.example"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
+  // =========================================================================
+  // MATRIZ DE CANALES DE DISTRIBUCIÓN (v0.1.0)
+  // Configuración de canales de lanzamiento: "dev", "canary", "beta", "stable"
+  // Permite alternar la variante fácilmente modificando ACTIVE_CHANNEL o con -PvortexChannel=canary
+  // =========================================================================
+  val activeChannelId = (project.findProperty("vortexChannel") as? String) ?: "dev"
+  val (targetAppId, targetVerCode, targetVerName, allowExp) = when (activeChannelId.lowercase()) {
+    "canary" -> listOf("com.vortexstudio.recorder.canary", 1001, "0.1.0-canary.1", true)
+    "beta"   -> listOf("com.vortexstudio.recorder.beta", 1002, "0.1.0-beta.1", false)
+    "stable" -> listOf("com.vortexstudio.recorder", 1003, "0.1.0", false)
+    else     -> listOf("com.vortexstudio.recorder.dev", 1000, "0.1.0-dev", true) // Por defecto: dev
+  }
+
   defaultConfig {
-    applicationId = "com.aistudio.screenrecorder.vzkqpm"
+    applicationId = targetAppId as String
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    versionCode = targetVerCode as Int
+    versionName = targetVerName as String
+
+    buildConfigField("String", "RELEASE_CHANNEL", "\"$activeChannelId\"")
+    buildConfigField("boolean", "ENABLE_EXPERIMENTAL_FEATURES", "$allowExp")
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

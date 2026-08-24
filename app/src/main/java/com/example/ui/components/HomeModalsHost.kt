@@ -40,4 +40,13 @@ fun HomeModalsHost(
             }
         )
     }
+
+    // Modal de Cuenta Atrás Global (permite prepararse al grabar desde cualquier pantalla/juego)
+    if (uiState.isCountingDown && uiState.countdownNumber > 0) {
+        CountdownOverlayModal(
+            countdownNumber = uiState.countdownNumber,
+            isGameMode = uiState.config.isGameMode,
+            onCancelCountdown = { viewModel.cancelCountdown() }
+        )
+    }
 }
