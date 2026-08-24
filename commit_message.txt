@@ -1,19 +1,10 @@
-ci: consolidación de changelog oficial y suite completa de Vortex Studio para Pre-releases
+ci: configuración y optimización de ProGuard y R8 para APK Beta Release
 
-- Documentación y Gestión de Release:
-  * Eliminación del archivo duplicado y consolidación definitiva en `changelog-beta-release.md`.
-  * Integración completa en el changelog de las especificaciones y versión oficial: `v0.1.0-beta.1` (Version Code `1002`, `com.vortexstudio.recorder.beta`).
-  * Detalle exhaustivo de todas las características de la suite:
-    1. Motor de Captura 60 FPS H.264 por GPU con Bitrate de 4 a 50 Mbps y refresco de frames estáticos.
-    2. Sincronización A/V de Latencia Cero (Zero-Latency Sync Engine) con timestamps continuos PCM y compensador de delay (-200 ms a +200 ms).
-    3. Suite de Audio DSP Nativo en C++ (Noise Gate, Ducking automático, Vúmetro LED flotante en dB y muestreo de estudio).
-    4. Facecam Pro con CameraX (30/60 FPS, marco RGB Cyberpunk, filtro belleza) y Avatar 2D/PNGtuber reactivo a la voz.
-    5. Overlays de Escena personalizables, marcas de agua con opacidad y visualizador de toques en tiempo real.
-    6. Editor de Video con recorte (Trim), división (Split) y reescalado de aspect ratio (16:9 y 9:16) con motor nativo Rust.
-    7. Protección Anti-Corrupción Graceful Finalize con Shutdown Hooks y monitor de almacenamiento en tiempo real.
-    8. Burbuja flotante multitarea translúcida con diseño Cyberpunk Dark en Material 3.
+- Optimización y Reducción de Tamaño de APK:
+  * Activación de `isMinifyEnabled = true` y `isShrinkResources = true` en el buildType `release` de `app/build.gradle.kts` para el canal Beta.
+  * Implementación de reglas completas en `app/proguard-rules.pro` para eliminación de código muerto (tree shaking) y ofuscación segura.
 
-- Pipeline de CI/CD (`.github/workflows/build-beta-release.yml`):
-  * Actualización de la ruta de extracción para inyectar automáticamente `changelog-beta-release.md` en el cuerpo del Pre-release de GitHub.
-  * Compilación limpia (Clean Build sin caché) de Java 17, Android SDK 36, NDK C++ y Rust Toolchain.
-  * Firma Release y distribución directa del archivo `.apk` a GitHub Releases y Telegram.
+- Protección de Puentes Nativos JNI y Componentes del Sistema:
+  * Preservación estricta de métodos nativos (`native <methods>`) y clases de `com.example.nativecore.**` para garantizar compatibilidad con librerías C++ (NDK) y Rust.
+  * Conservación de modelos de datos, anotaciones de Moshi (`@JsonClass`) y entidades de Room.
+  * Reglas dedicadas para Jetpack Compose, CameraX, Kotlin Coroutines y Services/BroadcastReceivers del sistema.

@@ -1,21 +1,71 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# =============================================================================
+# Vortex Studio - ProGuard & R8 Optimization Rules
+# =============================================================================
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# 1. Conservar Atributos Esenciales y Metadatos para Debugging
+-keepattributes *Annotation*, Signature, InnerClasses, EnclosingMethod, SourceFile, LineNumberTable
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# 2. Puentes Nativos JNI (C++ NDK & Rust) - CRÍTICO
+# Evita la ofuscación o eliminación de métodos nativos en tiempo de compilación
+-keepclasseswithmembernames,includedescriptorclasses class * {
+    native <methods>;
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+-keep class com.example.nativecore.** { *; }
+-keepclassmembers class com.example.nativecore.** { *; }
+
+# 3. Modelos de Datos, Serialización (Moshi) y Repositorios
+-keep class com.example.model.** { *; }
+-keepclassmembers class com.example.model.** { *; }
+-keep class com.example.data.** { *; }
+-keepclassmembers class com.example.data.** { *; }
+
+-keep class com.squareup.moshi.** { *; }
+-keepclassmembers class com.squareup.moshi.** { *; }
+-keep @com.squareup.moshi.JsonClass class * { *; }
+
+# 4. Servicios en Primer Plano, Receptores de Sistema y Overlays Flotantes
+-keep class com.example.service.** { *; }
+-keep class * extends android.app.Service
+-keep class * extends android.content.BroadcastReceiver
+-keep class * extends android.view.View {
+    public <init>(android.content.Context);
+    public <init>(android.content.Context, android.util.AttributeSet);
+    public <init>(android.content.Context, android.util.AttributeSet, int);
+    public void set*(...);
+    public <fields>;
+}
+
+# 5. Jetpack Compose & Kotlin Coroutines
+-keep class androidx.compose.runtime.** { *; }
+-keep class androidx.compose.ui.** { *; }
+-dontwarn androidx.compose.**
+
+-keepclassmembers class kotlinx.coroutines.** {
+    volatile <fields>;
+}
+-keep class kotlinx.coroutines.android.** { *; }
+-dontwarn kotlinx.coroutines.**
+
+# 6. CameraX & AndroidX Lifecycle
+-keep class androidx.camera.** { *; }
+-keepclassmembers class androidx.camera.** { *; }
+-dontwarn androidx.camera.**
+-keep class androidx.lifecycle.** { *; }
+
+# 7. Redes (OkHttp & Retrofit)
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-dontwarn retrofit2.**
+-keep class retrofit2.** { *; }
+-keepclassmembers,allowshrinking,allowobfuscation interface * {
+    @retrofit2.http.* <methods>;
+}
+
+# 8. Room Database
+-keep class androidx.room.** { *; }
+-dontwarn androidx.room.**
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Dao interface * { *; }
+-keep @androidx.room.Entity class * { *; }
+
