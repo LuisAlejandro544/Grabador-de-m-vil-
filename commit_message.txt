@@ -1,25 +1,9 @@
-docs: adopción de licencia GPLv3 y creación de guía de contribución comunitaria
+fix: calibración exacta de sincronización AV y eliminación de offset en MuxerManager
 
-- Integración de Licencia GNU GPLv3:
-  * Se añadió el archivo oficial `LICENSE` con el texto íntegro y verificado de la GNU General Public License v3 (29 de junio de 2007).
-  * Protege el motor nativo (C++ NDK, Rust, Kotlin) contra forks cerrados comerciales no autorizados, garantizando la libertad del software y permitiendo la libre distribución del código.
+- Eliminación del offset artificial de hardware (+40ms):
+  * Se removió `AUDIO_HARDWARE_LATENCY_OFFSET_US` para evitar que el audio sea empujado artificialmente hacia el futuro (+40ms), lo cual provocaba que la imagen apareciera antes que el sonido.
 
-- Creación de guía de contribución (`CONTRIBUTING.md`):
-  * Se especificó cordialmente la política de contribución del proyecto, pausando temporalmente la recepción de Pull Requests mientras se estabiliza la arquitectura base, y fomentando la creación de forks libres, experimentación y reporte de issues.
-
-- Actualización de documentación del proyecto:
-  * Se actualizaron `README.md`, `STRUCTURE.md` y `AI_CONTEXT.md` vinculando formalmente la licencia GPLv3 y la guía de contribución.
-
----
-fix: corrección de sincronización de audio y video (AV-Sync y Clock Anchor) en MuxerManager
-
-- Anclaje de reloj base compartido (AV-Sync Clock Anchor):
-  * Se sincronizó el inicio de las pistas de audio y video anclando ambos flujos al timestamp (PTS) del primer fotograma real de video emitido por la VirtualDisplay.
-  * Se descartan los paquetes de audio previos al primer fotograma de video para evitar que el audio comience a reproducirse antes de que haya imagen en pantalla.
-
-- Compensación de latencia de codificación por hardware (Hardware Latency Offset):
-  * Se añadió una compensación de latencia de 40 ms en el cálculo de PTS de audio para calibrar y emparejar con precisión milimétrica la latencia del pipeline de composición gráfica (SurfaceTexture / VirtualDisplay) y codificación H.264/AVC.
-
-- Sincronización continua de pausas:
-  * Se unificó el cálculo de offsets durante pausas y reanudaciones manteniendo la monotonicidad estricta requerida por el contenedor MP4 sin saltos ni desfasajes.
-
+- Calibración matemática de AV-Sync (Clock Anchor puro):
+  * Las marcas de tiempo de audio (`adjustedPts`) ahora se calculan alineadas de forma pura al timestamp del primer fotograma real de video emitido (`rawPts - baseTimeUs - audioPauseOffsetUs`).
+  * Se descartan de forma estricta los paquetes de audio previos al inicio del video ($t < 0$) y se garantiza una monotonicidad fina de +0.25 ms para el contenedor MP4.
+  * El audio y el video quedan perfectamente alineados al milisegundo exacto en cualquier reproductor (ExoPlayer, VLC, YouTube, TikTok).

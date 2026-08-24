@@ -19,10 +19,6 @@ class MuxerManager(
 
     companion object {
         private const val TAG = "MuxerManager"
-        // Compensación de latencia de codificación por hardware de video (~40ms en microsegundos).
-        // Los fotogramas de la VirtualDisplay pasan por composición gráfica y compresión AVC;
-        // este offset alinea el audio al fotograma exacto renderizado en pantalla.
-        private const val AUDIO_HARDWARE_LATENCY_OFFSET_US = 40_000L
     }
 
     private val lock = Object()
@@ -174,15 +170,15 @@ class MuxerManager(
                     }
                     lastAudioRawPtsUs = rawPts
 
-                    // Calcular PTS anclado al reloj del video + compensación de latencia de hardware
-                    var adjustedPts = (rawPts - baseTimeUs) - audioPauseOffsetUs + AUDIO_HARDWARE_LATENCY_OFFSET_US
+                    // Calcular PTS anclado al reloj del primer fotograma de video (AV-Sync a 0ms)
+                    var adjustedPts = (rawPts - baseTimeUs) - audioPauseOffsetUs
                     if (adjustedPts < 0L) {
                         return
                     }
 
                     // Garantizar monotonicidad estricta para audio
                     if (adjustedPts <= lastAudioWrittenPtsUs) {
-                        adjustedPts = lastAudioWrittenPtsUs + 500L // +0.5ms para audio
+                        adjustedPts = lastAudioWrittenPtsUs + 250L // +0.25ms para granularidad fina de audio
                     }
                     lastAudioWrittenPtsUs = adjustedPts
                     bufferInfo.presentationTimeUs = adjustedPts
