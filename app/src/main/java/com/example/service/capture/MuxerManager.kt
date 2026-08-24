@@ -9,6 +9,8 @@ import java.nio.ByteBuffer
 
 /**
  * Gestor sincronizado de MediaMuxer para empaquetar pistas H.264 de video y AAC de audio en formato MP4.
+ * Incorpora anclaje de reloj compartido (AV-Sync Clock Anchor) y compensación de latencia de codificación
+ * por hardware para eliminar cualquier desfase o adelanto del audio respecto al video.
  */
 class MuxerManager(
     private val outputFile: File,
@@ -17,6 +19,10 @@ class MuxerManager(
 
     companion object {
         private const val TAG = "MuxerManager"
+        // Compensación de latencia de codificación por hardware de video (~40ms en microsegundos).
+        // Los fotogramas de la VirtualDisplay pasan por composición gráfica y compresión AVC;
+        // este offset alinea el audio al fotograma exacto renderizado en pantalla.
+        private const val AUDIO_HARDWARE_LATENCY_OFFSET_US = 40_000L
     }
 
     private val lock = Object()
@@ -27,12 +33,16 @@ class MuxerManager(
     private var isReleased = false
     private var samplesWrittenCount = 0L
 
-    // Sincronización continua de PTS para soportar Pausa / Reanudación sin saltos ni desincronización
-    private var videoPtsOffsetUs = 0L
+    // Sincronización AV: Reloj base compartido anclado al primer fotograma de video
+    private var baseTimeUs = -1L
+
+    // Control de PTS de video
+    private var videoPauseOffsetUs = 0L
     private var lastVideoRawPtsUs = -1L
     private var lastVideoWrittenPtsUs = -1L
 
-    private var audioPtsOffsetUs = 0L
+    // Control de PTS de audio
+    private var audioPauseOffsetUs = 0L
     private var lastAudioRawPtsUs = -1L
     private var lastAudioWrittenPtsUs = -1L
 
@@ -94,18 +104,31 @@ class MuxerManager(
             if (muxerStarted && videoTrackIndex != -1 && !isReleased) {
                 try {
                     val rawPts = bufferInfo.presentationTimeUs
+                    val isKeyFrame = (bufferInfo.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0
+
+                    // 1. Establecer el reloj base compartido con el primer fotograma de video
+                    if (baseTimeUs == -1L) {
+                        baseTimeUs = rawPts
+                        Log.i(TAG, "Reloj base AV anclado al primer fotograma de video: baseTimeUs=$baseTimeUs (KeyFrame=$isKeyFrame)")
+                    }
+
+                    // 2. Compensar pausas o saltos de tiempo prolongados (>100ms)
                     if (lastVideoRawPtsUs != -1L) {
                         val gap = rawPts - lastVideoRawPtsUs
-                        // Si hubo una pausa o salto mayor a 100ms (100000us), compensar el desfase
                         if (gap > 100_000L) {
                             val normalIntervalUs = 16_666L // ~60fps
-                            videoPtsOffsetUs += (gap - normalIntervalUs)
+                            videoPauseOffsetUs += (gap - normalIntervalUs)
                         }
                     }
                     lastVideoRawPtsUs = rawPts
 
-                    var adjustedPts = rawPts - videoPtsOffsetUs
-                    // Garantizar monotonicidad estricta para evitar rechazo en el contenedor MP4
+                    // 3. Normalizar PTS relativo al inicio (t=0)
+                    var adjustedPts = (rawPts - baseTimeUs) - videoPauseOffsetUs
+                    if (adjustedPts < 0L) {
+                        adjustedPts = 0L
+                    }
+
+                    // 4. Garantizar monotonicidad estricta para el contenedor MP4
                     if (adjustedPts <= lastVideoWrittenPtsUs) {
                         adjustedPts = lastVideoWrittenPtsUs + 1000L // +1ms de seguridad
                     }
@@ -133,21 +156,33 @@ class MuxerManager(
             }
             if (muxerStarted && audioTrackIndex != -1 && !isReleased) {
                 try {
+                    // CRÍTICO: Descartar muestras de audio previas a la inicialización del video
+                    // para evitar que el audio arranque antes de que exista imagen en pantalla.
+                    if (baseTimeUs == -1L) {
+                        return
+                    }
+
                     val rawPts = bufferInfo.presentationTimeUs
+
+                    // Compensar pausas o saltos en la captura de audio (>100ms)
                     if (lastAudioRawPtsUs != -1L) {
                         val gap = rawPts - lastAudioRawPtsUs
-                        // Si hubo un salto mayor a 100ms, compensar en audio
                         if (gap > 100_000L) {
                             val normalAudioIntervalUs = 21_333L // ~1024 samples @ 48kHz
-                            audioPtsOffsetUs += (gap - normalAudioIntervalUs)
+                            audioPauseOffsetUs += (gap - normalAudioIntervalUs)
                         }
                     }
                     lastAudioRawPtsUs = rawPts
 
-                    var adjustedPts = rawPts - audioPtsOffsetUs
-                    // Garantizar monotonicidad estricta
+                    // Calcular PTS anclado al reloj del video + compensación de latencia de hardware
+                    var adjustedPts = (rawPts - baseTimeUs) - audioPauseOffsetUs + AUDIO_HARDWARE_LATENCY_OFFSET_US
+                    if (adjustedPts < 0L) {
+                        return
+                    }
+
+                    // Garantizar monotonicidad estricta para audio
                     if (adjustedPts <= lastAudioWrittenPtsUs) {
-                        adjustedPts = lastAudioWrittenPtsUs + 1000L
+                        adjustedPts = lastAudioWrittenPtsUs + 500L // +0.5ms para audio
                     }
                     lastAudioWrittenPtsUs = adjustedPts
                     bufferInfo.presentationTimeUs = adjustedPts

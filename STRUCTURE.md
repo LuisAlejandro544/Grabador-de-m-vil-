@@ -107,6 +107,8 @@ vortex-studio/
 ├── AGENTS.md                   # Protocolo y roles de desarrollo
 ├── AI_CONTEXT.md               # Memoria de arquitectura del proyecto
 ├── commit_message.txt          # Historial de cambios en español
+├── CONTRIBUTING.md             # Guía de contribución comunitaria y política de PRs
+├── LICENSE                     # Licencia Pública General de GNU v3 (GPLv3)
 ├── README.md                   # Documentación general del producto
 ├── ROADMAP.md                  # Mapa de fases y objetivos
 └── STRUCTURE.md                # Árbol y descripción del código

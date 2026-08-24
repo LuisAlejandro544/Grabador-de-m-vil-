@@ -59,3 +59,5 @@ Este documento mantiene el estado de desarrollo, decisiones de arquitectura y ma
 - **60 FPS constantes:** Interfaz Jetpack Compose reactiva con `StateFlow` y sin bloqueos en el hilo principal.
 - **Independencia y Cero Basura de Google:** Eliminadas dependencias obsoletas de Firebase, Auth, Play Services y Firestore. 100% autosuficiente para distribución en Uptodown, GitHub Releases y APKs de terceros.
 - **Almacenamiento Público:** Los videos recortados, divididos y miniaturas se registran automáticamente en `MediaStore` / `MediaScannerConnection`.
+- **Licencia & Distribución:** Licenciado bajo **GNU General Public License v3 (GPLv3)** con archivo `LICENSE`. Se cuenta con `CONTRIBUTING.md` detallando la política actual de contribución (PRs en pausa temporal mientras se estabiliza la base, permitiendo forks y experimentación libre bajo GPLv3).
+

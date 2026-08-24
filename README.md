@@ -97,3 +97,14 @@ Para activar el envío a Telegram, añade las siguientes variables en **Settings
 2. Ábrelo con **ZArchiver** (o el explorador de archivos integrado de tu teléfono).
 3. Extrae e instala el archivo APK con 1 toque.
 
+---
+
+## 🤝 Contribuciones
+Por el momento no estamos aceptando Pull Requests (PRs) mientras estabilizamos la arquitectura base del proyecto, pero eres completamente libre de hacer **forks** y experimentar. Consulta [CONTRIBUTING.md](CONTRIBUTING.md) para más detalles.
+
+---
+
+## 📄 Licencia
+Este proyecto está distribuido y protegido bajo los términos de la **Licencia Pública General de GNU v3 (GPLv3)**. Consulta el archivo [LICENSE](LICENSE) para ver el texto legal completo.
+
+
