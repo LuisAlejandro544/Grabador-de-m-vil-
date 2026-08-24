@@ -12,11 +12,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AvTimer
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Hearing
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -50,6 +52,7 @@ fun AudioSettingsCard(
     micAudioGain: Float = 1.0f,
     noiseGateEnabled: Boolean = false,
     audioDuckingEnabled: Boolean = false,
+    avSyncOffsetMs: Int = 0,
     onUpdateAudioSource: (AudioSourceType) -> Unit,
     onUpdateAudioSampleRate: (AudioSampleRate) -> Unit,
     onToggleFloatingVuMeter: (Boolean) -> Unit = {},
@@ -57,6 +60,7 @@ fun AudioSettingsCard(
     onUpdateMicGain: (Float) -> Unit = {},
     onToggleNoiseGate: (Boolean) -> Unit = {},
     onToggleAudioDucking: (Boolean) -> Unit = {},
+    onUpdateAvSyncOffset: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -306,7 +310,92 @@ fun AudioSettingsCard(
             }
         }
 
-        // 3. Frecuencia de Muestreo de Audio (Sample Rate)
+        // 3. Calibración y Sincronización A/V (Audio / Video Sync Offset)
+        SettingsCard(
+            title = "Calibración y Sincronización A/V",
+            subtitle = "Ajusta la sincronización si en tu hardware el audio suena desfasado respecto al video",
+            icon = Icons.Default.Sync
+        ) {
+            Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.AvTimer,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Compensación de Delay A/V",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Text(
+                        text = when {
+                            avSyncOffsetMs == 0 -> "0 ms (Sincronización Pura)"
+                            avSyncOffsetMs > 0 -> "+$avSyncOffsetMs ms (Audio adelantado)"
+                            else -> "$avSyncOffsetMs ms (Audio retrasado)"
+                        },
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (avSyncOffsetMs == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "Ajusta en milisegundos para corregir latencias de composición de pantalla en GPU o buffers de audio.",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Slider(
+                    value = avSyncOffsetMs.toFloat(),
+                    onValueChange = { onUpdateAvSyncOffset(it.roundToInt()) },
+                    valueRange = -200f..200f,
+                    steps = 15,
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier.testTag("av_sync_offset_slider")
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "-200 ms (Retrasar)",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "0 ms (Óptimo)",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "+200 ms (Adelantar)",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        // 4. Frecuencia de Muestreo de Audio (Sample Rate)
         SettingsCard(
             title = "Frecuencia de Muestreo de Audio (Sample Rate)",
             subtitle = "Controla la resolución acústica y fidelidad de los canales de audio",

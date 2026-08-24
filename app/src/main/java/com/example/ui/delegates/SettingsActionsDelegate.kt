@@ -45,6 +45,7 @@ class SettingsActionsDelegate(
     fun updateMicAudioGain(gain: Float) = settingsRepository.updateMicAudioGain(gain)
     fun toggleNoiseGate(enabled: Boolean) = settingsRepository.toggleNoiseGate(enabled)
     fun toggleAudioDucking(enabled: Boolean) = settingsRepository.toggleAudioDucking(enabled)
+    fun updateAvSyncOffset(offsetMs: Int) = settingsRepository.updateAvSyncOffset(offsetMs)
 
     fun updateCountdown(seconds: Int) = settingsRepository.updateCountdown(seconds)
 

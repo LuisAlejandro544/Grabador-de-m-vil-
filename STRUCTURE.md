@@ -2,7 +2,7 @@
 
 ```
 vortex-studio/
-├── .github/workflows/          # CI/CD Workflows para compilación de APK
+├── .github/workflows/          # CI/CD Workflows (build-apk.yml y build-beta-release.yml)
 ├── app/
 │   ├── build.gradle.kts        # Configuración de compilación Android y dependencias
 │   └── src/
@@ -75,14 +75,14 @@ vortex-studio/
 │       │   │   │   │   └── FacecamTouchDragHelper.kt   # Arrastre táctil y snap magnético
 │       │   │   │   ├── vtuber/                   # Sistema de Avatar 2D / PNGtuber
 │       │   │   │   ├── vumeter/                  # Vúmetro LED y Mezclador Flotante
-│       │   │   │   └── capture/                  # Codificadores, DSP y MuxerManager (Graceful Finalize)
-│       │   │   │       ├── AudioEncoderWorker.kt     # Hilo dedicado de codificación AAC y drenado
-│       │   │   │       ├── AudioPipelineModule.kt    # Orquestador de captura de audio y DSP
+│       │   │   │   └── capture/                  # Codificadores, DSP y MuxerManager (Zero-Latency AV Sync Engine)
+│       │   │   │       ├── AudioEncoderWorker.kt     # Hilo dedicado de codificación AAC con PTS continuo y sample-accurate
+│       │   │   │       ├── AudioPipelineModule.kt    # Orquestador de captura de audio, compensador de delay y DSP
 │       │   │   │       ├── AudioDspMixer.kt          # Mezclador DSP C++ y ducking
 │       │   │   │       ├── InternalAudioWorker.kt    # Captura de audio interno de juegos
 │       │   │   │       ├── MicAudioWorker.kt         # Captura de micrófono y amplitudes
-│       │   │   │       ├── VideoEncoderModule.kt     # Codificador H.264/AVC por hardware
-│       │   │   │       └── MuxerManager.kt           # Multiplexor MP4 seguro
+│       │   │   │       ├── VideoEncoderModule.kt     # Codificador H.264/AVC por hardware con KEY_REPEAT_PREVIOUS_FRAME_AFTER
+│       │   │   │       └── MuxerManager.kt           # Multiplexor MP4 seguro con anclaje de reloj y sincronización de pausas real
 │       │   │   └── ui/
 │       │   │       ├── HomeScreen.kt             # Pantalla principal desacoplada
 │       │   │       ├── RecordViewModel.kt        # Orquestador MVVM desacoplado
@@ -139,6 +139,7 @@ vortex-studio/
 │       └── test/                                 # Tests unitarios y de arquitectura
 ├── AGENTS.md                   # Protocolo y roles de desarrollo
 ├── AI_CONTEXT.md               # Memoria de arquitectura del proyecto
+├── changelog-beta-release.md   # Notas y novedades de la versión Beta para Pre-releases
 ├── commit_message.txt          # Historial de cambios en español
 ├── CONTRIBUTING.md             # Guía de contribución comunitaria y política de PRs
 ├── LICENSE                     # Licencia Pública General de GNU v3 (GPLv3)

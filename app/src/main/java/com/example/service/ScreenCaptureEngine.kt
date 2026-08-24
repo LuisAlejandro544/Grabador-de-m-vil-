@@ -106,6 +106,7 @@ class ScreenCaptureEngine(private val context: Context) {
         bitrate: Int = VideoBitrate.BITRATE_8M.bps,
         audioSource: String = AudioSourceType.INTERNAL_AND_MIC.name,
         sampleRate: Int = 48000,
+        avSyncOffsetMs: Int = 0,
         outputFile: File? = null,
         onAudioAmplitude: ((Float) -> Unit)? = null,
         onError: ((String) -> Unit)? = null,
@@ -172,6 +173,7 @@ class ScreenCaptureEngine(private val context: Context) {
                 mediaProjection = proj,
                 muxerManager = muxer,
                 sampleRate = sampleRate,
+                avSyncOffsetMs = avSyncOffsetMs,
                 isRecordingProvider = { isRecordingInternal.get() },
                 isPausedProvider = { isPausedInternal.get() },
                 onAmplitudeMeasured = onAudioAmplitude
@@ -210,7 +212,7 @@ class ScreenCaptureEngine(private val context: Context) {
                 aPipeline.startWorker()
             }
 
-            Log.i(TAG, "Captura iniciada exitosamente (${width}x$height @ ${fps}fps, Audio: $audioSource, Destino: ${targetFile.name})")
+            Log.i(TAG, "Captura iniciada exitosamente (${width}x$height @ ${fps}fps, Audio: $audioSource, SyncOffset: ${avSyncOffsetMs}ms, Destino: ${targetFile.name})")
             return true
         } catch (e: Exception) {
             val msg = e.message ?: "Error desconocido al iniciar captura"
@@ -224,6 +226,7 @@ class ScreenCaptureEngine(private val context: Context) {
     fun pauseCapture(): Boolean {
         if (!isRecordingInternal.get() || isPausedInternal.get()) return false
         isPausedInternal.set(true)
+        muxerManager?.onPause()
         Log.d(TAG, "Grabación pausada")
         return true
     }
@@ -231,6 +234,7 @@ class ScreenCaptureEngine(private val context: Context) {
     fun resumeCapture(): Boolean {
         if (!isRecordingInternal.get() || !isPausedInternal.get()) return false
         isPausedInternal.set(false)
+        muxerManager?.onResume()
         Log.d(TAG, "Grabación reanudada")
         return true
     }

@@ -47,6 +47,10 @@
 - **🖼️ Overlays de Escena Personalizados:** Marcos Neón Cyberpunk, Banners de Redes Sociales inferiores, Badges animados "🔴 EN VIVO" y carteles de pausa.
 
 ### 🔊 Sistema de Audio Profesional y DSP
+- **🔄 Calibración y Sincronización A/V con Cero Desfase (Zero-Latency Sync Engine):**
+  - Motor de sincronización exacta entre pistas de video H.264 y audio AAC anclado al reloj de inicio.
+  - Eliminación de jitter y desfase mediante cálculo lineal y continuo de PTS por recuento de muestras PCM.
+  - Control de compensación manual configurable (-200 ms a +200 ms) en los ajustes de audio para calibrar diferencias de hardware o latencias de composición de pantalla en GPU.
 - **📊 Vúmetro de Audio Flotante & Mezclador en Vivo:** Widget superpuesto interactivo con barras LED dinámicas de decibelios (dB) con gradiente verde-amarillo-rojo.
 - **🎛️ Motor Nativo de Audio DSP (C++):** Procesamiento estéreo con **Noise Gate** (puerta de ruido para respiración y ventiladores), **Audio Ducking Automático** (baja el juego -9 dB cuando hablas) y **Soft Limiter** para evitar distorsión digital.
 - **🎙️ Conmutador Dinámico de Voz en Vivo:** Conmuta con un toque si deseas grabar tu voz (`Voz ON`) o dejar únicamente el sonido limpio del juego (`Solo Juego`).
@@ -104,21 +108,34 @@ Vortex Studio cuenta con una arquitectura de 4 canales de distribución con `app
 
 ---
 
-## 🤖 CI/CD y Despliegue Automatizado a Telegram (Ultra Comprimido .7z)
+## 🤖 CI/CD y Despliegue Automatizado (Debug y Beta Release)
 
-El proyecto cuenta con un workflow de GitHub Actions (`.github/workflows/build-apk.yml`) que compila de forma nativa todo el código C++ (NDK), Rust (Cargo NDK) y Kotlin, empaqueta el APK en un archivo `.7z` con **Compresión Ultra LZMA2 (Nivel 9)** para ahorrar hasta 50-70% de datos en la descarga móvil, y lo envía directamente a un chat o canal de **Telegram** (con capacidad de hasta 2 GB por archivo).
+El proyecto cuenta con dos flujos de trabajo de GitHub Actions automatizados:
+1. **Compilación Debug (`.github/workflows/build-apk.yml`):** Compilación rápida para desarrollo con caché opcional y entrega comprimida a Telegram.
+2. **Compilación Beta Release Firmada (`.github/workflows/build-beta-release.yml`):** Activación estricta ante **Pre-releases de GitHub** (`on.release.types: [prereleased]`), inyección automática del contenido de `changelog-beta-release.md` en la descripción del pre-release, compilación limpia sin caché (Clean Build), firma criptográfica de producción, subida directa del archivo APK a los Assets de GitHub y entrega directa a Telegram para instalación inmediata en teléfonos.
 
-### 🔑 Secretos requeridos en el repositorio de GitHub:
-Para activar el envío a Telegram, añade las siguientes variables en **Settings -> Secrets and variables -> Actions**:
-| Secreto | Descripción | Ejemplo |
-|---|---|---|
-| `TELEGRAM_BOT_TOKEN` | Token de acceso de tu Bot de Telegram creado con [@BotFather](https://t.me/BotFather) | `123456789:ABCdefGhIJKlmNoPQRstuVWXyz` |
-| `TELEGRAM_CHAT_ID` | ID numérico de tu chat privado, grupo o canal donde se entregará el APK | `987654321` o `-100123456789` |
+### 🔑 Secretos de GitHub (GitHub Secrets)
+Para habilitar la firma de producción y el envío automático a Telegram, configura en **Settings -> Secrets and variables -> Actions**:
+
+| Secreto | Obligatorio | Descripción | Ejemplo / Formato |
+| :--- | :--- | :--- | :--- |
+| `KEYSTORE_BASE64` | Recomendado | Archivo Keystore (`.jks` o `.keystore`) codificado en Base64 | `base64 -w 0 Vortex-key.jks` |
+| `KEYSTORE_PASSWORD` | Recomendado | Contraseña del almacén de claves (Store Password) | `TuContraseñaSegura123` |
+| `KEY_ALIAS` | Recomendado | Alias de la clave de firma | `Vortex` o `upload` |
+| `KEY_PASSWORD` | Recomendado | Contraseña de la clave individual (Key Password) | `TuContraseñaClave123` |
+| `TELEGRAM_BOT_TOKEN` | Opcional | Token de acceso del Bot de Telegram de [@BotFather](https://t.me/BotFather) | `123456789:ABCdefGhIJKlmNoPQRstuVWXyz` |
+| `TELEGRAM_CHAT_ID` | Opcional | ID numérico del chat o canal de Telegram receptor | `987654321` o `-100123456789` |
+
+### 🏷️ Cómo disparar la compilación Beta Release:
+1. Edita o actualiza el archivo `changelog-beta-release.md` con los cambios de tu versión.
+2. Ve a la pestaña **Releases** en GitHub y pulsa **"Draft a new release"**.
+3. Asigna una etiqueta de versión previa (ejemplo: `v0.1.0-beta.1` o `v1.0.0-beta.1`).
+4. Marca la casilla **☑ "Set as a pre-release"**.
+5. Pulsa **"Publish release"**. El workflow sincronizará el changelog en la descripción, compilará el APK release sin caché, lo firmará, lo adjuntará directamente como APK en los Assets de la release y lo enviará a tu Telegram listo para instalar.
 
 ### 📱 Cómo instalar desde tu teléfono:
-1. Descarga el archivo `Vortex-Studio-Debug-UltraCompressed.7z` adjunto en tu chat de Telegram.
-2. Ábrelo con **ZArchiver** (o el explorador de archivos integrado de tu teléfono).
-3. Extrae e instala el archivo APK con 1 toque.
+1. Descarga el archivo `.apk` adjunto en tu chat de Telegram o desde los Assets de la Pre-Release de GitHub.
+2. Pulsa sobre el archivo `.apk` para instalar directamente en tu teléfono sin necesidad de extraer archivos.
 
 ---
 

@@ -64,7 +64,8 @@ fun SettingsView(
     vtuberEvents: VtuberSettingsEvents,
     overlayEvents: OverlaySettingsEvents,
     generalEvents: GeneralSettingsEvents,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    updateInfo: com.example.model.AppUpdateInfo = com.example.model.AppUpdateInfo()
 ) {
     Column(
         modifier = modifier
@@ -190,13 +191,15 @@ fun SettingsView(
             micAudioGain = config.micAudioGain,
             noiseGateEnabled = config.noiseGateEnabled,
             audioDuckingEnabled = config.audioDuckingEnabled,
+            avSyncOffsetMs = config.avSyncOffsetMs,
             onUpdateAudioSource = audioEvents.onUpdateAudioSource,
             onUpdateAudioSampleRate = audioEvents.onUpdateAudioSampleRate,
             onToggleFloatingVuMeter = audioEvents.onToggleFloatingVuMeter,
             onUpdateGameGain = audioEvents.onUpdateGameGain,
             onUpdateMicGain = audioEvents.onUpdateMicGain,
             onToggleNoiseGate = audioEvents.onToggleNoiseGate,
-            onToggleAudioDucking = audioEvents.onToggleAudioDucking
+            onToggleAudioDucking = audioEvents.onToggleAudioDucking,
+            onUpdateAvSyncOffset = audioEvents.onUpdateAvSyncOffset
         )
 
         // Cuenta Atrás
@@ -208,8 +211,12 @@ fun SettingsView(
         // Monitor de Estado de Módulos Nativos (C++ & Rust)
         NativeModulesStatusCard()
 
-        // Canales de Versión y Distribución (Dev, Canary, Beta, Estable)
-        com.example.ui.components.settings.ReleaseChannelInfoCard()
+        // Canales de Versión y Distribución (Dev, Canary, Beta, Estable) y Comprobación de Actualizaciones
+        com.example.ui.components.settings.ReleaseChannelInfoCard(
+            updateInfo = updateInfo,
+            onCheckForUpdates = generalEvents.onCheckForUpdates,
+            onOpenGitHubReleases = generalEvents.onOpenGitHubReleases
+        )
 
         Spacer(modifier = Modifier.height(32.dp))
     }
@@ -235,6 +242,7 @@ fun SettingsView(
     onUpdateMicGain: (Float) -> Unit = {},
     onToggleNoiseGate: (Boolean) -> Unit = {},
     onToggleAudioDucking: (Boolean) -> Unit = {},
+    onUpdateAvSyncOffset: (Int) -> Unit = {},
     onUpdateCountdown: (Int) -> Unit,
     onToggleGameMode: (Boolean) -> Unit,
     onToggleFloatingBubble: (Boolean) -> Unit = {},
@@ -269,10 +277,14 @@ fun SettingsView(
     onUpdateSceneOverlayOpacity: (Float) -> Unit = {},
     onUpdateSceneOverlayImageUri: (String?) -> Unit = {},
     onReopenOnboarding: () -> Unit = {},
+    onCheckForUpdates: () -> Unit = {},
+    onOpenGitHubReleases: () -> Unit = {},
+    updateInfo: com.example.model.AppUpdateInfo = com.example.model.AppUpdateInfo(),
     modifier: Modifier = Modifier
 ) {
     SettingsView(
         config = config,
+        updateInfo = updateInfo,
         videoEvents = VideoSettingsEvents(
             onUpdateResolution = onUpdateResolution,
             onUpdateFps = onUpdateFps,
@@ -289,7 +301,8 @@ fun SettingsView(
             onUpdateGameGain = onUpdateGameGain,
             onUpdateMicGain = onUpdateMicGain,
             onToggleNoiseGate = onToggleNoiseGate,
-            onToggleAudioDucking = onToggleAudioDucking
+            onToggleAudioDucking = onToggleAudioDucking,
+            onUpdateAvSyncOffset = onUpdateAvSyncOffset
         ),
         facecamEvents = FacecamSettingsEvents(
             onToggleFacecam = onToggleFacecam,
@@ -331,8 +344,11 @@ fun SettingsView(
             onToggleGameMode = onToggleGameMode,
             onToggleFloatingBubble = onToggleFloatingBubble,
             onUpdateCountdown = onUpdateCountdown,
-            onReopenOnboarding = onReopenOnboarding
+            onReopenOnboarding = onReopenOnboarding,
+            onCheckForUpdates = onCheckForUpdates,
+            onOpenGitHubReleases = onOpenGitHubReleases
         ),
         modifier = modifier
     )
 }
+

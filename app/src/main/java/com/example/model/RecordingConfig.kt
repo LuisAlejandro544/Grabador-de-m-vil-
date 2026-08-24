@@ -154,6 +154,7 @@ data class RecordingConfig(
     val audioDuckingEnabled: Boolean = true,
     val noiseGateEnabled: Boolean = true,
     val showFloatingVuMeter: Boolean = false,
+    val avSyncOffsetMs: Int = 0,
     val imageFormat: ImageFormatOption = ImageFormatOption.PNG,
     val imageQuality: Int = 80,
     val imageWebpLossless: Boolean = false

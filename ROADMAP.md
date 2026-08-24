@@ -10,7 +10,7 @@ Este documento detalla el progreso actual y las fases de desarrollo de **Vortex 
 | :--- | :--- | :--- |
 | **Fase 1** | Captura 60 FPS, Bitrate Personalizable & Motor Base de Grabación | ✅ Completado |
 | **Fase 2** | Facecam Pro (FPS, RGB, Belleza) & Avatar 2D / PNGtuber Reactivo | ✅ Completado |
-| **Fase 3** | Audio DSP (Noise Gate, Ducking) & Vúmetro / Mezclador Flotante | ✅ Completado |
+| **Fase 3** | Audio DSP (Noise Gate, Ducking), Sincronización A/V & Vúmetro / Mezclador Flotante | ✅ Completado |
 | **Fase 4** | Overlays de Escena, Marca de Agua y Visualizador Táctil | ✅ Completado |
 | **Fase 5** | Editor de Video Avanzado (Recorte, División Split y Aspect Ratio 9:16) | ✅ Completado |
 | **Fase 6** | Protección Anti-Corrupción, Monitor de Disco & Formato de Imagen Multiformato | ✅ Completado |
@@ -56,8 +56,9 @@ Este documento detalla el progreso actual y las fases de desarrollo de **Vortex 
   - Soporte de compresión seleccionable: **PNG (Sin pérdida)**, **JPEG (Calidad 10-100% personalizada)** y **WebP (Lossy / Lossless)**.
   - Componente Material 3 `ImageFormatSettingsCard` con slider de calidad %, presets rápidos (50%, 70%, 80% recomendado, 90%, 100%) y switch de WebP sin pérdida.
   - Asistente `ScreenshotHelper` actualizado con indexación automática en MediaStore y toasts informativos.
-- [x] **Despliegue Automatizado a Telegram en CI/CD:**
+- [x] **Despliegue Automatizado a Telegram y GitHub Releases en CI/CD:**
   - Integración en `.github/workflows/build-apk.yml` de empaquetado en formato `.7z` Ultra Comprimido (LZMA2 nivel 9) y subida directa a Telegram vía Bot API (`sendDocument`).
+  - Nuevo workflow `.github/workflows/build-beta-release.yml` para **Pre-releases de GitHub** (`on.release.types: [prereleased]`) con inyección automática de `changelog-beta-release.md` en el cuerpo del release, compilación limpia (Clean Build sin caché), firma Release de producción, subida directa de archivos `.apk` sin comprimir a la release y entrega a Telegram.
   - Reducción drástica del tamaño de descarga para conexiones móviles lentas con reporte de tamaño original vs comprimido y guía de instalación.
   - Capacidad de transferencia de hasta 2 GB con notificación formateada (archivo, commit, fecha).
 - [x] **Protección contra Corrupción de Archivo (Graceful Finalize):**

@@ -11,6 +11,8 @@ import com.example.data.RecordingsRepository
 import com.example.data.SettingsRepository
 import com.example.data.StorageMonitorHelper
 import com.example.data.StorageSpaceInfo
+import com.example.data.UpdateCheckerRepository
+import com.example.model.AppUpdateInfo
 import com.example.model.AudioSampleRate
 import com.example.model.AudioSourceType
 import com.example.model.FacecamFps
@@ -20,6 +22,7 @@ import com.example.model.ImageFormatOption
 import com.example.model.RecordedVideo
 import com.example.model.RecordingConfig
 import com.example.model.RecordingStatus
+import com.example.model.ReleaseChannel
 import com.example.model.SceneOverlayType
 import com.example.model.TouchColorOption
 import com.example.model.VideoBitrate
@@ -33,6 +36,7 @@ import com.example.service.ScreenRecordService
 import com.example.ui.delegates.SettingsActionsDelegate
 import com.example.ui.delegates.VideoGalleryDelegate
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -54,10 +58,13 @@ data class UiState(
     val errorMessage: String? = null,
     val infoMessage: String? = null,
     val activeTab: Int = 0, // 0: Grabar, 1: Galería, 2: Juegos, 3: Ajustes
-    val isOnboardingCompleted: Boolean = true
+    val isOnboardingCompleted: Boolean = true,
+    val updateInfo: AppUpdateInfo = AppUpdateInfo(),
+    val showUpdateDialog: Boolean = false
 )
 
 data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+data class Tuple5<A, B, C, D, E>(val first: A, val second: B, val third: C, val fourth: D, val fifth: E)
 
 /**
  * ViewModel modular y reactivo para la pantalla principal de Vortex Studio.
@@ -73,11 +80,14 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     private val gamesHelper = InstalledGamesHelper(application)
     private val settingsRepository = SettingsRepository(application)
     private val countdownManager = RecordCountdownManager(application, viewModelScope)
+    private val updateCheckerRepository = UpdateCheckerRepository(application)
 
     private val _infoMessage = MutableStateFlow<String?>(null)
     private val _activeTab = MutableStateFlow(0)
     private val _installedGames = MutableStateFlow<List<InstalledAppItem>>(emptyList())
     private val _isLoadingGames = MutableStateFlow(false)
+    private val _updateInfo = MutableStateFlow(AppUpdateInfo())
+    private val _showUpdateDialog = MutableStateFlow(false)
 
     // Delegados modulares
     val galleryDelegate = VideoGalleryDelegate(
@@ -112,15 +122,22 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         ) { isCd, storage, vids, extra ->
             Quadruple(isCd, storage, vids, extra)
         },
-        combine(_installedGames, _isLoadingGames, ScreenRecordService.errorMessage, combine(_infoMessage, _activeTab, settingsRepository.onboardingCompletedFlow) { info, tab, onboarded -> Triple(info, tab, onboarded) }) { games, loadingGames, err, infoTabOnboard ->
-            Quadruple(games, loadingGames, err, infoTabOnboard)
+        combine(
+            _installedGames,
+            _isLoadingGames,
+            ScreenRecordService.errorMessage,
+            combine(_infoMessage, _activeTab, settingsRepository.onboardingCompletedFlow, _updateInfo, _showUpdateDialog) { info, tab, onboarded, upInfo, showUpDialog ->
+                Tuple5(info, tab, onboarded, upInfo, showUpDialog)
+            }
+        ) { games, loadingGames, err, extraInfo ->
+            Quadruple(games, loadingGames, err, extraInfo)
         }
     ) { group1, group2, group3 ->
         val (config, serviceState, elapsed, countdown) = group1
         val (isCountingDown, storage, videos, extra) = group2
         val (isLoadingVideos, selectedVideo, selectedVideoForEdit) = extra
-        val (games, loadingGames, serviceError, infoTabOnboard) = group3
-        val (infoMessage, activeTab, isOnboarded) = infoTabOnboard
+        val (games, loadingGames, serviceError, extraInfo) = group3
+        val (infoMessage, activeTab, isOnboarded, updateInfo, showUpdateDialog) = extraInfo
 
         val effectiveStatus = if (isCountingDown) RecordingStatus.COUNTDOWN else serviceState
 
@@ -140,7 +157,9 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             errorMessage = serviceError,
             infoMessage = infoMessage,
             activeTab = activeTab,
-            isOnboardingCompleted = isOnboarded
+            isOnboardingCompleted = isOnboarded,
+            updateInfo = updateInfo,
+            showUpdateDialog = showUpdateDialog
         )
     }
 
@@ -165,6 +184,12 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
                     _infoMessage.value = "¡Grabación guardada con éxito!"
                 }
             }
+        }
+
+        // Comprobación periódica/automática de actualizaciones en segundo plano
+        viewModelScope.launch {
+            delay(2500)
+            checkForUpdates(force = false)
         }
     }
 
@@ -224,6 +249,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     fun updateMicAudioGain(gain: Float) = settingsDelegate.updateMicAudioGain(gain)
     fun toggleNoiseGate(enabled: Boolean) = settingsDelegate.toggleNoiseGate(enabled)
     fun toggleAudioDucking(enabled: Boolean) = settingsDelegate.toggleAudioDucking(enabled)
+    fun updateAvSyncOffset(offsetMs: Int) = settingsDelegate.updateAvSyncOffset(offsetMs)
     fun updateCountdown(seconds: Int) = settingsDelegate.updateCountdown(seconds)
     fun updateImageFormat(format: ImageFormatOption) = settingsDelegate.updateImageFormat(format)
     fun updateImageQuality(quality: Int) = settingsDelegate.updateImageQuality(quality)
@@ -329,5 +355,39 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     fun resetOnboarding() {
         settingsRepository.setOnboardingCompleted(false)
+    }
+
+    // Gestor de Actualizaciones (GitHub Releases)
+    fun checkForUpdates(force: Boolean = false) {
+        viewModelScope.launch {
+            _updateInfo.value = _updateInfo.value.copy(isChecking = true, errorMessage = null)
+            val currentChan = ReleaseChannel.getCurrentChannel()
+            val result = updateCheckerRepository.checkForUpdates(
+                currentChannel = currentChan,
+                forceCheck = force
+            )
+            _updateInfo.value = result.copy(isChecking = false)
+            if (result.isUpdateAvailable) {
+                _showUpdateDialog.value = true
+            } else if (force) {
+                if (result.errorMessage != null) {
+                    _infoMessage.value = "Aviso al buscar actualización: ${result.errorMessage}"
+                } else {
+                    _infoMessage.value = "Tu versión de Vortex (${currentChan.tag}) está actualizada."
+                }
+            }
+        }
+    }
+
+    fun dismissUpdateDialog() {
+        _showUpdateDialog.value = false
+    }
+
+    fun downloadApk(url: String) {
+        updateCheckerRepository.startApkDownload(url)
+    }
+
+    fun openGitHubReleases(url: String = AppUpdateInfo.GITHUB_RELEASES_URL) {
+        updateCheckerRepository.openReleasesInBrowser(url)
     }
 }

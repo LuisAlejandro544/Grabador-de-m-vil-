@@ -16,7 +16,8 @@ class AudioEncoderWorker(
     private val channelCount: Int,
     private val muxerManager: MuxerManager,
     private val isRecordingProvider: () -> Boolean,
-    private val isPausedProvider: () -> Boolean
+    private val isPausedProvider: () -> Boolean,
+    private var avSyncOffsetMs: Int = 0
 ) {
 
     companion object {
@@ -27,9 +28,14 @@ class AudioEncoderWorker(
 
     private var audioEncoder: MediaCodec? = null
     private var encoderWorkerThread: Thread? = null
+    private var lastQueuedPtsUs: Long = -1L
 
     val isInitialized: Boolean
         get() = audioEncoder != null
+
+    fun setAvSyncOffsetMs(offsetMs: Int) {
+        this.avSyncOffsetMs = offsetMs
+    }
 
     fun initialize(): Boolean {
         return try {
@@ -177,7 +183,25 @@ class AudioEncoderWorker(
             inputBuffer?.clear()
             inputBuffer?.put(bytes, 0, size)
 
-            val pts = System.nanoTime() / 1000
+            val nowUs = (System.nanoTime() / 1000L) + (avSyncOffsetMs * 1_000L)
+            val bytesPerFrame = channelCount * 2L // 16-bit PCM = 2 bytes por muestra por canal
+            val bufferDurationUs = if (bytesPerFrame > 0 && sampleRate > 0) {
+                (size * 1_000_000L) / (bytesPerFrame * sampleRate)
+            } else {
+                0L
+            }
+
+            val pts = if (lastQueuedPtsUs == -1L) {
+                nowUs
+            } else {
+                val continuousPts = lastQueuedPtsUs + bufferDurationUs
+                if (kotlin.math.abs(nowUs - continuousPts) < 100_000L) {
+                    continuousPts
+                } else {
+                    nowUs
+                }
+            }
+            lastQueuedPtsUs = pts
             encoder.queueInputBuffer(inputBufferIndex, 0, size, pts, 0)
         }
     }

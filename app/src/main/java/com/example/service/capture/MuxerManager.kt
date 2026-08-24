@@ -32,14 +32,13 @@ class MuxerManager(
     // Sincronización AV: Reloj base compartido anclado al primer fotograma de video
     private var baseTimeUs = -1L
 
-    // Control de PTS de video
-    private var videoPauseOffsetUs = 0L
-    private var lastVideoRawPtsUs = -1L
-    private var lastVideoWrittenPtsUs = -1L
+    // Control de Pausas sincronizadas entre pistas
+    private var isPaused = false
+    private var pauseStartTimeUs = -1L
+    private var totalPausedDurationUs = 0L
 
-    // Control de PTS de audio
-    private var audioPauseOffsetUs = 0L
-    private var lastAudioRawPtsUs = -1L
+    // Control de monotonicidad estricta para el contenedor MP4
+    private var lastVideoWrittenPtsUs = -1L
     private var lastAudioWrittenPtsUs = -1L
 
     init {
@@ -89,9 +88,33 @@ class MuxerManager(
         }
     }
 
+    fun onPause() {
+        synchronized(lock) {
+            if (!isPaused) {
+                isPaused = true
+                pauseStartTimeUs = System.nanoTime() / 1000L
+                Log.d(TAG, "MuxerManager pausado (pauseStartTimeUs=$pauseStartTimeUs)")
+            }
+        }
+    }
+
+    fun onResume() {
+        synchronized(lock) {
+            if (isPaused && pauseStartTimeUs != -1L) {
+                val duration = (System.nanoTime() / 1000L) - pauseStartTimeUs
+                if (duration > 0) {
+                    totalPausedDurationUs += duration
+                    Log.d(TAG, "MuxerManager reanudado (duración pausa: ${duration / 1000}ms, total acumulado: ${totalPausedDurationUs / 1000}ms)")
+                }
+                pauseStartTimeUs = -1L
+                isPaused = false
+            }
+        }
+    }
+
     fun writeVideoSample(buffer: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
         synchronized(lock) {
-            if (isReleased) return
+            if (isReleased || isPaused) return
             if (!muxerStarted) {
                 try {
                     lock.wait(100)
@@ -108,23 +131,13 @@ class MuxerManager(
                         Log.i(TAG, "Reloj base AV anclado al primer fotograma de video: baseTimeUs=$baseTimeUs (KeyFrame=$isKeyFrame)")
                     }
 
-                    // 2. Compensar pausas o saltos de tiempo prolongados (>100ms)
-                    if (lastVideoRawPtsUs != -1L) {
-                        val gap = rawPts - lastVideoRawPtsUs
-                        if (gap > 100_000L) {
-                            val normalIntervalUs = 16_666L // ~60fps
-                            videoPauseOffsetUs += (gap - normalIntervalUs)
-                        }
-                    }
-                    lastVideoRawPtsUs = rawPts
-
-                    // 3. Normalizar PTS relativo al inicio (t=0)
-                    var adjustedPts = (rawPts - baseTimeUs) - videoPauseOffsetUs
+                    // 2. Normalizar PTS relativo al inicio (t=0) y descontar pausas reales acumuladas
+                    var adjustedPts = (rawPts - baseTimeUs) - totalPausedDurationUs
                     if (adjustedPts < 0L) {
                         adjustedPts = 0L
                     }
 
-                    // 4. Garantizar monotonicidad estricta para el contenedor MP4
+                    // 3. Garantizar monotonicidad estricta para el contenedor MP4
                     if (adjustedPts <= lastVideoWrittenPtsUs) {
                         adjustedPts = lastVideoWrittenPtsUs + 1000L // +1ms de seguridad
                     }
@@ -144,7 +157,7 @@ class MuxerManager(
 
     fun writeAudioSample(buffer: ByteBuffer, bufferInfo: MediaCodec.BufferInfo) {
         synchronized(lock) {
-            if (isReleased) return
+            if (isReleased || isPaused) return
             if (!muxerStarted) {
                 try {
                     lock.wait(100)
@@ -160,18 +173,8 @@ class MuxerManager(
 
                     val rawPts = bufferInfo.presentationTimeUs
 
-                    // Compensar pausas o saltos en la captura de audio (>100ms)
-                    if (lastAudioRawPtsUs != -1L) {
-                        val gap = rawPts - lastAudioRawPtsUs
-                        if (gap > 100_000L) {
-                            val normalAudioIntervalUs = 21_333L // ~1024 samples @ 48kHz
-                            audioPauseOffsetUs += (gap - normalAudioIntervalUs)
-                        }
-                    }
-                    lastAudioRawPtsUs = rawPts
-
-                    // Calcular PTS anclado al reloj del primer fotograma de video (AV-Sync a 0ms)
-                    var adjustedPts = (rawPts - baseTimeUs) - audioPauseOffsetUs
+                    // Calcular PTS anclado al reloj del primer fotograma de video y descontar pausas acumuladas
+                    var adjustedPts = (rawPts - baseTimeUs) - totalPausedDurationUs
                     if (adjustedPts < 0L) {
                         return
                     }

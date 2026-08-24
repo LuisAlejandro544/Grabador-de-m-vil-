@@ -39,7 +39,8 @@ data class AudioSettingsEvents(
     val onUpdateGameGain: (Float) -> Unit = {},
     val onUpdateMicGain: (Float) -> Unit = {},
     val onToggleNoiseGate: (Boolean) -> Unit = {},
-    val onToggleAudioDucking: (Boolean) -> Unit = {}
+    val onToggleAudioDucking: (Boolean) -> Unit = {},
+    val onUpdateAvSyncOffset: (Int) -> Unit = {}
 )
 
 /**
@@ -91,11 +92,13 @@ data class OverlaySettingsEvents(
 )
 
 /**
- * Agrupación de eventos generales (Modo juego, burbuja, onboarding, cuenta atrás).
+ * Agrupación de eventos generales (Modo juego, burbuja, onboarding, cuenta atrás, comprobador de actualizaciones).
  */
 data class GeneralSettingsEvents(
     val onToggleGameMode: (Boolean) -> Unit = {},
     val onToggleFloatingBubble: (Boolean) -> Unit = {},
     val onUpdateCountdown: (Int) -> Unit = {},
-    val onReopenOnboarding: () -> Unit = {}
+    val onReopenOnboarding: () -> Unit = {},
+    val onCheckForUpdates: () -> Unit = {},
+    val onOpenGitHubReleases: () -> Unit = {}
 )

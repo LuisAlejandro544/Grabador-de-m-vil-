@@ -25,7 +25,8 @@ class VideoAudioSettingsStore(private val prefs: SharedPreferences) {
         val gameAudioGain: Float,
         val micAudioGain: Float,
         val audioDuckingEnabled: Boolean,
-        val noiseGateEnabled: Boolean
+        val noiseGateEnabled: Boolean,
+        val avSyncOffsetMs: Int
     )
 
     fun load(): VideoAudioSlice {
@@ -77,6 +78,7 @@ class VideoAudioSettingsStore(private val prefs: SharedPreferences) {
         val micGain = prefs.getFloat(KEY_MIC_AUDIO_GAIN, 1.25f)
         val audioDucking = prefs.getBoolean(KEY_AUDIO_DUCKING, true)
         val noiseGate = prefs.getBoolean(KEY_NOISE_GATE, true)
+        val avSyncOffset = prefs.getInt(KEY_AV_SYNC_OFFSET_MS, 0).coerceIn(-300, 300)
 
         return VideoAudioSlice(
             resolution = resolution,
@@ -89,7 +91,8 @@ class VideoAudioSettingsStore(private val prefs: SharedPreferences) {
             gameAudioGain = gameGain,
             micAudioGain = micGain,
             audioDuckingEnabled = audioDucking,
-            noiseGateEnabled = noiseGate
+            noiseGateEnabled = noiseGate,
+            avSyncOffsetMs = avSyncOffset
         )
     }
 
@@ -105,6 +108,7 @@ class VideoAudioSettingsStore(private val prefs: SharedPreferences) {
         editor.putFloat(KEY_MIC_AUDIO_GAIN, config.micAudioGain)
         editor.putBoolean(KEY_AUDIO_DUCKING, config.audioDuckingEnabled)
         editor.putBoolean(KEY_NOISE_GATE, config.noiseGateEnabled)
+        editor.putInt(KEY_AV_SYNC_OFFSET_MS, config.avSyncOffsetMs)
     }
 
     companion object {
@@ -119,5 +123,6 @@ class VideoAudioSettingsStore(private val prefs: SharedPreferences) {
         const val KEY_MIC_AUDIO_GAIN = "pref_mic_audio_gain"
         const val KEY_AUDIO_DUCKING = "pref_audio_ducking"
         const val KEY_NOISE_GATE = "pref_noise_gate"
+        const val KEY_AV_SYNC_OFFSET_MS = "pref_av_sync_offset_ms"
     }
 }

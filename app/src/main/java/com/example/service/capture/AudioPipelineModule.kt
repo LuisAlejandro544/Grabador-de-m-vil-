@@ -14,6 +14,7 @@ class AudioPipelineModule(
     private val mediaProjection: MediaProjection?,
     private val muxerManager: MuxerManager,
     private val sampleRate: Int = 48000,
+    private val avSyncOffsetMs: Int = 0,
     private val isRecordingProvider: () -> Boolean,
     private val isPausedProvider: () -> Boolean,
     var onAmplitudeMeasured: ((Float) -> Unit)? = null
@@ -134,7 +135,8 @@ class AudioPipelineModule(
                 channelCount = channelCount,
                 muxerManager = muxerManager,
                 isRecordingProvider = isRecordingProvider,
-                isPausedProvider = isPausedProvider
+                isPausedProvider = isPausedProvider,
+                avSyncOffsetMs = avSyncOffsetMs
             )
 
             if (encoder.initialize()) {

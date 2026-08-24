@@ -107,6 +107,7 @@ class SettingsRepository(context: Context) {
             audioDuckingEnabled = videoAudioSlice.audioDuckingEnabled,
             noiseGateEnabled = videoAudioSlice.noiseGateEnabled,
             showFloatingVuMeter = overlaySlice.showFloatingVuMeter,
+            avSyncOffsetMs = videoAudioSlice.avSyncOffsetMs,
             imageFormat = gameImageSlice.imageFormat,
             imageQuality = gameImageSlice.imageQuality,
             imageWebpLossless = gameImageSlice.imageWebpLossless
@@ -156,6 +157,11 @@ class SettingsRepository(context: Context) {
 
     fun toggleFloatingVuMeter(enabled: Boolean) {
         saveConfig(_configFlow.value.copy(showFloatingVuMeter = enabled))
+    }
+
+    fun updateAvSyncOffset(offsetMs: Int) {
+        val clamped = offsetMs.coerceIn(-300, 300)
+        saveConfig(_configFlow.value.copy(avSyncOffsetMs = clamped))
     }
 
     fun toggleVtuber(enabled: Boolean) {

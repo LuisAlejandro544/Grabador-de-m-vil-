@@ -1,38 +1,19 @@
-refactor: modularización arquitectónica de FacecamOverlayManager, SettingsView, ScreenRecordService y cuenta atrás en lanzamiento de apps
+ci: consolidación de changelog oficial y suite completa de Vortex Studio para Pre-releases
 
-- Modularización de FacecamOverlayManager (Desacoplamiento de Cámara, Ventana y Vistas):
-  * Extracción de `FacecamCameraEngine` para gestionar el ciclo de vida de CameraX, selección de cámara (frontal/trasera), binding con PreviewView y configuración de FPS target mediante Camera2Interop.
-  * Extracción de `FacecamWindowHost` para la gestión de permisos de superposición, creación de LayoutParams en WindowManager y redimensionamiento dinámico.
-  * Extracción de `FacecamViewHierarchy` para el ensamblaje de la jerarquía visual (contenedor raíz, tarjeta de recorte, preview, filtro de belleza, borde animado RGB y barra de controles táctiles).
+- Documentación y Gestión de Release:
+  * Eliminación del archivo duplicado y consolidación definitiva en `changelog-beta-release.md`.
+  * Integración completa en el changelog de las especificaciones y versión oficial: `v0.1.0-beta.1` (Version Code `1002`, `com.vortexstudio.recorder.beta`).
+  * Detalle exhaustivo de todas las características de la suite:
+    1. Motor de Captura 60 FPS H.264 por GPU con Bitrate de 4 a 50 Mbps y refresco de frames estáticos.
+    2. Sincronización A/V de Latencia Cero (Zero-Latency Sync Engine) con timestamps continuos PCM y compensador de delay (-200 ms a +200 ms).
+    3. Suite de Audio DSP Nativo en C++ (Noise Gate, Ducking automático, Vúmetro LED flotante en dB y muestreo de estudio).
+    4. Facecam Pro con CameraX (30/60 FPS, marco RGB Cyberpunk, filtro belleza) y Avatar 2D/PNGtuber reactivo a la voz.
+    5. Overlays de Escena personalizables, marcas de agua con opacidad y visualizador de toques en tiempo real.
+    6. Editor de Video con recorte (Trim), división (Split) y reescalado de aspect ratio (16:9 y 9:16) con motor nativo Rust.
+    7. Protección Anti-Corrupción Graceful Finalize con Shutdown Hooks y monitor de almacenamiento en tiempo real.
+    8. Burbuja flotante multitarea translúcida con diseño Cyberpunk Dark en Material 3.
 
-- Modularización de SettingsView (Contenedores de Eventos Tipados):
-  * Creación de `SettingsEventHolders` (`VideoSettingsEvents`, `AudioSettingsEvents`, `FacecamSettingsEvents`, `VtuberSettingsEvents`, `OverlaySettingsEvents`, `GeneralSettingsEvents`) eliminando la saturación de más de 30 lambdas individuales en la firma del Composable.
-  * Extracción de `OnboardingTutorialCard` como componente independiente reutilizable para acceso a la guía de inicio y centro de permisos.
-
-- Modularización de ScreenRecordService (Controladores Especializados):
-  * Creación de `ServiceNotificationController` para la construcción y actualización reactiva de las notificaciones de servicio en primer plano.
-  * Creación de `ServiceScreenshotController` para la captura de capturas de pantalla dual (ImageReader en tiempo real con fallback resiliente desde el contenedor de video MP4).
-
-- Experiencia de Usuario y Cuenta Atrás en Lanzamiento de Juegos/Apps:
-  * Unificación del flujo en `RecordViewModel.startRecordingFlow` para respetar la cuenta atrás configurada (ej. 3 segundos) antes de iniciar la captura tanto en grabación normal como al lanzar juegos o aplicaciones.
-  * Creación de `CountdownOverlayModal` integrado en `HomeModalsHost` para visualizar la cuenta atrás animada (3, 2, 1 con vibración háptica) en cualquier pestaña de la aplicación, dando tiempo al usuario para prepararse y permitiendo cancelar la acción antes del inicio.
-
-feat: arquitectura de 4 canales de versión multi-instalación (Dev, Canary, Beta, Estable) para v0.1.0
-
-- Definición del modelo `ReleaseChannel` (`com.example.model.ReleaseChannel`):
-  * `DEV` (`com.vortexstudio.recorder.dev`): Exclusivo para depuración local, logs y profiling NDK (`0.1.0-dev`, código 1000).
-  * `CANARY` (`com.vortexstudio.recorder.canary`): Canal experimental para recopilación de feedback de la comunidad con características preliminares (`0.1.0-canary.1`, código 1001).
-  * `BETA` (`com.vortexstudio.recorder.beta`): Versión candidata para pruebas de compatibilidad y optimización de rendimiento a 60 FPS (`0.1.0-beta.1`, código 1002).
-  * `STABLE` (`com.vortexstudio.recorder`): Versión oficial y verificada para el público general en tiendas de APKs (`0.1.0`, código 1003).
-- Identificadores de paquete independientes limpios sin prefijos ni dependencias de servicios externos (`com.vortexstudio.recorder.*`), permitiendo instalar y usar las 4 versiones a la vez en el mismo dispositivo.
-- Configuración dinámica en `app/build.gradle.kts` con propiedades de compilación (`vortexChannel`) e inyección automática en `BuildConfig.RELEASE_CHANNEL` y `BuildConfig.ENABLE_EXPERIMENTAL_FEATURES` para alternar entre canales sin fricción.
-- Creación del componente Material 3 `ReleaseChannelInfoCard` en los ajustes y badge identificador reactivo en la barra superior `RecordTopBar`.
-- Actualización de la documentación técnica y del ecosistema en `README.md`, `ROADMAP.md`, `STRUCTURE.md` y `AI_CONTEXT.md`.
-
-feat: identidad visual e icono adaptativo «Vórtice Dinámico Adaptativo» (Multi-Canal)
-
-- Implementación del sistema de logo adaptativo:
-  * Generación del icono adaptativo de sistema (`adaptive-icon` en `ic_launcher_foreground.xml` e `ic_launcher_background.xml`) con aspas de vórtice neón y centro de lente de grabación sobre fondo oscuro espacial.
-  * Creación del composable vectorial dinámico `VortexAppLogo.kt` (`com.example.ui.components.VortexAppLogo`): dibuja un vórtice con 3 aspas en espiral mediante Canvas y curvas cuadráticas, adaptando sus colores automáticamente según el canal activo (Púrpura/Magenta para Dev, Naranja/Ámbar para Canary, Azul/Cian para Beta y Verde/Menta para Estable).
-  * Integración del logo dinámico en la barra superior `RecordTopBar` y en las filas y cabecera de `ReleaseChannelInfoCard`.
-- Sincronización completa de la documentación técnica en `README.md`, `ROADMAP.md`, `STRUCTURE.md` y `AI_CONTEXT.md`.
+- Pipeline de CI/CD (`.github/workflows/build-beta-release.yml`):
+  * Actualización de la ruta de extracción para inyectar automáticamente `changelog-beta-release.md` en el cuerpo del Pre-release de GitHub.
+  * Compilación limpia (Clean Build sin caché) de Java 17, Android SDK 36, NDK C++ y Rust Toolchain.
+  * Firma Release y distribución directa del archivo `.apk` a GitHub Releases y Telegram.

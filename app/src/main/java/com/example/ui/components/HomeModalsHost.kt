@@ -49,4 +49,18 @@ fun HomeModalsHost(
             onCancelCountdown = { viewModel.cancelCountdown() }
         )
     }
+
+    // Modal de Notificación de Actualización en GitHub Releases
+    if (uiState.showUpdateDialog && uiState.updateInfo.isUpdateAvailable) {
+        UpdateAvailableDialog(
+            updateInfo = uiState.updateInfo,
+            onDismiss = { viewModel.dismissUpdateDialog() },
+            onDownloadApk = { apkUrl ->
+                viewModel.downloadApk(apkUrl)
+            },
+            onOpenGitHubReleases = { releasesUrl ->
+                viewModel.openGitHubReleases(releasesUrl)
+            }
+        )
+    }
 }

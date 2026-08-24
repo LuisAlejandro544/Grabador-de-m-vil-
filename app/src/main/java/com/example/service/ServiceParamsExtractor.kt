@@ -22,6 +22,7 @@ data class ServiceRecordingParams(
     val bitrate: Int,
     val audioSource: String,
     val sampleRate: Int,
+    val avSyncOffsetMs: Int,
     val showFloatingBubble: Boolean,
     val showFacecam: Boolean,
     val savedConfig: RecordingConfig
@@ -76,6 +77,7 @@ object ServiceParamsExtractor {
             bitrate = bitrate,
             audioSource = audioSource,
             sampleRate = sampleRate,
+            avSyncOffsetMs = savedConfig.avSyncOffsetMs,
             showFloatingBubble = showFloatingBubble,
             showFacecam = showFacecam,
             savedConfig = savedConfig

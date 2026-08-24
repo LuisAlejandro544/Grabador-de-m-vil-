@@ -226,6 +226,7 @@ class ScreenRecordService : Service() {
             bitrate = params.bitrate,
             audioSource = params.audioSource,
             sampleRate = params.sampleRate,
+            avSyncOffsetMs = params.avSyncOffsetMs,
             outputFile = outputFile,
             onAudioAmplitude = { amp -> overlayCoordinator.onAudioAmplitude(amp) },
             onError = { errorMsg ->

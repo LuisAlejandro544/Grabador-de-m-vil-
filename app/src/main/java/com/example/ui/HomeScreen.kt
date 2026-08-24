@@ -186,6 +186,7 @@ fun HomeScreen(
                     onUpdateMicGain = { viewModel.updateMicAudioGain(it) },
                     onToggleNoiseGate = { viewModel.toggleNoiseGate(it) },
                     onToggleAudioDucking = { viewModel.toggleAudioDucking(it) },
+                    onUpdateAvSyncOffset = { viewModel.updateAvSyncOffset(it) },
                     onUpdateCountdown = { viewModel.updateCountdown(it) },
                     onToggleGameMode = { viewModel.toggleGameMode(it) },
                     onToggleFloatingBubble = { viewModel.toggleFloatingBubble(it) },
@@ -224,7 +225,10 @@ fun HomeScreen(
                     onUpdateSceneOverlayText = { viewModel.updateSceneOverlayText(it) },
                     onUpdateSceneOverlayOpacity = { viewModel.updateSceneOverlayOpacity(it) },
                     onUpdateSceneOverlayImageUri = { viewModel.updateSceneOverlayImageUri(it) },
-                    onReopenOnboarding = { viewModel.resetOnboarding() }
+                    onReopenOnboarding = { viewModel.resetOnboarding() },
+                    onCheckForUpdates = { viewModel.checkForUpdates(force = true) },
+                    onOpenGitHubReleases = { viewModel.openGitHubReleases() },
+                    updateInfo = uiState.updateInfo
                 )
             }
         }

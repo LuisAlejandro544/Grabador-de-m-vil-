@@ -19,13 +19,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.OpenInBrowser
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,22 +46,27 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.model.AppUpdateInfo
 import com.example.model.ReleaseChannel
 
 /**
  * Tarjeta informativa de Canales de Lanzamiento y Versión de Vortex Studio.
  * Muestra los 4 canales configurados (Dev, Canary, Beta, Estable), identificadores de paquetes,
- * códigos de versión e indicadores de funciones experimentales.
+ * códigos de versión, comprobador de actualizaciones específico para el canal activo
+ * conectado a https://github.com/LuisAlejandro544/Vortex/releases.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ReleaseChannelInfoCard(
     modifier: Modifier = Modifier,
-    currentChannel: ReleaseChannel = ReleaseChannel.getCurrentChannel()
+    currentChannel: ReleaseChannel = ReleaseChannel.getCurrentChannel(),
+    updateInfo: AppUpdateInfo = AppUpdateInfo(),
+    onCheckForUpdates: () -> Unit = {},
+    onOpenGitHubReleases: () -> Unit = {}
 ) {
     SettingsCard(
-        title = "Canales de Versión y Distribución",
-        subtitle = "Identificadores de paquete y ciclo de vida de versiones",
+        title = "Canales de Versión y Actualizaciones",
+        subtitle = "Ciclo de vida y comprobación de nuevas versiones en GitHub",
         icon = Icons.Default.Science,
         modifier = modifier.testTag("release_channel_info_card")
     ) {
@@ -112,6 +125,117 @@ fun ReleaseChannelInfoCard(
                 }
             }
 
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Sección de Comprobación de Actualizaciones en GitHub
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SystemUpdate,
+                            contentDescription = null,
+                            tint = currentChannel.getBadgeColor(),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Actualizaciones de Canal (${currentChannel.tag})",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "Vortex Studio busca automáticamente nuevas versiones de APK exclusivamente para el canal ${currentChannel.displayName} en el repositorio oficial de GitHub.",
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Button(
+                            onClick = onCheckForUpdates,
+                            enabled = !updateInfo.isChecking,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = currentChannel.getBadgeColor()
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(38.dp)
+                                .testTag("check_updates_button")
+                        ) {
+                            if (updateInfo.isChecking) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(text = "Buscando...", fontSize = 12.sp)
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Buscar Versión",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        OutlinedButton(
+                            onClick = onOpenGitHubReleases,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(38.dp)
+                                .testTag("open_github_releases_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.OpenInBrowser,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Releases",
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+
+                    if (updateInfo.errorMessage != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Aviso: ${updateInfo.errorMessage}",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
@@ -146,6 +270,7 @@ fun ReleaseChannelInfoCard(
         }
     }
 }
+
 
 @Composable
 private fun ChannelItemRow(

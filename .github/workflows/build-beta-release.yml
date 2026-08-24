@@ -1,0 +1,214 @@
+name: Build & Sign Android Beta Release APK
+
+on:
+  release:
+    types: [prereleased]
+  workflow_dispatch:
+    inputs:
+      vortex_channel:
+        description: 'Canal de compilación de Vortex Studio'
+        required: true
+        default: 'beta'
+        type: choice
+        options:
+          - beta
+          - canary
+          - stable
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-beta-release:
+    name: Compilar APK Beta Release (NDK C++, Rust & Firma)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📥 Descargar código del repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 📝 Actualizar Notas de Pre-Release desde Changelog Markdown
+        if: github.event_name == 'release'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=== Sincronizando notas del Pre-Release desde changelog Markdown ==="
+          TAG_NAME="${{ github.event.release.tag_name }}"
+          
+          CHANGELOG_FILE="$GITHUB_WORKSPACE/changelog-beta-release.md"
+
+          if [ -f "$CHANGELOG_FILE" ] && [ -n "$TAG_NAME" ]; then
+            echo "Actualizando descripción de la release $TAG_NAME con el contenido de $CHANGELOG_FILE..."
+            gh release edit "$TAG_NAME" --notes-file "$CHANGELOG_FILE"
+            echo "✅ Descripción de la Pre-Release actualizada con éxito."
+          else
+            echo "⚠️ No se encontró archivo de changelog o tag de release."
+          fi
+
+      - name: ☕ Configurar Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: 📱 Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 📜 Aceptar licencias de Android SDK e instalar NDK y CMake
+        run: |
+          echo "=== Aceptando licencias e instalando herramientas de compilación C++ NDK ==="
+          yes | sdkmanager --licenses || true
+          sdkmanager --install \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "platform-tools" \
+            "ndk;26.1.10909125" \
+            "cmake;3.22.1" || true
+
+      - name: 🦀 Configurar Toolchain de Rust y Targets Android
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, armv7-linux-androideabi, x86_64-linux-android
+
+      - name: 📦 Instalar cargo-ndk para compilación cruzada
+        run: |
+          echo "=== Instalando cargo-ndk (Compilación limpia sin caché) ==="
+          cargo install cargo-ndk --locked || cargo install cargo-ndk
+
+      - name: 🦀 Compilar Módulo Nativo Rust (Clean Build)
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.1.10909125
+        run: |
+          echo "=== Compilando librerías Rust en modo Release para arquitecturas Android ==="
+          mkdir -p "$GITHUB_WORKSPACE/app/src/main/jniLibs"
+          cd "$GITHUB_WORKSPACE/app/src/main/rust"
+          echo "Limpiando workspace de Rust para compilación limpia desde cero..."
+          cargo clean
+          cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o "$GITHUB_WORKSPACE/app/src/main/jniLibs" build --release
+          cd "$GITHUB_WORKSPACE"
+          echo "=== Bibliotecas nativas compiladas en jniLibs ==="
+          ls -la "$GITHUB_WORKSPACE/app/src/main/jniLibs/"
+
+      - name: 🔑 Configurar Keystore de Producción / Release
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "=== Configurando Keystore para firma de APK Release ==="
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "Decodificando Keystore de producción desde GitHub Secret KEYSTORE_BASE64..."
+            echo "$KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/Vortex-key.jks"
+          elif [ -f "debug.keystore.base64" ]; then
+            echo "⚠️ Advertencia: KEYSTORE_BASE64 no configurado en Secrets. Usando fallback de prueba..."
+            base64 -d debug.keystore.base64 > "$GITHUB_WORKSPACE/Vortex-key.jks" || true
+          else
+            echo "Generando Keystore de contingencia para build release..."
+            keytool -genkey -v \
+              -keystore "$GITHUB_WORKSPACE/Vortex-key.jks" \
+              -storepass "${KEYSTORE_PASSWORD:-android}" \
+              -alias "${KEY_ALIAS:-Vortex}" \
+              -keypass "${KEY_PASSWORD:-${KEYSTORE_PASSWORD:-android}}" \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Vortex Beta Release,O=Vortex Studio,C=ES"
+          fi
+
+      - name: ⚙️ Configurar Gradle Wrapper
+        run: |
+          echo "Verificando y configurando gradle wrapper 9.3.1..."
+          gradle wrapper --gradle-version 9.3.1 --distribution-type bin || gradle wrapper || true
+          chmod +x gradlew
+
+      - name: 🔨 Compilar APK Release (Canal Beta - Clean Build Sin Caché)
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4g -Dorg.gradle.configuration-cache=false -Dkotlin.compiler.execution.strategy=in-process"
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.1.10909125
+          KEYSTORE_PATH: "Vortex-key.jks"
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'Vortex' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.KEYSTORE_PASSWORD }}
+        run: |
+          TARGET_CHANNEL="${{ inputs.vortex_channel || 'beta' }}"
+          echo "=== Iniciando compilación limpia para el canal: $TARGET_CHANNEL ==="
+          ./gradlew clean --no-daemon
+          ./gradlew assembleRelease -PvortexChannel="$TARGET_CHANNEL" --no-daemon --no-configuration-cache --stacktrace
+
+      - name: 📦 Verificar APK Release generado
+        run: |
+          echo "=== APKs Release generados con éxito ==="
+          ls -la app/build/outputs/apk/release/
+
+      - name: 📤 Subir APK Release a GitHub Actions Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vortex-beta-release-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+      - name: 🏷️ Adjuntar APK Release a la Pre-Release de GitHub
+        if: github.event_name == 'release'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=== Subiendo APK firmado directamente como Asset de la Pre-Release ==="
+          TAG_NAME="${{ github.event.release.tag_name }}"
+          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          
+          if [ -n "$TAG_NAME" ] && [ -f "$APK_PATH" ]; then
+            gh release upload "$TAG_NAME" "$APK_PATH" --clobber
+            echo "✅ APK firmado subido a la release $TAG_NAME exitosamente."
+          else
+            echo "No se detectó tag de release o el archivo APK no existe."
+          fi
+
+      - name: ✈️ Enviar APK Beta Release a Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          echo "=== Preparando entrega directa del APK a Telegram ==="
+          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+
+          if [ -z "$APK_PATH" ] || [ ! -f "$APK_PATH" ]; then
+            echo "❌ Error: No se encontró ningún archivo APK generado en app/build/outputs/apk/release/"
+            exit 1
+          fi
+
+          APK_NAME=$(basename "$APK_PATH")
+          APK_SIZE=$(du -h "$APK_PATH" | cut -f1)
+          COMMIT_MSG=$(git log -1 --pretty=%B | head -n 1)
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          RELEASE_TAG="${{ github.event.release.tag_name || 'Beta-Build' }}"
+
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "⚠️ TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID no configurados. Omitiendo envío a Telegram."
+            exit 0
+          fi
+
+          CAPTION="🔥 <b>Vortex Studio - APK Beta Release (Pre-Release)</b>%0A%0A🏷️ <b>Versión / Tag:</b> <code>$RELEASE_TAG</code>%0A📱 <b>Archivo APK:</b> <code>$APK_NAME</code>%0A⚖️ <b>Tamaño APK:</b> <b>${APK_SIZE}</b>%0A🔖 <b>Commit:</b> <code>$COMMIT_HASH</code> - $COMMIT_MSG%0A🕒 <b>Fecha:</b> $(date '+%Y-%m-%d %H:%M:%S UTC')%0A%0A⚡ <i>Canal Beta listo para instalación directa en dispositivos reales, Uptodown y tiendas alternativas.</i>"
+
+          echo "Enviando APK a Telegram..."
+          HTTP_STATUS=$(curl -sS -o /tmp/telegram_response.json -w "%{http_code}" \
+               -F chat_id="$TELEGRAM_CHAT_ID" \
+               -F document=@"$APK_PATH" \
+               -F caption="$CAPTION" \
+               -F parse_mode="HTML" \
+               "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument")
+
+          if [ "$HTTP_STATUS" -eq 200 ] && grep -q '"ok":true' /tmp/telegram_response.json; then
+            echo "✅ APK Release enviado exitosamente a Telegram."
+            rm -f /tmp/telegram_response.json
+          else
+            echo "⚠️ No se pudo enviar a Telegram (HTTP Status: $HTTP_STATUS)."
+            rm -f /tmp/telegram_response.json
+          fi
