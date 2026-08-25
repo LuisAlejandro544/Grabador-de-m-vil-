@@ -38,7 +38,7 @@ import java.io.File
 import kotlin.math.roundToLong
 
 /**
- * Modal Modular de Edición Avanzada estilo CapCut para dispositivos móviles.
+ * Modal Modular de Edición Avanzada de Video para dispositivos móviles.
  * Orquesta componentes independientes:
  * - [VideoEditorHeader]: Barra superior y exportación.
  * - [AspectRatioSelectorRow]: Selección 1-Tap de relación de aspecto y modo de ajuste.

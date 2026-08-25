@@ -1,0 +1,41 @@
+name: Limpiar Historial de Actions
+
+on:
+  workflow_dispatch:
+    inputs:
+      retain_days:
+        description: 'Días de historial a conservar (0 = borrar todo el historial pasado)'
+        required: false
+        default: '0'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  clean-history:
+    name: Eliminar historial de ejecuciones pasadas
+    runs-on: ubuntu-latest
+    steps:
+      - name: Limpiar historial mediante Delete Workflow Runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          retain_days: ${{ github.event.inputs.retain_days || 0 }}
+          keep_minimum_runs: 0
+
+      - name: Limpieza adicional mediante GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Verificando ejecuciones residuales con GitHub CLI..."
+          CURRENT_RUN_ID="${{ github.run_id }}"
+          
+          gh run list --repo "${{ github.repository }}" --limit 100 --json databaseId --jq '.[].databaseId' | while read -r run_id; do
+            if [ -n "$run_id" ] && [ "$run_id" != "$CURRENT_RUN_ID" ]; then
+              echo "Eliminando ejecución ID: $run_id"
+              gh run delete "$run_id" --repo "${{ github.repository }}" || true
+            fi
+          done
+          echo "Historial limpiado exitosamente."

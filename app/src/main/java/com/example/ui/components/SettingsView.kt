@@ -36,6 +36,7 @@ import com.example.ui.components.settings.AudioSettingsEvents
 import com.example.ui.components.settings.CountdownSettingsCard
 import com.example.ui.components.settings.FacecamSettingsCard
 import com.example.ui.components.settings.FacecamSettingsEvents
+import com.example.ui.components.settings.FeedbackSurveyCard
 import com.example.ui.components.settings.FloatingBubbleSettingsCard
 import com.example.ui.components.settings.GameModeCard
 import com.example.ui.components.settings.GeneralSettingsEvents
@@ -213,6 +214,11 @@ fun SettingsView(
         // Monitor de Estado de Módulos Nativos (C++ & Rust)
         NativeModulesStatusCard()
 
+        // Encuesta de Experiencia de Usuario y Opinión del Diseño (Google Forms)
+        FeedbackSurveyCard(
+            onOpenSurvey = generalEvents.onOpenFeedbackSurvey
+        )
+
         // Canales de Versión y Distribución (Dev, Canary, Beta, Estable) y Comprobación de Actualizaciones
         com.example.ui.components.settings.ReleaseChannelInfoCard(
             updateInfo = updateInfo,
@@ -282,6 +288,7 @@ fun SettingsView(
     onReopenOnboarding: () -> Unit = {},
     onCheckForUpdates: () -> Unit = {},
     onOpenGitHubReleases: () -> Unit = {},
+    onOpenFeedbackSurvey: () -> Unit = {},
     updateInfo: com.example.model.AppUpdateInfo = com.example.model.AppUpdateInfo(),
     modifier: Modifier = Modifier
 ) {
@@ -350,7 +357,8 @@ fun SettingsView(
             onUpdateCountdown = onUpdateCountdown,
             onReopenOnboarding = onReopenOnboarding,
             onCheckForUpdates = onCheckForUpdates,
-            onOpenGitHubReleases = onOpenGitHubReleases
+            onOpenGitHubReleases = onOpenGitHubReleases,
+            onOpenFeedbackSurvey = onOpenFeedbackSurvey
         ),
         modifier = modifier
     )

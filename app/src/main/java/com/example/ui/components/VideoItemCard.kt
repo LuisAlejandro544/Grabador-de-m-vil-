@@ -230,7 +230,7 @@ fun VideoItemCard(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Editar Clip (CapCut)") },
+                        text = { Text("Editar Clip") },
                         leadingIcon = { Icon(Icons.Default.ContentCut, contentDescription = null, tint = Color(0xFF00E676)) },
                         onClick = {
                             showMenu = false

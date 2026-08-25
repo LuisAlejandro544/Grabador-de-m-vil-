@@ -229,6 +229,7 @@ fun HomeScreen(
                     onReopenOnboarding = { viewModel.resetOnboarding() },
                     onCheckForUpdates = { viewModel.checkForUpdates(force = true) },
                     onOpenGitHubReleases = { viewModel.openGitHubReleases() },
+                    onOpenFeedbackSurvey = { viewModel.openFeedbackSurvey() },
                     updateInfo = uiState.updateInfo
                 )
             }

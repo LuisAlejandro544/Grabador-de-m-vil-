@@ -4,6 +4,7 @@ import android.animation.ObjectAnimator
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
+import android.text.TextUtils
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -14,8 +15,8 @@ import java.util.Locale
 
 /**
  * Barra principal horizontal del widget flotante.
- * Contiene el led pulsante, el cronómetro monospace, los controles de acción rápida
- * (Pausar/Reanudar, Micrófono dinámico "Voz ON", Herramientas y Parar) y el botón de expansión.
+ * Diseñada de forma compacta y adaptativa para verse impecable tanto en vertical como en horizontal.
+ * Contiene el led pulsante, cronómetro monospace, botones rápidos (Pausar, Micrófono, HUD, Parar) y flecha de colapso.
  */
 class BubbleMainBar(
     private val context: Context,
@@ -51,15 +52,15 @@ class BubbleMainBar(
         layout = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10), dp(8), dp(10), dp(8))
-            background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_BG_DARK, dp(24))
+            setPadding(dp(8), dp(6), dp(8), dp(6))
+            background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_BG_DARK, dp(20))
         }
 
         // 1. Indicador en vivo (Punto pulsante)
         dotIndicator = View(context).apply {
-            val dotSize = dp(10)
+            val dotSize = dp(8)
             layoutParams = LinearLayout.LayoutParams(dotSize, dotSize).apply {
-                marginEnd = dp(8)
+                marginEnd = dp(6)
             }
             background = BubbleDrawables.createCircleDrawable(BubbleColors.COLOR_RECORDING_RED)
         }
@@ -69,14 +70,15 @@ class BubbleMainBar(
         tvTimer = TextView(context).apply {
             text = "00:00"
             setTextColor(BubbleColors.COLOR_TEXT_WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             typeface = Typeface.MONOSPACE
             setTypeface(typeface, Typeface.BOLD)
+            setSingleLine(true)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                marginEnd = dp(8)
+                marginEnd = dp(6)
             }
         }
         layout.addView(tvTimer)
@@ -91,30 +93,32 @@ class BubbleMainBar(
         val btnPauseResume = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_BTN_BG, dp(14))
-            setPadding(dp(8), dp(4), dp(8), dp(4))
+            background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_BTN_BG, dp(12))
+            setPadding(dp(6), dp(4), dp(6), dp(4))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                marginEnd = dp(6)
+                marginEnd = dp(4)
             }
         }
 
         iconPauseResume = ImageView(context).apply {
             setImageResource(android.R.drawable.ic_media_pause)
-            layoutParams = LinearLayout.LayoutParams(dp(15), dp(15)).apply {
-                marginEnd = dp(4)
+            layoutParams = LinearLayout.LayoutParams(dp(13), dp(13)).apply {
+                marginEnd = dp(3)
             }
             setColorFilter(Color.WHITE)
         }
         btnPauseResume.addView(iconPauseResume)
 
         tvPauseResumeLabel = TextView(context).apply {
-            text = "Pausar"
+            text = "Pausa"
             setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             typeface = Typeface.DEFAULT_BOLD
+            setSingleLine(true)
+            ellipsize = TextUtils.TruncateAt.END
         }
         btnPauseResume.addView(tvPauseResumeLabel)
 
@@ -128,30 +132,32 @@ class BubbleMainBar(
         btnMicToggle = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_MIC_ON_BG, dp(14))
-            setPadding(dp(8), dp(4), dp(8), dp(4))
+            background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_MIC_ON_BG, dp(12))
+            setPadding(dp(6), dp(4), dp(6), dp(4))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                marginEnd = dp(6)
+                marginEnd = dp(4)
             }
         }
 
         iconMicToggle = ImageView(context).apply {
             setImageResource(android.R.drawable.ic_btn_speak_now)
-            layoutParams = LinearLayout.LayoutParams(dp(15), dp(15)).apply {
-                marginEnd = dp(4)
+            layoutParams = LinearLayout.LayoutParams(dp(13), dp(13)).apply {
+                marginEnd = dp(3)
             }
             setColorFilter(BubbleColors.COLOR_MIC_ON_TEXT)
         }
         btnMicToggle.addView(iconMicToggle)
 
         tvMicToggleLabel = TextView(context).apply {
-            text = "Voz ON"
+            text = "Mic"
             setTextColor(BubbleColors.COLOR_MIC_ON_TEXT)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             typeface = Typeface.DEFAULT_BOLD
+            setSingleLine(true)
+            ellipsize = TextUtils.TruncateAt.END
         }
         btnMicToggle.addView(tvMicToggleLabel)
 
@@ -161,33 +167,35 @@ class BubbleMainBar(
         }
         actionControlsLayout.addView(btnMicToggle)
 
-        // Botón Herramientas
+        // Botón Herramientas / HUD
         btnTools = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_TOOLS_BG, dp(14))
-            setPadding(dp(8), dp(4), dp(8), dp(4))
+            background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_TOOLS_BG, dp(12))
+            setPadding(dp(6), dp(4), dp(6), dp(4))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                marginEnd = dp(6)
+                marginEnd = dp(4)
             }
 
             iconTools = ImageView(context).apply {
                 setImageResource(android.R.drawable.ic_menu_manage)
-                layoutParams = LinearLayout.LayoutParams(dp(14), dp(14)).apply {
-                    marginEnd = dp(4)
+                layoutParams = LinearLayout.LayoutParams(dp(13), dp(13)).apply {
+                    marginEnd = dp(3)
                 }
                 setColorFilter(0xFF818CF8.toInt())
             }
             addView(iconTools)
 
             tvToolsLabel = TextView(context).apply {
-                text = "Herramientas"
+                text = "HUD"
                 setTextColor(0xFF818CF8.toInt())
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 typeface = Typeface.DEFAULT_BOLD
+                setSingleLine(true)
+                ellipsize = TextUtils.TruncateAt.END
             }
             addView(tvToolsLabel)
 
@@ -202,29 +210,31 @@ class BubbleMainBar(
         val btnStop = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_STOP_BG, dp(14))
-            setPadding(dp(8), dp(4), dp(8), dp(4))
+            background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_STOP_BG, dp(12))
+            setPadding(dp(6), dp(4), dp(6), dp(4))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                marginEnd = dp(6)
+                marginEnd = dp(4)
             }
 
             val iconStop = ImageView(context).apply {
                 setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
-                layoutParams = LinearLayout.LayoutParams(dp(14), dp(14)).apply {
-                    marginEnd = dp(4)
+                layoutParams = LinearLayout.LayoutParams(dp(13), dp(13)).apply {
+                    marginEnd = dp(3)
                 }
                 setColorFilter(BubbleColors.COLOR_RECORDING_RED)
             }
             addView(iconStop)
 
             val tvStopLabel = TextView(context).apply {
-                text = "Parar"
+                text = "Fin"
                 setTextColor(BubbleColors.COLOR_RECORDING_RED)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 typeface = Typeface.DEFAULT_BOLD
+                setSingleLine(true)
+                ellipsize = TextUtils.TruncateAt.END
             }
             addView(tvStopLabel)
 
@@ -241,9 +251,9 @@ class BubbleMainBar(
         btnToggleExpand = ImageView(context).apply {
             setImageResource(android.R.drawable.arrow_up_float)
             rotation = 90f
-            layoutParams = LinearLayout.LayoutParams(dp(18), dp(18))
+            layoutParams = LinearLayout.LayoutParams(dp(16), dp(16))
             setColorFilter(0xAAFFFFFF.toInt())
-            setPadding(dp(2), dp(2), dp(2), dp(2))
+            setPadding(dp(1), dp(1), dp(1), dp(1))
 
             setOnClickListener {
                 onVibrateRequested()
@@ -270,13 +280,13 @@ class BubbleMainBar(
             if (paused) {
                 dotIndicator.background = BubbleDrawables.createCircleDrawable(BubbleColors.COLOR_PAUSED_AMBER)
                 iconPauseResume.setImageResource(android.R.drawable.ic_media_play)
-                tvPauseResumeLabel.text = "Reanudar"
+                tvPauseResumeLabel.text = "Seguir"
                 dotPulseAnimator?.pause()
                 dotIndicator.alpha = 1.0f
             } else {
                 dotIndicator.background = BubbleDrawables.createCircleDrawable(BubbleColors.COLOR_RECORDING_RED)
                 iconPauseResume.setImageResource(android.R.drawable.ic_media_pause)
-                tvPauseResumeLabel.text = "Pausar"
+                tvPauseResumeLabel.text = "Pausa"
                 if (dotPulseAnimator?.isPaused == true) {
                     dotPulseAnimator?.resume()
                 } else {
@@ -289,14 +299,14 @@ class BubbleMainBar(
     fun updateMicStatus(muted: Boolean) {
         layout.post {
             if (muted) {
-                btnMicToggle.background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_MIC_OFF_BG, dp(14))
+                btnMicToggle.background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_MIC_OFF_BG, dp(12))
                 iconMicToggle.setColorFilter(BubbleColors.COLOR_MIC_OFF_TEXT)
-                tvMicToggleLabel.text = "Solo Juego"
+                tvMicToggleLabel.text = "Mute"
                 tvMicToggleLabel.setTextColor(BubbleColors.COLOR_MIC_OFF_TEXT)
             } else {
-                btnMicToggle.background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_MIC_ON_BG, dp(14))
+                btnMicToggle.background = BubbleDrawables.createCardDrawable(context, BubbleColors.COLOR_MIC_ON_BG, dp(12))
                 iconMicToggle.setColorFilter(BubbleColors.COLOR_MIC_ON_TEXT)
-                tvMicToggleLabel.text = "Voz ON"
+                tvMicToggleLabel.text = "Mic"
                 tvMicToggleLabel.setTextColor(BubbleColors.COLOR_MIC_ON_TEXT)
             }
         }
@@ -308,7 +318,7 @@ class BubbleMainBar(
                 btnTools.background = BubbleDrawables.createCardDrawable(
                     context = context,
                     color = BubbleColors.COLOR_TOOLS_ACTIVE_BG,
-                    cornerRadiusPx = dp(14),
+                    cornerRadiusPx = dp(12),
                     strokeColor = 0xFFA5B4FC.toInt(),
                     strokeWidthDp = 1
                 )
@@ -318,7 +328,7 @@ class BubbleMainBar(
                 btnTools.background = BubbleDrawables.createCardDrawable(
                     context = context,
                     color = BubbleColors.COLOR_TOOLS_BG,
-                    cornerRadiusPx = dp(14)
+                    cornerRadiusPx = dp(12)
                 )
                 iconTools.setColorFilter(0xFF818CF8.toInt())
                 tvToolsLabel.setTextColor(0xFF818CF8.toInt())

@@ -101,5 +101,6 @@ data class GeneralSettingsEvents(
     val onUpdateCountdown: (Int) -> Unit = {},
     val onReopenOnboarding: () -> Unit = {},
     val onCheckForUpdates: () -> Unit = {},
-    val onOpenGitHubReleases: () -> Unit = {}
+    val onOpenGitHubReleases: () -> Unit = {},
+    val onOpenFeedbackSurvey: () -> Unit = {}
 )

@@ -1,8 +1,16 @@
-fix(ci): corregir resolución de ruta del Keystore para la firma del APK Release en GitHub Actions
+fix(overlay): optimizar diseño vertical de la burbuja, corregir artefacto negro y remover marcas registradas
 
-- Diagnóstico y causa raíz del fallo en el flujo de CI/CD:
-  * El proceso fallaba en la tarea `:app:validateSigningRelease` debido a que `KEYSTORE_PATH` se pasaba como ruta relativa `"Vortex-key.jks"`. En el subproyecto `:app`, Gradle resolvía la ruta dentro de `/app/` (`/home/runner/work/***/***/app/***-key.jks`) en lugar de la raíz del repositorio donde se decodificaba el archivo.
-- Solución aplicada:
-  * En `.github/workflows/build-beta-release.yml`, se configuró `KEYSTORE_PATH` con la ruta absoluta canónica `${{ github.workspace }}/Vortex-key.jks`.
-  * Se añadió una copia de seguridad automática tanto en la raíz como en el directorio `app/` para asegurar compatibilidad absoluta con cualquier contexto de ejecución.
-  * Se incluyó verificación explícita mediante `ls -la` en el log de GitHub Actions previa a la ejecución de `assembleRelease`.
+- Burbuja flotante y menú HUD adaptativo:
+  * Se rediseñó la barra principal horizontal con chips de acción compactos (Pausa, Mic, HUD, Fin), tipografía ajustada y control de texto 'singleLine' con elipsis para evitar desbordamientos o quiebres visuales en pantallas verticales (modo portrait).
+  * Se transformó el submenú de herramientas a una cuadrícula modular y simétrica de 4 columnas x 3 filas con padding optimizado, garantizando que todos los controles (Facecam, Captura, Pincel, Vúmetro, VTuber, Belleza, RGB, Toques, Logo, Marco) queden perfectamente alineados y accesibles en cualquier resolución y orientación sin tapar el juego.
+
+- Corrección del artefacto visual oscuro en grabación de pantalla:
+  * Se eliminó el uso de FLAG_SECURE en WindowManager al activar la opción de ocultar burbuja en el video final, evitando que el compositor del sistema (SurfaceFlinger) genere cuadros o bloques negros en la captura de pantalla por restricciones DRM.
+  * Se ajustó el flujo para ocultar limpiamente la superposición durante la grabación si el usuario desea un video 100% libre de elementos externos.
+
+- Cumplimiento y neutralidad de marca:
+  * Se eliminó la mención de marcas comerciales de terceros ("CapCut") en el menú contextual de clips y editores de video, reemplazándolo por el término estándar "Editar Clip".
+
+- Integración de encuesta de experiencia y feedback (Google Forms):
+  * Se añadió la tarjeta 'FeedbackSurveyCard' de forma no intrusiva en la pestaña de Ajustes para recolectar opiniones sobre el diseño, fluidez y sugerencias de nuevas funciones de manera anónima y sin necesidad de cuenta de GitHub.
+  * Se vinculó el acceso directo al formulario oficial (https://forms.gle/CxQYfhfRMuhjEiDa8) con manejo seguro de intents en el navegador externo.

@@ -391,4 +391,8 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     fun openGitHubReleases(url: String = AppUpdateInfo.GITHUB_RELEASES_URL) {
         updateCheckerRepository.openReleasesInBrowser(url)
     }
+
+    fun openFeedbackSurvey(url: String = com.example.ui.components.settings.VORTEX_SURVEY_URL) {
+        updateCheckerRepository.openReleasesInBrowser(url)
+    }
 }

@@ -143,11 +143,7 @@ fun FloatingBubbleSettingsCard(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                    "Exclusión nativa de ventana (Android 14+): la ves mientras juegas, pero no aparece grabada"
-                                } else {
-                                    "Oculta la interfaz durante la captura para evitar que aparezca en el video final"
-                                },
+                                text = "Oculta la burbuja durante la grabación para que el juego se capture 100% limpio sin superposiciones",
                                 fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

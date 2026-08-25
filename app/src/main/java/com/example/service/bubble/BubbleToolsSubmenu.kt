@@ -3,6 +3,7 @@ package com.example.service.bubble
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
+import android.text.TextUtils
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -13,8 +14,8 @@ import android.widget.TextView
 
 /**
  * Tarjeta de herramientas estilo Gaming Glassmorphism (Floating Grid Dock).
- * Agrupa las herramientas en una cuadrícula compacta y táctil (Touch-friendly),
- * evitando ocupar todo el ancho de la pantalla y manteniendo la visibilidad del juego.
+ * Agrupa las herramientas en una cuadrícula compacta y adaptativa de 4 columnas (Touch-friendly),
+ * evitando ocupar todo el ancho de la pantalla y manteniendo la visibilidad en modo vertical y horizontal.
  */
 class BubbleToolsSubmenu(
     private val context: Context,
@@ -79,11 +80,11 @@ class BubbleToolsSubmenu(
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             visibility = View.GONE
-            setPadding(dp(12), dp(10), dp(12), dp(10))
+            setPadding(dp(8), dp(8), dp(8), dp(8))
             background = BubbleDrawables.createCardDrawable(
                 context = context,
                 color = BubbleColors.COLOR_GLASS_PANEL,
-                cornerRadiusPx = dp(18),
+                cornerRadiusPx = dp(16),
                 strokeColor = BubbleColors.COLOR_GLASS_BORDER,
                 strokeWidthDp = 1
             )
@@ -91,7 +92,7 @@ class BubbleToolsSubmenu(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                topMargin = dp(8)
+                topMargin = dp(6)
             }
         }
 
@@ -103,32 +104,33 @@ class BubbleToolsSubmenu(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                bottomMargin = dp(8)
+                bottomMargin = dp(6)
+                marginStart = dp(4)
             }
         }
 
         val headerDot = View(context).apply {
-            layoutParams = LinearLayout.LayoutParams(dp(6), dp(6)).apply {
-                marginEnd = dp(6)
+            layoutParams = LinearLayout.LayoutParams(dp(5), dp(5)).apply {
+                marginEnd = dp(5)
             }
             background = BubbleDrawables.createCircleDrawable(0xFF818CF8.toInt())
         }
         headerLayout.addView(headerDot)
 
         val headerTitle = TextView(context).apply {
-            text = "HERRAMIENTAS EN VIVO"
+            text = "HERRAMIENTAS HUD"
             setTextColor(0xFF818CF8.toInt())
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
             typeface = Typeface.DEFAULT_BOLD
-            letterSpacing = 0.08f
+            letterSpacing = 0.06f
         }
         headerLayout.addView(headerTitle)
         layout.addView(headerLayout)
 
-        // Cuadrícula 5 columnas x 2 filas (10 herramientas)
+        // Cuadrícula compacta: 4 columnas x 3 filas
         val gridLayout = GridLayout(context).apply {
-            columnCount = 5
-            rowCount = 2
+            columnCount = 4
+            rowCount = 3
             orientation = GridLayout.HORIZONTAL
         }
 
@@ -295,15 +297,15 @@ class BubbleToolsSubmenu(
             background = BubbleDrawables.createCardDrawable(
                 context = context,
                 color = BubbleColors.COLOR_BTN_BG,
-                cornerRadiusPx = dp(12),
+                cornerRadiusPx = dp(10),
                 strokeColor = 0x22FFFFFF.toInt(),
                 strokeWidthDp = 1
             )
-            setPadding(dp(4), dp(8), dp(4), dp(6))
+            setPadding(dp(2), dp(5), dp(2), dp(4))
             val params = GridLayout.LayoutParams().apply {
-                width = dp(56)
-                height = dp(54)
-                setMargins(dp(3), dp(3), dp(3), dp(3))
+                width = dp(50)
+                height = dp(46)
+                setMargins(dp(2), dp(2), dp(2), dp(2))
             }
             layoutParams = params
             setOnClickListener { onClick() }
@@ -317,15 +319,15 @@ class BubbleToolsSubmenu(
 
         val iv = ImageView(context).apply {
             setImageResource(iconRes)
-            layoutParams = LinearLayout.LayoutParams(dp(18), dp(18))
+            layoutParams = LinearLayout.LayoutParams(dp(15), dp(15))
             setColorFilter(Color.WHITE)
         }
         iconWrapper.addView(iv)
 
         val statusDot = View(context).apply {
-            layoutParams = LinearLayout.LayoutParams(dp(5), dp(5)).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(4), dp(4)).apply {
                 marginStart = dp(2)
-                topMargin = dp(-6)
+                topMargin = dp(-4)
             }
             background = BubbleDrawables.createCircleDrawable(0x00000000) // Invisible por defecto
         }
@@ -336,15 +338,16 @@ class BubbleToolsSubmenu(
         val tv = TextView(context).apply {
             text = label
             setTextColor(BubbleColors.COLOR_TEXT_WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
             setSingleLine(true)
+            ellipsize = TextUtils.TruncateAt.END
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                topMargin = dp(4)
+                topMargin = dp(2)
             }
         }
         container.addView(tv)
@@ -470,7 +473,7 @@ class BubbleToolsSubmenu(
             container.background = BubbleDrawables.createCardDrawable(
                 context = context,
                 color = activeBgColor,
-                cornerRadiusPx = dp(12),
+                cornerRadiusPx = dp(10),
                 strokeColor = activeTextColor,
                 strokeWidthDp = 1
             )
@@ -481,7 +484,7 @@ class BubbleToolsSubmenu(
             container.background = BubbleDrawables.createCardDrawable(
                 context = context,
                 color = BubbleColors.COLOR_BTN_BG,
-                cornerRadiusPx = dp(12),
+                cornerRadiusPx = dp(10),
                 strokeColor = 0x22FFFFFF.toInt(),
                 strokeWidthDp = 1
             )
