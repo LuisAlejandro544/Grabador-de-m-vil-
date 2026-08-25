@@ -10,6 +10,7 @@ vortex-studio/
 │       │   ├── AndroidManifest.xml
 │       │   ├── cpp/            # Motor Nativo C++ NDK
 │       │   │   ├── CMakeLists.txt
+│       │   │   ├── vtuber_face_mesh.cpp / .hpp   # Motor de Visión IA Local (Face Mesh & Head Tilt)
 │       │   │   ├── audio_dsp_engine.cpp / .hpp   # Noise Gate, Ducking y Soft Limiter
 │       │   │   ├── ffmpeg_engine.cpp / .hpp      # Trim, Split, Aspect Ratio y transcode
 │       │   │   ├── obs_compositor.cpp / .hpp     # Renderizado OpenGL ES 3.0
@@ -27,7 +28,7 @@ vortex-studio/
 │       │   │   │       └── VideoThumbnailEngine.kt    # Captura de fotogramas HD y Filmstrip
 │       │   │   ├── model/
 │       │   │   │   ├── RecordedVideo.kt
-│       │   │   │   ├── RecordingConfig.kt        # Modelo con ImageFormatOption, Bitrate y Overlays
+│       │   │   │   ├── RecordingConfig.kt        # Modelo con ImageFormatOption, Bitrate, Overlays y VtuberTrackingMode
 │       │   │   │   └── ReleaseChannel.kt         # Canales de versión (Dev, Canary, Beta, Estable) y Package IDs
 │       │   │   ├── data/
 │       │   │   │   ├── InstalledGamesHelper.kt
@@ -36,9 +37,10 @@ vortex-studio/
 │       │   │   │   ├── StorageMonitorHelper.kt   # Cálculo de espacio en disco y tiempo restante
 │       │   │   │   └── settings/                 # Subalmacenes modulares de persistencia
 │       │   │   │       ├── VideoAudioSettingsStore.kt    # Persistencia de video y audio DSP
-│       │   │   │       ├── OverlaySettingsStore.kt       # Persistencia de Facecam, VTuber y Overlays
+│       │   │   │       ├── OverlaySettingsStore.kt       # Persistencia de Facecam, VTuber Face Mesh y Overlays
 │       │   │   │       └── GameAndImageSettingsStore.kt  # Modo juego, timer y capturas
 │       │   │   ├── nativecore/                   # Puentes JNI
+│       │   │   │   ├── NativeVTuberFaceBridge.kt     # Puente JNI con Face Mesh C++ NDK
 │       │   │   │   ├── NativeAudioDSPBridge.kt
 │       │   │   │   ├── NativeFFmpegBridge.kt
 │       │   │   │   ├── NativeOBSBridge.kt
@@ -73,7 +75,13 @@ vortex-studio/
 │       │   │   │   │   ├── FacecamRgbBorderView.kt     # Borde animado RGB arcoíris
 │       │   │   │   │   ├── FacecamShapeHelper.kt       # Recorte geométrico y dimensiones
 │       │   │   │   │   └── FacecamTouchDragHelper.kt   # Arrastre táctil y snap magnético
-│       │   │   │   ├── vtuber/                   # Sistema de Avatar 2D / PNGtuber
+│       │   │   │   ├── vtuber/                   # Sistema de Avatar 2D / PNGtuber con IA Local
+│       │   │   │   │   ├── VtuberCameraTracker.kt      # Captura CameraX y análisis YUV para Face Mesh
+│       │   │   │   │   ├── VtuberOverlayManager.kt     # Orquestador del ciclo de vida y pipelines de tracking
+│       │   │   │   │   ├── VtuberOverlayView.kt        # Renderizado en Canvas con rotación de cabeza y rebote
+│       │   │   │   │   ├── VtuberAudioReactor.kt       # Reactor RMS de micrófono para modo voz/híbrido
+│       │   │   │   │   ├── VtuberPresetDrawables.kt    # Generación y almacenamiento de presets
+│       │   │   │   │   └── VtuberState.kt              # Estados y modelo de datos VtuberFacePose
 │       │   │   │   ├── vumeter/                  # Vúmetro LED y Mezclador Flotante
 │       │   │   │   └── capture/                  # Codificadores, DSP y MuxerManager (Zero-Latency AV Sync Engine)
 │       │   │   │       ├── AudioEncoderWorker.kt     # Hilo dedicado de codificación AAC con PTS continuo y sample-accurate

@@ -95,9 +95,13 @@ class SettingsRepository(context: Context) {
             sceneOverlayImageUri = overlaySlice.sceneOverlayImageUri,
             showVtuber = overlaySlice.showVtuber,
             vtuberPreset = overlaySlice.vtuberPreset,
+            vtuberTrackingMode = overlaySlice.vtuberTrackingMode,
             vtuberSize = overlaySlice.vtuberSize,
             vtuberSensitivity = overlaySlice.vtuberSensitivity,
             vtuberBounceEnabled = overlaySlice.vtuberBounceEnabled,
+            vtuberHeadTiltEnabled = overlaySlice.vtuberHeadTiltEnabled,
+            vtuberEyeBlinkSensitivity = overlaySlice.vtuberEyeBlinkSensitivity,
+            vtuberMouthSensitivity = overlaySlice.vtuberMouthSensitivity,
             vtuberIdleImageUri = overlaySlice.vtuberIdleImageUri,
             vtuberTalkImageUri = overlaySlice.vtuberTalkImageUri,
             vtuberBlinkImageUri = overlaySlice.vtuberBlinkImageUri,
@@ -171,6 +175,24 @@ class SettingsRepository(context: Context) {
 
     fun updateVtuberPreset(preset: VtuberPreset) {
         saveConfig(_configFlow.value.copy(vtuberPreset = preset))
+    }
+
+    fun updateVtuberTrackingMode(mode: com.example.model.VtuberTrackingMode) {
+        saveConfig(_configFlow.value.copy(vtuberTrackingMode = mode))
+    }
+
+    fun toggleVtuberHeadTilt(enabled: Boolean) {
+        saveConfig(_configFlow.value.copy(vtuberHeadTiltEnabled = enabled))
+    }
+
+    fun updateVtuberEyeBlinkSensitivity(sensitivity: Float) {
+        val clamped = sensitivity.coerceIn(0.1f, 0.9f)
+        saveConfig(_configFlow.value.copy(vtuberEyeBlinkSensitivity = clamped))
+    }
+
+    fun updateVtuberMouthSensitivity(sensitivity: Float) {
+        val clamped = sensitivity.coerceIn(0.1f, 0.9f)
+        saveConfig(_configFlow.value.copy(vtuberMouthSensitivity = clamped))
     }
 
     fun updateVtuberSize(size: VtuberSize) {

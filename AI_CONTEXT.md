@@ -22,6 +22,7 @@ Este documento mantiene el estado de desarrollo, decisiones de arquitectura y ma
 - **`VideoEditorDialog.kt`**: Visor interactivo con Blur reactivo, selector de aspecto, botón Split y Scrubber dual.
 
 ### 2. Motor Nativo C++ (`cpp/`) & JNI
+- **`vtuber_face_mesh.hpp` / `vtuber_face_mesh.cpp`**: Motor de IA local y visión artificial en C++ para tracking facial (Face Mesh 60 FPS), cálculo de apertura ocular (parpadeo independiente), apertura bucal, estimación de inclinación de cabeza (*Head Tilt / Roll*) y filtrado temporal anti-vibración.
 - **`ffmpeg_engine.hpp` / `ffmpeg_engine.cpp`**: Métodos nativos para `trimVideo`, `splitVideo`, `convertAspectRatio`, `extractAudio`, `compressVideo` y `applyWatermark`.
 - **`obs_compositor.hpp` / `obs_compositor.cpp`**: Pipeline de renderizado con OpenGL ES 3.0 para composición de capas y aceleración por hardware.
 - **`audio_dsp_engine.hpp` / `audio_dsp_engine.cpp`**: Puerta de ruido (Noise Gate), ducking automático (-9 dB) y limitador suave (Soft Limiter).
@@ -42,7 +43,7 @@ Este documento mantiene el estado de desarrollo, decisiones de arquitectura y ma
 - `StorageMonitorHelper.kt` & `DiskStorageMonitorCard.kt`: Monitorización de espacio en disco en tiempo real con estimación de tiempo de grabación restante según la tasa de bits.
 - `ScreenshotHelper.kt` & `ImageFormatSettingsCard.kt`: Selector y motor de compresión multiformato para capturas de pantalla (PNG, JPEG 10-100% y WebP lossless).
 - `FacecamOverlayManager.kt`: Cámara frontal/trasera con CameraX, FPS configurable (30-60 FPS), marco RGB animado y filtro de belleza.
-- `VtuberOverlayManager.kt`: Avatar 2D reactivo a voz y parpadeo ocular automático.
+- `VtuberOverlayManager.kt` & `VtuberCameraTracker.kt`: Avatar 2D / PNGtuber con IA Local en C++ (`Face Mesh`), reactividad a volumen de voz o modo híbrido, soporte de rotación de cabeza (*Head Tilt*) y rebote dinámico.
 - `FloatingVuMeterManager.kt`: Vúmetro LED en vivo y mezclador de volumen flotante con control de ganancia.
 - `TouchVisualizerOverlay.kt`: Visualizador táctil con ripples animados sin necesidad de opciones de desarrollador.
 - `WatermarkOverlayManager.kt` y `SceneOverlayManager.kt`: Marca de agua arrastrable y overlays de escena.

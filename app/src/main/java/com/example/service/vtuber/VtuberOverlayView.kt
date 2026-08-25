@@ -33,6 +33,9 @@ class VtuberOverlayView(
 ) : FrameLayout(context) {
 
     private var currentState: VtuberState = VtuberState.IDLE
+    private var currentHeadRoll = 0f
+    private var currentHeadPitch = 0f
+    private var currentHeadYaw = 0f
     private var currentBounceOffset = 0f
     private var bounceAnimator: ValueAnimator? = null
 
@@ -129,6 +132,33 @@ class VtuberOverlayView(
         avatarDrawingView.invalidate()
     }
 
+    fun updateFacePose(pose: VtuberFacePose) {
+        if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+            post { updateFacePose(pose) }
+            return
+        }
+        val oldState = currentState
+        currentState = pose.state
+
+        if (config.vtuberHeadTiltEnabled) {
+            currentHeadRoll = pose.headRoll
+            currentHeadPitch = pose.headPitch
+            currentHeadYaw = pose.headYaw
+        } else {
+            currentHeadRoll = 0f
+            currentHeadPitch = 0f
+            currentHeadYaw = 0f
+        }
+
+        if (config.vtuberBounceEnabled && (currentState == VtuberState.TALKING || currentState == VtuberState.BLINKING_TALKING)) {
+            if (oldState != VtuberState.TALKING && oldState != VtuberState.BLINKING_TALKING) {
+                triggerBounce()
+            }
+        }
+
+        avatarDrawingView.invalidate()
+    }
+
     private fun triggerBounce() {
         try {
             bounceAnimator?.cancel()
@@ -152,6 +182,13 @@ class VtuberOverlayView(
             val h = height.toFloat()
             if (w <= 0 || h <= 0) return
 
+            canvas.save()
+
+            // Inclinación y rotación de cabeza si está activo el seguimiento facial
+            if (config.vtuberHeadTiltEnabled && currentHeadRoll != 0f) {
+                canvas.rotate(currentHeadRoll, w / 2f, h / 2f)
+            }
+
             if (config.vtuberPreset == VtuberPreset.CUSTOM) {
                 val activeBitmap = getCustomBitmapForState(currentState)
                 if (activeBitmap != null && !activeBitmap.isRecycled) {
@@ -166,6 +203,7 @@ class VtuberOverlayView(
                         cy + (size / 2f)
                     )
                     canvas.drawBitmap(activeBitmap, src, dst, paint)
+                    canvas.restore()
                     return
                 }
             }
@@ -179,6 +217,7 @@ class VtuberOverlayView(
                 state = currentState,
                 bounceOffset = currentBounceOffset
             )
+            canvas.restore()
         } catch (t: Throwable) {
             // Proteger de caídas durante el dibujo
         }

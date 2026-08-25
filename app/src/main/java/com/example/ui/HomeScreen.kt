@@ -205,6 +205,15 @@ fun HomeScreen(
                     onToggleFacecamRgbBorder = { viewModel.toggleFacecamRgbBorder(it) },
                     onToggleVtuber = { viewModel.toggleVtuber(it) },
                     onUpdateVtuberPreset = { viewModel.updateVtuberPreset(it) },
+                    onUpdateVtuberTrackingMode = { mode ->
+                        if (mode != com.example.model.VtuberTrackingMode.VOICE_ONLY) {
+                            recordLaunchersState.requestCameraPermission()
+                        }
+                        viewModel.updateVtuberTrackingMode(mode)
+                    },
+                    onToggleVtuberHeadTilt = { viewModel.toggleVtuberHeadTilt(it) },
+                    onUpdateVtuberEyeBlinkSensitivity = { viewModel.updateVtuberEyeBlinkSensitivity(it) },
+                    onUpdateVtuberMouthSensitivity = { viewModel.updateVtuberMouthSensitivity(it) },
                     onUpdateVtuberSize = { viewModel.updateVtuberSize(it) },
                     onUpdateVtuberSensitivity = { viewModel.updateVtuberSensitivity(it) },
                     onToggleVtuberBounce = { viewModel.toggleVtuberBounce(it) },

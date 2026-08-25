@@ -5,9 +5,12 @@
 #include "ffmpeg_engine.hpp"
 #include "audio_dsp_engine.hpp"
 
+#include "vtuber_face_mesh.hpp"
+
 static std::unique_ptr<obs::SceneCompositor> gCompositor = nullptr;
 static std::unique_ptr<obs::ffmpeg::FFmpegEngine> gFFmpegEngine = nullptr;
 static std::unique_ptr<obs::dsp::AudioDspEngine> gAudioDspEngine = nullptr;
+static std::unique_ptr<vortex::vtuber::FaceMeshEngine> gFaceMeshEngine = nullptr;
 
 extern "C" {
 
@@ -456,6 +459,155 @@ Java_com_example_nativecore_NativeAudioDSPBridge_nativeGetDuckingGain(JNIEnv* /*
 JNIEXPORT void JNICALL
 Java_com_example_nativecore_NativeAudioDSPBridge_nativeReleaseAudioDsp(JNIEnv* /* env */, jobject /* this */) {
     gAudioDspEngine.reset();
+}
+
+// -----------------------------------------------------------------------------
+// VTuber Local Face Tracking JNI Implementation
+// -----------------------------------------------------------------------------
+
+JNIEXPORT jboolean JNICALL
+Java_com_example_nativecore_NativeVTuberFaceBridge_nativeInitTracker(
+    JNIEnv* /* env */,
+    jobject /* this */,
+    jint width,
+    jint height
+) {
+    if (!gFaceMeshEngine) {
+        gFaceMeshEngine = std::make_unique<vortex::vtuber::FaceMeshEngine>();
+    }
+    return static_cast<jboolean>(gFaceMeshEngine->initialize(width, height));
+}
+
+JNIEXPORT jfloatArray JNICALL
+Java_com_example_nativecore_NativeVTuberFaceBridge_nativeProcessFrameYUV(
+    JNIEnv* env,
+    jobject /* this */,
+    jbyteArray yPlaneData,
+    jint rowStride,
+    jint width,
+    jint height,
+    jint rotationDegrees,
+    jboolean isFrontCamera
+) {
+    if (!gFaceMeshEngine || !yPlaneData) {
+        return nullptr;
+    }
+
+    jbyte* pY = env->GetByteArrayElements(yPlaneData, nullptr);
+    if (!pY) return nullptr;
+
+    auto result = gFaceMeshEngine->processFrameYUV(
+        reinterpret_cast<const uint8_t*>(pY),
+        rowStride,
+        width,
+        height,
+        rotationDegrees,
+        isFrontCamera
+    );
+
+    env->ReleaseByteArrayElements(yPlaneData, pY, JNI_ABORT);
+
+    // Pack results into float array:
+    // [0]: faceDetected (1.0 or 0.0)
+    // [1]: leftEyeOpenness (0.0 to 1.0)
+    // [2]: rightEyeOpenness (0.0 to 1.0)
+    // [3]: mouthOpenness (0.0 to 1.0)
+    // [4]: smileRatio (0.0 to 1.0)
+    // [5]: headPitch (deg)
+    // [6]: headYaw (deg)
+    // [7]: headRoll (deg)
+    // [8]: confidence (0.0 to 1.0)
+    // [9]: processingTimeUs (float)
+    jfloat outValues[10];
+    outValues[0] = result.faceDetected ? 1.0f : 0.0f;
+    outValues[1] = result.leftEyeOpenness;
+    outValues[2] = result.rightEyeOpenness;
+    outValues[3] = result.mouthOpenness;
+    outValues[4] = result.smileRatio;
+    outValues[5] = result.headPitch;
+    outValues[6] = result.headYaw;
+    outValues[7] = result.headRoll;
+    outValues[8] = result.confidence;
+    outValues[9] = static_cast<float>(result.processingTimeUs);
+
+    jfloatArray array = env->NewFloatArray(10);
+    if (array) {
+        env->SetFloatArrayRegion(array, 0, 10, outValues);
+    }
+    return array;
+}
+
+JNIEXPORT jfloatArray JNICALL
+Java_com_example_nativecore_NativeVTuberFaceBridge_nativeProcessDirectLandmarks(
+    JNIEnv* env,
+    jobject /* this */,
+    jfloatArray landmarks3D,
+    jint count,
+    jfloat eyeThreshold,
+    jfloat mouthThreshold
+) {
+    if (!gFaceMeshEngine || !landmarks3D) {
+        return nullptr;
+    }
+
+    jfloat* pLandmarks = env->GetFloatArrayElements(landmarks3D, nullptr);
+    if (!pLandmarks) return nullptr;
+
+    auto result = gFaceMeshEngine->processDirectLandmarks(
+        pLandmarks,
+        count,
+        eyeThreshold,
+        mouthThreshold
+    );
+
+    env->ReleaseFloatArrayElements(landmarks3D, pLandmarks, JNI_ABORT);
+
+    jfloat outValues[10];
+    outValues[0] = result.faceDetected ? 1.0f : 0.0f;
+    outValues[1] = result.leftEyeOpenness;
+    outValues[2] = result.rightEyeOpenness;
+    outValues[3] = result.mouthOpenness;
+    outValues[4] = result.smileRatio;
+    outValues[5] = result.headPitch;
+    outValues[6] = result.headYaw;
+    outValues[7] = result.headRoll;
+    outValues[8] = result.confidence;
+    outValues[9] = static_cast<float>(result.processingTimeUs);
+
+    jfloatArray array = env->NewFloatArray(10);
+    if (array) {
+        env->SetFloatArrayRegion(array, 0, 10, outValues);
+    }
+    return array;
+}
+
+JNIEXPORT void JNICALL
+Java_com_example_nativecore_NativeVTuberFaceBridge_nativeSetSmoothingFactor(
+    JNIEnv* /* env */,
+    jobject /* this */,
+    jfloat alpha
+) {
+    if (gFaceMeshEngine) {
+        gFaceMeshEngine->setSmoothingFactor(alpha);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_example_nativecore_NativeVTuberFaceBridge_nativeResetTemporalFilter(
+    JNIEnv* /* env */,
+    jobject /* this */
+) {
+    if (gFaceMeshEngine) {
+        gFaceMeshEngine->resetTemporalFilter();
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_example_nativecore_NativeVTuberFaceBridge_nativeReleaseTracker(
+    JNIEnv* /* env */,
+    jobject /* this */
+) {
+    gFaceMeshEngine.reset();
 }
 
 } // extern "C"

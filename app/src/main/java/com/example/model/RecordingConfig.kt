@@ -97,6 +97,12 @@ enum class VtuberPreset(val label: String, val description: String) {
     CUSTOM("Avatar Personalizado", "Tus propios archivos PNG transparentes")
 }
 
+enum class VtuberTrackingMode(val label: String, val description: String) {
+    VOICE_ONLY("Solo Voz (Micrófono)", "El avatar reacciona únicamente al volumen del micrófono"),
+    FACE_MESH_LOCAL("IA Local: Seguimiento Facial (Cámara)", "Detecta ojos, parpadeo, boca y rotación de cabeza con IA local 100% offline"),
+    HYBRID("Modo Híbrido (Cámara + Micrófono)", "Combina expresiones faciales visuales con amplificación de voz")
+}
+
 enum class VtuberSize(val label: String, val dpSize: Int) {
     SMALL("Pequeño (110 dp)", 110),
     MEDIUM("Mediano (150 dp)", 150),
@@ -142,9 +148,13 @@ data class RecordingConfig(
     val sceneOverlayImageUri: String? = null,
     val showVtuber: Boolean = false,
     val vtuberPreset: VtuberPreset = VtuberPreset.CYBER_CAT,
+    val vtuberTrackingMode: VtuberTrackingMode = VtuberTrackingMode.VOICE_ONLY,
     val vtuberSize: VtuberSize = VtuberSize.MEDIUM,
     val vtuberSensitivity: Float = 0.18f,
     val vtuberBounceEnabled: Boolean = true,
+    val vtuberHeadTiltEnabled: Boolean = true,
+    val vtuberEyeBlinkSensitivity: Float = 0.35f,
+    val vtuberMouthSensitivity: Float = 0.40f,
     val vtuberIdleImageUri: String? = null,
     val vtuberTalkImageUri: String? = null,
     val vtuberBlinkImageUri: String? = null,

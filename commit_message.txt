@@ -1,16 +1,19 @@
-fix(overlay): optimizar diseño vertical de la burbuja, corregir artefacto negro y remover marcas registradas
+feat(vtuber): implementar seguimiento facial por IA local (Face Mesh NDK C++) para avatar VTuber
 
-- Burbuja flotante y menú HUD adaptativo:
-  * Se rediseñó la barra principal horizontal con chips de acción compactos (Pausa, Mic, HUD, Fin), tipografía ajustada y control de texto 'singleLine' con elipsis para evitar desbordamientos o quiebres visuales en pantallas verticales (modo portrait).
-  * Se transformó el submenú de herramientas a una cuadrícula modular y simétrica de 4 columnas x 3 filas con padding optimizado, garantizando que todos los controles (Facecam, Captura, Pincel, Vúmetro, VTuber, Belleza, RGB, Toques, Logo, Marco) queden perfectamente alineados y accesibles en cualquier resolución y orientación sin tapar el juego.
+- Motor de Visión Artificial e IA Local 100% On-Device (C++ NDK):
+  * Se implementó `vtuber_face_mesh.hpp` y `vtuber_face_mesh.cpp` para procesar frames de cámara en tiempo real a 60 FPS sin depender de servicios en la nube ni modelos pesados externos.
+  * Extracción de puntos de referencia faciales (ojos, boca, nariz, barbilla, contorno del rostro) y cálculo de aperturas con normalización geométrica.
+  * Estimación matemática de pose de cabeza (Head Tilt / Roll angle) y filtro de suavizado temporal exponencial (anti-jitter) para movimientos ultra fluidos y naturales.
 
-- Corrección del artefacto visual oscuro en grabación de pantalla:
-  * Se eliminó el uso de FLAG_SECURE en WindowManager al activar la opción de ocultar burbuja en el video final, evitando que el compositor del sistema (SurfaceFlinger) genere cuadros o bloques negros en la captura de pantalla por restricciones DRM.
-  * Se ajustó el flujo para ocultar limpiamente la superposición durante la grabación si el usuario desea un video 100% libre de elementos externos.
+- Integración JNI y Pipeline de Cámara en Segundo Plano:
+  * Se añadió `NativeVTuberFaceBridge.kt` y enlaces JNI en `obs_core.cpp` para transferencia de datos en arrays de bajo overhead.
+  * Se implementó `VtuberCameraTracker.kt` utilizando CameraX `ImageAnalysis` (YUV_420_888) en un hilo `ExecutorService` dedicado para no degradar el rendimiento de la interfaz ni de los videojuegos grabados.
 
-- Cumplimiento y neutralidad de marca:
-  * Se eliminó la mención de marcas comerciales de terceros ("CapCut") en el menú contextual de clips y editores de video, reemplazándolo por el término estándar "Editar Clip".
+- Modos de Seguimiento y Renderizado Dinámico:
+  * Nuevos modos configurables en `VtuberTrackingMode`: `VOICE_ONLY` (Reactivo por Micrófono), `FACE_MESH_LOCAL` (Seguimiento Facial por Cámara con IA Local) e `HYBRID` (Apertura de boca por audio/visión y parpadeo/inclinación por cámara).
+  * Rotación dinámica por hardware en `VtuberOverlayView.kt` basada en la inclinación real de la cabeza del usuario.
+  * Controles interactivos en `VtuberSettingsCard.kt` para selección de modo, activación de Head Tilt y calibración de sensibilidad de parpadeo y apertura de boca.
 
-- Integración de encuesta de experiencia y feedback (Google Forms):
-  * Se añadió la tarjeta 'FeedbackSurveyCard' de forma no intrusiva en la pestaña de Ajustes para recolectar opiniones sobre el diseño, fluidez y sugerencias de nuevas funciones de manera anónima y sin necesidad de cuenta de GitHub.
-  * Se vinculó el acceso directo al formulario oficial (https://forms.gle/CxQYfhfRMuhjEiDa8) con manejo seguro de intents en el navegador externo.
+- Persistencia y Arquitectura:
+  * Integración completa en `RecordingConfig`, `OverlaySettingsStore`, `SettingsRepository`, `RecordViewModel` y `HomeScreen`.
+  * Preservación de la total privacidad y funcionamiento offline: 0% de telemetría, sin dependencias cerradas ni conexión a internet requerida.

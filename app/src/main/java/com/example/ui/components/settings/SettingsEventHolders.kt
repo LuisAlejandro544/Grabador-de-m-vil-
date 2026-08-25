@@ -13,6 +13,7 @@ import com.example.model.VideoFps
 import com.example.model.VideoResolution
 import com.example.model.VtuberPreset
 import com.example.model.VtuberSize
+import com.example.model.VtuberTrackingMode
 import com.example.model.WatermarkSize
 import com.example.model.WatermarkType
 
@@ -62,6 +63,10 @@ data class FacecamSettingsEvents(
 data class VtuberSettingsEvents(
     val onToggleVtuber: (Boolean) -> Unit = {},
     val onUpdateVtuberPreset: (VtuberPreset) -> Unit = {},
+    val onUpdateVtuberTrackingMode: (VtuberTrackingMode) -> Unit = {},
+    val onToggleVtuberHeadTilt: (Boolean) -> Unit = {},
+    val onUpdateVtuberEyeBlinkSensitivity: (Float) -> Unit = {},
+    val onUpdateVtuberMouthSensitivity: (Float) -> Unit = {},
     val onUpdateVtuberSize: (VtuberSize) -> Unit = {},
     val onUpdateVtuberSensitivity: (Float) -> Unit = {},
     val onToggleVtuberBounce: (Boolean) -> Unit = {},

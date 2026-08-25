@@ -81,6 +81,10 @@ class SettingsActionsDelegate(
 
     fun toggleVtuber(enabled: Boolean) = settingsRepository.toggleVtuber(enabled)
     fun updateVtuberPreset(preset: VtuberPreset) = settingsRepository.updateVtuberPreset(preset)
+    fun updateVtuberTrackingMode(mode: com.example.model.VtuberTrackingMode) = settingsRepository.updateVtuberTrackingMode(mode)
+    fun toggleVtuberHeadTilt(enabled: Boolean) = settingsRepository.toggleVtuberHeadTilt(enabled)
+    fun updateVtuberEyeBlinkSensitivity(sensitivity: Float) = settingsRepository.updateVtuberEyeBlinkSensitivity(sensitivity)
+    fun updateVtuberMouthSensitivity(sensitivity: Float) = settingsRepository.updateVtuberMouthSensitivity(sensitivity)
     fun updateVtuberSize(size: VtuberSize) = settingsRepository.updateVtuberSize(size)
     fun updateVtuberSensitivity(sensitivity: Float) = settingsRepository.updateVtuberSensitivity(sensitivity)
     fun toggleVtuberBounce(enabled: Boolean) = settingsRepository.toggleVtuberBounce(enabled)

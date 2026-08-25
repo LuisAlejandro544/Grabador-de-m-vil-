@@ -8,6 +8,7 @@ import android.util.Log
 import android.view.Gravity
 import android.view.WindowManager
 import com.example.model.RecordingConfig
+import com.example.model.VtuberTrackingMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -15,7 +16,7 @@ import kotlinx.coroutines.cancel
 
 /**
  * Gestor de la ventana flotante del Avatar 2D Reactivo / PNGtuber.
- * Administra el ciclo de vida de la ventana en [WindowManager] y el reactor de audio.
+ * Administra el ciclo de vida de la ventana en [WindowManager], el reactor de audio y el seguimiento facial local por IA.
  */
 class VtuberOverlayManager(
     private val context: Context,
@@ -31,6 +32,7 @@ class VtuberOverlayManager(
 
     private var overlayView: VtuberOverlayView? = null
     private var audioReactor: VtuberAudioReactor? = null
+    private var cameraTracker: VtuberCameraTracker? = null
     private var layoutParams: WindowManager.LayoutParams? = null
 
     var isShowing: Boolean = false
@@ -91,15 +93,9 @@ class VtuberOverlayManager(
             overlayView = view
             isShowing = true
 
-            // Iniciar reactor de audio real
-            audioReactor = VtuberAudioReactor(managerScope) { state, amp ->
-                overlayView?.updateState(state, amp)
-            }.apply {
-                sensitivity = config.vtuberSensitivity
-                start()
-            }
+            setupTrackingPipelines()
 
-            Log.i(TAG, "PNGtuber Overlay mostrado exitosamente con preset: ${config.vtuberPreset.label}")
+            Log.i(TAG, "PNGtuber Overlay mostrado exitosamente con preset: ${config.vtuberPreset.label} y modo: ${config.vtuberTrackingMode.label}")
         } catch (t: Throwable) {
             Log.e(TAG, "Error al mostrar PNGtuber overlay: ${t.message}", t)
             isShowing = false
@@ -107,10 +103,57 @@ class VtuberOverlayManager(
         }
     }
 
+    private fun setupTrackingPipelines() {
+        // Detener pipelines previos
+        audioReactor?.stop()
+        audioReactor = null
+        cameraTracker?.stopTracking()
+        cameraTracker = null
+
+        when (config.vtuberTrackingMode) {
+            VtuberTrackingMode.VOICE_ONLY -> {
+                audioReactor = VtuberAudioReactor(managerScope) { state, amp ->
+                    overlayView?.updateState(state, amp)
+                }.apply {
+                    sensitivity = config.vtuberSensitivity
+                    start()
+                }
+            }
+            VtuberTrackingMode.FACE_MESH_LOCAL -> {
+                cameraTracker = VtuberCameraTracker(context, managerScope) { pose ->
+                    overlayView?.updateFacePose(pose)
+                }.apply {
+                    startTracking(isFrontCamera = true)
+                }
+            }
+            VtuberTrackingMode.HYBRID -> {
+                audioReactor = VtuberAudioReactor(managerScope) { state, amp ->
+                    if (amp > config.vtuberSensitivity) {
+                        overlayView?.updateState(state, amp)
+                    }
+                }.apply {
+                    sensitivity = config.vtuberSensitivity
+                    start()
+                }
+
+                cameraTracker = VtuberCameraTracker(context, managerScope) { pose ->
+                    overlayView?.updateFacePose(pose)
+                }.apply {
+                    startTracking(isFrontCamera = true)
+                }
+            }
+        }
+    }
+
     fun updateConfig(newConfig: RecordingConfig) {
+        val modeChanged = this.config.vtuberTrackingMode != newConfig.vtuberTrackingMode
         this.config = newConfig
         overlayView?.updateConfig(newConfig)
         audioReactor?.sensitivity = newConfig.vtuberSensitivity
+
+        if (modeChanged && isShowing) {
+            setupTrackingPipelines()
+        }
 
         // Redimensionar si cambió el tamaño
         layoutParams?.let { params ->
@@ -137,6 +180,8 @@ class VtuberOverlayManager(
         try {
             audioReactor?.stop()
             audioReactor = null
+            cameraTracker?.stopTracking()
+            cameraTracker = null
             managerScope.cancel()
 
             overlayView?.let {

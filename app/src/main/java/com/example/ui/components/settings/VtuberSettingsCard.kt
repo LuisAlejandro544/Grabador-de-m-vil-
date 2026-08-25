@@ -58,10 +58,12 @@ import androidx.compose.ui.unit.sp
 import com.example.model.RecordingConfig
 import com.example.model.VtuberPreset
 import com.example.model.VtuberSize
+import com.example.model.VtuberTrackingMode
 
 /**
  * Tarjeta de configuración para el Avatar 2D Reactivo / PNGtuber (Modo VTuber).
- * Permite seleccionar presets vectoriales o subir imágenes PNG transparentes de 4 estados.
+ * Permite seleccionar presets vectoriales, modo de seguimiento (Voz vs IA Local Seguimiento Facial vs Híbrido)
+ * o subir imágenes PNG transparentes de 4 estados.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -76,6 +78,10 @@ fun VtuberSettingsCard(
     onTalkImageSelected: (String?) -> Unit,
     onBlinkImageSelected: (String?) -> Unit,
     onBlinkTalkImageSelected: (String?) -> Unit,
+    onTrackingModeSelected: (VtuberTrackingMode) -> Unit = {},
+    onToggleHeadTilt: (Boolean) -> Unit = {},
+    onEyeBlinkSensitivityChanged: (Float) -> Unit = {},
+    onMouthSensitivityChanged: (Float) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val vtuberPurple = Color(0xFFA855F7)
@@ -234,36 +240,221 @@ fun VtuberSettingsCard(
                         }
                     }
 
-                    // 3. Sensibilidad del Micrófono
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "SENSIBILIDAD DE VOZ",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = vtuberPurple
-                        )
-                        Text(
-                            text = "${(config.vtuberSensitivity * 100).toInt()}%",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = vtuberPurple
-                        )
+                    // 2. Modo de Seguimiento (Voz vs IA Local Seguimiento Facial vs Híbrido)
+                    Text(
+                        text = "MODO DE SEGUIMIENTO",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = vtuberPurple
+                    )
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        VtuberTrackingMode.entries.forEach { mode ->
+                            val isSelected = config.vtuberTrackingMode == mode
+                            val borderColor = if (isSelected) vtuberPurple else MaterialTheme.colorScheme.surfaceVariant
+                            val bgColor = if (isSelected) vtuberPurple.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(bgColor)
+                                    .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+                                    .clickable { onTrackingModeSelected(mode) }
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .border(2.dp, if (isSelected) vtuberPurple else MaterialTheme.colorScheme.onSurfaceVariant, CircleShape)
+                                        .padding(3.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (isSelected) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(10.dp)
+                                                .background(vtuberPurple, CircleShape)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = mode.label,
+                                        fontSize = 13.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) vtuberPurple else MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = mode.description,
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
                     }
 
-                    Slider(
-                        value = config.vtuberSensitivity,
-                        onValueChange = onSensitivityChanged,
-                        valueRange = 0.05f..0.50f,
-                        colors = SliderDefaults.colors(
-                            thumbColor = vtuberPurple,
-                            activeTrackColor = vtuberPurple,
-                            inactiveTrackColor = vtuberPurple.copy(alpha = 0.25f)
+                    // Opciones avanzadas de Seguimiento Facial Local
+                    if (config.vtuberTrackingMode != VtuberTrackingMode.VOICE_ONLY) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFF0F172A), RoundedCornerShape(12.dp))
+                                .border(1.dp, vtuberPurple.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                                .padding(12.dp)
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Face,
+                                        contentDescription = null,
+                                        tint = vtuberPurpleLight,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Motor de Visión IA Local (C++ / NDK)",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+
+                                Text(
+                                    text = "⚡ Procesamiento offline en tiempo real a 60 FPS con filtro anti-vibración temporal y cálculo de pose de cabeza.",
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF94A3B8)
+                                )
+
+                                HorizontalDivider(color = Color(0xFF334155))
+
+                                // Switch Inclinación de Cabeza
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Inclinación de Cabeza (Head Tilt)",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color.White
+                                        )
+                                        Text(
+                                            text = "Gira el avatar al inclinar la cabeza",
+                                            fontSize = 10.sp,
+                                            color = Color(0xFF94A3B8)
+                                        )
+                                    }
+                                    Switch(
+                                        checked = config.vtuberHeadTiltEnabled,
+                                        onCheckedChange = onToggleHeadTilt,
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = Color.White,
+                                            checkedTrackColor = vtuberPurple
+                                        )
+                                    )
+                                }
+
+                                // Sensibilidad Parpadeo de Ojos
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Sensibilidad de Parpadeo",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color(0xFFCBD5E1)
+                                    )
+                                    Text(
+                                        text = "${(config.vtuberEyeBlinkSensitivity * 100).toInt()}%",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = vtuberPurpleLight
+                                    )
+                                }
+                                Slider(
+                                    value = config.vtuberEyeBlinkSensitivity,
+                                    onValueChange = onEyeBlinkSensitivityChanged,
+                                    valueRange = 0.10f..0.80f,
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = vtuberPurpleLight,
+                                        activeTrackColor = vtuberPurple,
+                                        inactiveTrackColor = Color(0xFF334155)
+                                    )
+                                )
+
+                                // Sensibilidad de Apertura de Boca
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Sensibilidad de Boca (Apertura)",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color(0xFFCBD5E1)
+                                    )
+                                    Text(
+                                        text = "${(config.vtuberMouthSensitivity * 100).toInt()}%",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = vtuberPurpleLight
+                                    )
+                                }
+                                Slider(
+                                    value = config.vtuberMouthSensitivity,
+                                    onValueChange = onMouthSensitivityChanged,
+                                    valueRange = 0.10f..0.80f,
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = vtuberPurpleLight,
+                                        activeTrackColor = vtuberPurple,
+                                        inactiveTrackColor = Color(0xFF334155)
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    // 3. Sensibilidad del Micrófono (para modo Voz o Híbrido)
+                    if (config.vtuberTrackingMode != VtuberTrackingMode.FACE_MESH_LOCAL) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "SENSIBILIDAD DE VOZ (MICRÓFONO)",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = vtuberPurple
+                            )
+                            Text(
+                                text = "${(config.vtuberSensitivity * 100).toInt()}%",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = vtuberPurple
+                            )
+                        }
+
+                        Slider(
+                            value = config.vtuberSensitivity,
+                            onValueChange = onSensitivityChanged,
+                            valueRange = 0.05f..0.50f,
+                            colors = SliderDefaults.colors(
+                                thumbColor = vtuberPurple,
+                                activeTrackColor = vtuberPurple,
+                                inactiveTrackColor = vtuberPurple.copy(alpha = 0.25f)
+                            )
                         )
-                    )
+                    }
 
                     // 4. Animación de Rebote (Bounce)
                     Row(

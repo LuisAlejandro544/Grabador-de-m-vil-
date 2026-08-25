@@ -10,6 +10,7 @@ add_library(
     obs_compositor.cpp
     ffmpeg_engine.cpp
     audio_dsp_engine.cpp
+    vtuber_face_mesh.cpp
 )
 
 # Search for system libraries in Android NDK

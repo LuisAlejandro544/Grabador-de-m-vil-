@@ -17,7 +17,26 @@ Este documento detalla el progreso actual y las fases de desarrollo de **Vortex 
 | **Fase 7** | Flujo de Onboarding, Centro de Permisos & Limpieza de Dependencias Google | ✅ Completado |
 | **Fase 8** | Matriz de 4 Canales (Dev, Canary, Beta, Estable) & Despliegue CI/CD a Telegram | ✅ Completado |
 | **Fase 9** | Burbuja Flotante con Exclusión en Grabación (Android 14+ y Versiones Anteriores) | ✅ Completado |
-| **Fase 10** | Transmisión en Vivo RTMP / SRT con Rust & Buffer de Repetición (Clips 30s) | ⏳ En Progreso / Base Lista |
+| **Fase 10** | Seguimiento Facial por IA Local (Face Mesh NDK C++) para Avatar VTuber | ✅ Completado |
+| **Fase 11** | Transmisión en Vivo RTMP / SRT con Rust & Buffer de Repetición (Clips 30s) | ⏳ En Progreso / Base Lista |
+
+---
+
+## 🌟 Detalle de la Fase 10: Seguimiento Facial por IA Local (Face Mesh NDK C++) (Completada)
+
+- [x] **Motor de Visión por Computador e IA On-Device (`vtuber_face_mesh.hpp` / `.cpp`):**
+  - Procesamiento nativo en C++ de alta velocidad a 60 FPS con extracción de landmarks faciales.
+  - Normalización geométrica de apertura de ojos (parpadeo independiente izquierdo/derecho), apertura bucal y cálculo de ángulo de giro/inclinación de cabeza (*Head Tilt / Roll*).
+  - Filtro exponencial anti-vibración (*Temporal Smoothing*) para evitar micro-temblores.
+- [x] **Pipeline de Captura con CameraX & NDK JNI:**
+  - Analizador de imágenes `VtuberCameraTracker.kt` operando sobre `ImageAnalysis` (YUV) en un ejecutor background dedicado.
+  - Puente JNI `NativeVTuberFaceBridge.kt` para transporte eficiente de coordenadas y pose.
+- [x] **Modos de Seguimiento y Calibración en Tiempo Real:**
+  - Selector en ajustes `VtuberTrackingMode` con opciones: Solo Voz, IA Local Seguimiento Facial y Modo Híbrido.
+  - Calibración interactiva de sensibilidad de parpadeo, sensibilidad de boca y switch de inclinación de cabeza.
+  - Renderizado de rotación física en canvas sobre la ventana flotante `VtuberOverlayView`.
+- [x] **100% Offline & Privacidad Garantizada:**
+  - Cero telemetría, sin modelos pesados ni conexión a servidores externos. Operación totalmente autosuficiente para tiendas de APKs alternativas.
 
 ---
 

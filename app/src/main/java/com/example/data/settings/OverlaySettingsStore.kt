@@ -41,9 +41,13 @@ class OverlaySettingsStore(private val prefs: SharedPreferences) {
         val sceneOverlayImageUri: String?,
         val showVtuber: Boolean,
         val vtuberPreset: VtuberPreset,
+        val vtuberTrackingMode: com.example.model.VtuberTrackingMode,
         val vtuberSize: VtuberSize,
         val vtuberSensitivity: Float,
         val vtuberBounceEnabled: Boolean,
+        val vtuberHeadTiltEnabled: Boolean,
+        val vtuberEyeBlinkSensitivity: Float,
+        val vtuberMouthSensitivity: Float,
         val vtuberIdleImageUri: String?,
         val vtuberTalkImageUri: String?,
         val vtuberBlinkImageUri: String?,
@@ -123,6 +127,12 @@ class OverlaySettingsStore(private val prefs: SharedPreferences) {
         } catch (_: Exception) {
             VtuberPreset.CYBER_CAT
         }
+        val vtuberTrackingModeName = prefs.getString(KEY_VTUBER_TRACKING_MODE, com.example.model.VtuberTrackingMode.VOICE_ONLY.name)
+        val vtuberTrackingMode = try {
+            com.example.model.VtuberTrackingMode.valueOf(vtuberTrackingModeName ?: com.example.model.VtuberTrackingMode.VOICE_ONLY.name)
+        } catch (_: Exception) {
+            com.example.model.VtuberTrackingMode.VOICE_ONLY
+        }
         val vtuberSizeName = prefs.getString(KEY_VTUBER_SIZE, VtuberSize.MEDIUM.name)
         val vtuberSize = try {
             VtuberSize.valueOf(vtuberSizeName ?: VtuberSize.MEDIUM.name)
@@ -131,6 +141,9 @@ class OverlaySettingsStore(private val prefs: SharedPreferences) {
         }
         val vtuberSensitivity = prefs.getFloat(KEY_VTUBER_SENSITIVITY, 0.18f)
         val vtuberBounceEnabled = prefs.getBoolean(KEY_VTUBER_BOUNCE, true)
+        val vtuberHeadTiltEnabled = prefs.getBoolean(KEY_VTUBER_HEAD_TILT, true)
+        val vtuberEyeBlinkSensitivity = prefs.getFloat(KEY_VTUBER_EYE_BLINK_SENSITIVITY, 0.35f)
+        val vtuberMouthSensitivity = prefs.getFloat(KEY_VTUBER_MOUTH_SENSITIVITY, 0.40f)
         val vtuberIdleUri = prefs.getString(KEY_VTUBER_IDLE_URI, null)
         val vtuberTalkUri = prefs.getString(KEY_VTUBER_TALK_URI, null)
         val vtuberBlinkUri = prefs.getString(KEY_VTUBER_BLINK_URI, null)
@@ -161,9 +174,13 @@ class OverlaySettingsStore(private val prefs: SharedPreferences) {
             sceneOverlayImageUri = sceneOverlayImageUri,
             showVtuber = showVtuber,
             vtuberPreset = vtuberPreset,
+            vtuberTrackingMode = vtuberTrackingMode,
             vtuberSize = vtuberSize,
             vtuberSensitivity = vtuberSensitivity,
             vtuberBounceEnabled = vtuberBounceEnabled,
+            vtuberHeadTiltEnabled = vtuberHeadTiltEnabled,
+            vtuberEyeBlinkSensitivity = vtuberEyeBlinkSensitivity,
+            vtuberMouthSensitivity = vtuberMouthSensitivity,
             vtuberIdleImageUri = vtuberIdleUri,
             vtuberTalkImageUri = vtuberTalkUri,
             vtuberBlinkImageUri = vtuberBlinkUri,
@@ -198,9 +215,13 @@ class OverlaySettingsStore(private val prefs: SharedPreferences) {
         editor.putString(KEY_SCENE_OVERLAY_IMAGE_URI, config.sceneOverlayImageUri)
         editor.putBoolean(KEY_SHOW_VTUBER, config.showVtuber)
         editor.putString(KEY_VTUBER_PRESET, config.vtuberPreset.name)
+        editor.putString(KEY_VTUBER_TRACKING_MODE, config.vtuberTrackingMode.name)
         editor.putString(KEY_VTUBER_SIZE, config.vtuberSize.name)
         editor.putFloat(KEY_VTUBER_SENSITIVITY, config.vtuberSensitivity)
         editor.putBoolean(KEY_VTUBER_BOUNCE, config.vtuberBounceEnabled)
+        editor.putBoolean(KEY_VTUBER_HEAD_TILT, config.vtuberHeadTiltEnabled)
+        editor.putFloat(KEY_VTUBER_EYE_BLINK_SENSITIVITY, config.vtuberEyeBlinkSensitivity)
+        editor.putFloat(KEY_VTUBER_MOUTH_SENSITIVITY, config.vtuberMouthSensitivity)
         editor.putString(KEY_VTUBER_IDLE_URI, config.vtuberIdleImageUri)
         editor.putString(KEY_VTUBER_TALK_URI, config.vtuberTalkImageUri)
         editor.putString(KEY_VTUBER_BLINK_URI, config.vtuberBlinkImageUri)
@@ -233,9 +254,13 @@ class OverlaySettingsStore(private val prefs: SharedPreferences) {
         const val KEY_SCENE_OVERLAY_IMAGE_URI = "pref_scene_overlay_image_uri"
         const val KEY_SHOW_VTUBER = "pref_show_vtuber"
         const val KEY_VTUBER_PRESET = "pref_vtuber_preset"
+        const val KEY_VTUBER_TRACKING_MODE = "pref_vtuber_tracking_mode"
         const val KEY_VTUBER_SIZE = "pref_vtuber_size"
         const val KEY_VTUBER_SENSITIVITY = "pref_vtuber_sensitivity"
         const val KEY_VTUBER_BOUNCE = "pref_vtuber_bounce"
+        const val KEY_VTUBER_HEAD_TILT = "pref_vtuber_head_tilt"
+        const val KEY_VTUBER_EYE_BLINK_SENSITIVITY = "pref_vtuber_eye_blink_sensitivity"
+        const val KEY_VTUBER_MOUTH_SENSITIVITY = "pref_vtuber_mouth_sensitivity"
         const val KEY_VTUBER_IDLE_URI = "pref_vtuber_idle_uri"
         const val KEY_VTUBER_TALK_URI = "pref_vtuber_talk_uri"
         const val KEY_VTUBER_BLINK_URI = "pref_vtuber_blink_uri"

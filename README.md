@@ -45,7 +45,11 @@
 - **✨ Filtro de Belleza & Suavizado de Piel:** Capa de post-procesado facial que atenúa imperfecciones, suaviza texturas y balancea la luminosidad del rostro.
 - **🌈 Borde RGB / Arcoíris Gamer Animado:** Marco con gradiente `SweepGradient` rotativo continuo que bordea la ventana flotante del Facecam adaptándose automáticamente a su forma.
 - **📹 Facecam / Cámara Flotante con FPS Configurable (30 - 60 FPS):** Superposición de cámara en tiempo real mediante **CameraX** y `WindowManager` sin cortes de fluidez.
-- **🎭 Avatar 2D / PNGtuber Reactivo por Voz:** Alternativa ligera y privada a la cámara real: sustituye el Facecam por un avatar 2D animado interactivo que reacciona al volumen RMS del micrófono.
+- **🎭 Avatar 2D / PNGtuber con IA Local (Face Mesh NDK C++ & Reactivo a Voz):**
+  - **100% On-Device & Offline:** Motor de visión por IA desarrollado en C++ nativo sin conexión a servidores externos ni envío de datos privados.
+  - **Seguimiento Facial en Tiempo Real:** Detección de parpadeo de ojos independientes, apertura de boca y estimación de pose de cabeza (*Head Tilt / Roll angle*) a 60 FPS con suavizado anti-vibración exponencial.
+  - **Modos Flexibles (`VtuberTrackingMode`):** Solo Voz (Micrófono), Seguimiento Facial Completo (Cámara + IA Local) y Modo Híbrido (Visión + Audio para máxima expresividad).
+  - **Presets y Personalización:** Presets vectoriales de alta calidad (Cyber Cat, Mecha Robot, Chibi Gamer, etc.) o carga de 4 estados PNG transparentes con rebote dinámico *squash & stretch*.
 - **👆 Indicador de Toques Táctiles Animado (Touch Visualizer):** Ondas y ripples dinámicos de alta respuesta que se renderizan sobre la pantalla mediante overlay `WindowManager` transparente.
 - **🏷️ Marca de Agua / Logo Personalizado:** Superpone tu marca personal, tag de streamer o logo en pantalla con posición libre y opacidad ajustable.
 - **🖼️ Overlays de Escena Personalizados:** Marcos Neón Cyberpunk, Banners de Redes Sociales inferiores, Badges animados "🔴 EN VIVO" y carteles de pausa.
@@ -74,9 +78,9 @@ vortex-studio/
 │   │   │   │   └── VideoEditorDialog.kt # Aspect ratio chips, monitor adaptativo, split y scrubber
 │   │   │   ├── tabs/                # Tabs principales (RecordTab, GalleryTab)
 │   │   │   └── components/          # Componentes Jetpack Compose (settings, cards, controls)
-│   │   ├── service/                 # Servicios en segundo plano, burbuja flotante y overlays
-│   │   └── nativecore/              # Puentes JNI con módulos C++ y Rust
-│   ├── cpp/                         # Motor C++ NDK (FFmpeg Core, OBS Compositor, Audio DSP)
+│   │   ├── service/                 # Servicios en segundo plano, Facecam, VTuber AI Tracker y overlays
+│   │   └── nativecore/              # Puentes JNI con módulos C++ y Rust (NativeVTuberFaceBridge)
+│   ├── cpp/                         # Motor C++ NDK (Face Mesh AI, FFmpeg Core, OBS Compositor, Audio DSP)
 │   └── rust/                        # Motor Rust (RTMP/SRT Streaming y cálculo de aspect ratio)
 ```
 
