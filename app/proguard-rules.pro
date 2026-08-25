@@ -11,6 +11,10 @@
     native <methods>;
 }
 
+-keepclasseswithmembers class com.example.nativecore.** {
+    native <methods>;
+}
+
 -keep class com.example.nativecore.** { *; }
 -keepclassmembers class com.example.nativecore.** { *; }
 
@@ -68,4 +72,18 @@
 -keep class * extends androidx.room.RoomDatabase
 -keep @androidx.room.Dao interface * { *; }
 -keep @androidx.room.Entity class * { *; }
+
+# 9. Eliminación de Logs en Release para Máximo Rendimiento (60 FPS fluidos)
+-assumenosideeffects class android.util.Log {
+    public static boolean isLoggable(java.lang.String, int);
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+    public static int w(...);
+}
+
+# 10. Seguridad contra Ingeniería Inversa y Aplanado de Paquetes (Repackaging)
+-repackageclasses 'com.vortexstudio.internal'
+-allowaccessmodification
+
 

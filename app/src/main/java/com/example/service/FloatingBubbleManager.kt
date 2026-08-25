@@ -63,7 +63,7 @@ class FloatingBubbleManager(
      */
     @SuppressLint("ClickableViewAccessibility")
     fun show() {
-        if (isShowingInternal || !isOverlayAvailable() || windowManager == null || hideInFinalVideo) {
+        if (isShowingInternal || !isOverlayAvailable() || windowManager == null) {
             return
         }
 
@@ -75,8 +75,15 @@ class FloatingBubbleManager(
                 WindowManager.LayoutParams.TYPE_PHONE
             }
 
-            val flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            var flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+
+            // Si hideInFinalVideo está activo, asignamos FLAG_SECURE a la ventana de la burbuja.
+            // Esto permite que el usuario la vea e interactúe con ella en la pantalla física,
+            // pero MediaProjection (la grabación de pantalla MP4) la excluye de la captura.
+            if (hideInFinalVideo) {
+                flags = flags or WindowManager.LayoutParams.FLAG_SECURE
+            }
 
             val p = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,

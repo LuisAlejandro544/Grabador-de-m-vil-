@@ -1,56 +1,17 @@
-fix(capture): corregir desincronización A/V y calibración de offset en MuxerManager
-
-- Diagnóstico y Causa Raíz de Desfase de Audio/Video:
-  * El codificador de video de hardware iniciaba en t=0 (baseTimeUs), mientras que la pista de audio arrancaba con un retraso inherente debido al tiempo de llenado del búfer PCM en AudioRecord y el procesamiento de hilos, generando que en el archivo MP4 el audio empezara decenas o cientos de milisegundos más tarde que el video (video adelantado).
-  * La condición previa `adjustedPts < 0L -> return` en `MuxerManager` descartaba silenciosamente todos los paquetes de audio cuando se intentaba adelantar la pista mediante valores negativos de offset, impidiendo que los ajustes en la interfaz tuvieran efecto real.
-  * La adición directa de offset en `AudioEncoderWorker` provocaba el efecto inverso (retrasar más el audio al ingresar valores positivos).
-
-- Solución Implementada (Dual-Track Zero PTS & Bidirectional AV-Sync):
-  * Se desacopló el anclaje de reloj base en `MuxerManager.kt` mediante `videoBaseTimeUs` y `audioBaseTimeUs` independientes, normalizando ambas pistas exactamente a t=0 desde su primera muestra física para eliminar la brecha temporal inicial.
-  * Se implementó compensación temporal bidireccional limpia y sin descarte de muestras en `MuxerManager`:
-    - Offset positivo (+ms): Desplaza los timestamps de la pista de video hacia adelante (+offsetUs) para que el audio se escuche antes relativo a la imagen, corrigiendo de inmediato el video adelantado.
-    - Offset negativo (-ms): Desplaza los timestamps de la pista de audio hacia adelante (+|offsetUs|).
-    - Ambas pistas mantienen monotonicidad estricta y evitan cualquier valor negativo sin descartar paquetes MP4.
-  * En `AudioEncoderWorker.kt`, se purificó el cálculo de PTS basado en la duración exacta de muestras PCM (bufferDurationUs) y resincronización suave con System.nanoTime() para evitar jitter de hilos y retrasos acumulados.
-  * Se conectó el parámetro `avSyncOffsetMs` desde `ScreenCaptureEngine.kt` hacia `MuxerManager`.
-
-feat(launcher): cuenta regresiva en segundo plano para lanzamiento de juegos y apps
-- Al presionar grabar en un juego o aplicación desde el Game Launcher, el juego/app se abre de forma inmediata en primer plano (`FLAG_ACTIVITY_NEW_TASK`).
-- La cuenta regresiva configurada por el usuario (3s, 5s, etc.) se ejecuta en segundo plano con pulsos de vibración háptica mientras el juego carga y rota la orientación de vertical a horizontal.
-- Una vez finalizada la cuenta atrás en segundo plano (0s), el servicio de grabación se activa de forma limpia directamente sobre el gameplay ya estabilizado en horizontal, eliminando artefactos visuales, pantallas de transición o glitches de rotación en el video final exportado.
-- Se desacopló el modal de cuenta atrás en primer plano (`CountdownOverlayModal`) para evitar parpadeos sobre la pantalla de Vortex Studio cuando se graba un juego externo.
-
-fix(service): ejecución inmediata de Foreground Service y delegación del temporizador al servicio
-
-- Diagnóstico y Causa Raíz de FGS en Android 14+ (API 34+):
-  * Las políticas de seguridad de Android 14+ impiden invocar `startForegroundService()` con tipos `microphone` o `mediaProjection` cuando la aplicación pasa a segundo plano (Background FGS Launch Restriction).
-  * Realizar la cuenta regresiva en el ViewModel antes de arrancar el servicio provocaba que, al salir al menú de inicio o al juego, el servicio intentara iniciarse desde segundo plano, generando fallo o bloqueo de permisos en el sistema operativo.
-
-- Solución Arquitectural Implementada:
-  * Inicio Inmediato en Primer Plano: El ViewModel invoca `RecordServiceLauncher.startService()` de manera inmediata al iniciar el flujo de grabación, garantizando que el Foreground Service (`mediaProjection` y `microphone`) se registre activamente en el sistema mientras la app está en primer plano.
-  * Migración de Cuenta Regresiva al Servicio: `ScreenRecordService` y `ServiceStateManager` gestionan internamente la cuenta atrás con `RecordCountdownManager`, emitiendo estados reactivos y hápticos.
-  * Notificación de Conteo en Tiempo Real: `RecordNotificationHelper` y `ServiceNotificationController` muestran la cuenta regresiva en la barra de notificaciones del sistema con botón para cancelar.
-  * Transición Automática y Robusta: Al finalizar el contador (0s), el servicio inicia `captureEngine.startCapture()` de forma atómica y sin solicitar permisos redundantes.
-
-fix(facecam): registro de FOREGROUND_SERVICE_TYPE_CAMERA en Foreground Service para evitar pantalla negra
-
-- Diagnóstico y Causa Raíz de Facecam en Negro al Activar desde la Burbuja:
-  * En Android 14+ (API 34+), el sistema operativo restringe el acceso al sensor de la cámara si el Foreground Service no fue iniciado con el flag `FOREGROUND_SERVICE_TYPE_CAMERA`.
-  * Si la grabación se iniciaba con Facecam apagada, `ServiceActionDispatcher` omitía declarar el tipo de cámara ante `startForeground()`. Al pulsar posteriormente el botón de Facecam en la burbuja flotante mientras se grababa otra app o juego, Android bloqueaba la entrega de frames de CameraX por seguridad, dejando la ventana flotante en negro.
-
-- Solución Implementada:
-  * En `ServiceActionDispatcher.kt`, se verifica dinámicamente si la app cuenta con los permisos `Manifest.permission.CAMERA` y `Manifest.permission.RECORD_AUDIO`.
-  * Al llamar a `startForegroundWithType()`, se registran proactivamente los tipos `FOREGROUND_SERVICE_TYPE_CAMERA` y `FOREGROUND_SERVICE_TYPE_MICROPHONE` si sus respectivos permisos están otorgados por el usuario, con fallback seguro ante excepciones de seguridad.
-  * Esto permite que el usuario encienda o apague la Facecam en cualquier momento desde la burbuja flotante con streaming fluido e inmediato de CameraX sin bloqueos del sistema operativo.
-
-fix(updater): añadir permisos INTERNET y ACCESS_NETWORK_STATE y corregir visualización de botón de búsqueda
+fix(overlay): ocultar burbuja flotante en video final mediante FLAG_SECURE en WindowManager
 
 - Diagnóstico y Causa Raíz:
-  * Permiso Denegado: La aplicación intentaba consultar la API de GitHub Releases (`https://api.github.com/repos/LuisAlejandro544/Vortex/releases`) para buscar actualizaciones de canales, pero en `AndroidManifest.xml` no se había declarado el permiso `android.permission.INTERNET`, provocando la excepción `Permission denied (missing INTERNET permission?)`.
-  * Texto Cortado en Botón Azul: El botón de "Buscar" en `ReleaseChannelInfoCard.kt` tenía una altura fija rígida de 38dp junto con el `contentPadding` por defecto de Material 3, lo cual provocaba un salto de línea involuntario ("Buscar\nVersión") que recortaba la segunda línea en dispositivos con fuentes medianas/grandes.
+  * Al activar la opción "Ocultar burbuja en el video final" (`hideInFinalVideo = true`), el método `show()` en `FloatingBubbleManager.kt` realizaba un retorno temprano condicional (`if (... || hideInFinalVideo) return`).
+  * Esto causaba que la vista de la burbuja flotante ni siquiera se inflara ni se agregara al `WindowManager`, provocando que el usuario no pudiera verla ni interactuar con los controles de grabación (pausar, detener, herramientas, capturas) en su pantalla física durante la sesión de juego o grabación.
 
 - Solución Implementada:
-  * En `AndroidManifest.xml`, se declararon explícitamente los permisos `android.permission.INTERNET` y `android.permission.ACCESS_NETWORK_STATE` para permitir la comunicación HTTP con GitHub.
-  * En `ReleaseChannelInfoCard.kt`, se optimizó el botón de comprobación con `contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)`, altura flexible `heightIn(min = 40.dp)`, etiqueta concisa `"Buscar"` y `maxLines = 1`, garantizando una visualización nítida y completa en cualquier pantalla.
-  * En `UpdateCheckerRepository.kt`, se mejoraron los mensajes de error de red para presentar avisos claros y en español al usuario ante fallos de conexión o timeout.
+  * Se eliminó `hideInFinalVideo` de la condición de salida temprana en `FloatingBubbleManager.kt`.
+  * Se configuró dinámicamente el flag del sistema `WindowManager.LayoutParams.FLAG_SECURE` en los parámetros de ventana de la burbuja cuando `hideInFinalVideo == true`.
+  * Gracias a `FLAG_SECURE`, la superficie de la ventana de la burbuja permanece 100% visible, interactiva y fluida para el usuario en la pantalla física del teléfono (SurfaceFlinger), mientras que el capturador de pantalla del sistema operativo (`MediaProjection` / `VirtualDisplay`) la excluye automáticamente de los fotogramas codificados en el archivo de video final MP4 (Android 14+ / API 34 y versiones compatibles).
 
+- Optimizaciones de Compilación y Seguridad (R8 / ProGuard):
+  * R8 Full Mode activado (`android.enableR8.fullMode=true` en `gradle.properties`) para inlining agresivo y reducción del tiempo de inicio.
+  * Eliminación de llamadas `android.util.Log` en Release mediante regla `-assumenosideeffects` en `proguard-rules.pro` para máxima tasa de fotogramas (60 FPS fluidos) y privacidad.
+  * Preservación y optimización de reflexión de puentes NDK JNI (`-keepclasseswithmembers` para paquetes nativos C++/Rust).
+  * Reducción de recursos innecesarios activa (`isShrinkResources = true` e `isMinifyEnabled = true` en `build.gradle.kts`).
+  * Ofuscación avanzada y aplanado de paquetes (`-repackageclasses 'com.vortexstudio.internal'` y `-allowaccessmodification`) para proteger el APK en tiendas de terceros como Uptodown.
