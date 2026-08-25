@@ -150,6 +150,7 @@ class ScreenCaptureEngine(private val context: Context) {
             // 3. Inicializar Muxer
             val muxer = MuxerManager(
                 outputFile = targetFile,
+                avSyncOffsetMs = avSyncOffsetMs,
                 hasAudioProvider = { audioPipelineModule?.hasAudio == true }
             )
             this.muxerManager = muxer

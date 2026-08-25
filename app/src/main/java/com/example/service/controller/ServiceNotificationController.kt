@@ -23,12 +23,23 @@ class ServiceNotificationController(
     }
 
     /**
+     * Actualiza la notificación de grabación durante la cuenta regresiva.
+     */
+    fun updateCountdownNotification(secondsRemaining: Int) {
+        notificationHelper.updateCountdownNotification(secondsRemaining)
+    }
+
+    /**
      * Construye la notificación inicial para Foreground Service.
      */
-    fun buildInitialNotification(isAudioEnabled: Boolean) =
-        notificationHelper.buildForegroundNotification(
-            durationSeconds = 0L,
-            isPaused = false,
-            isMicrophoneEnabled = isAudioEnabled
-        )
+    fun buildInitialNotification(isAudioEnabled: Boolean, countdownSeconds: Int = 0) =
+        if (countdownSeconds > 0) {
+            notificationHelper.buildCountdownNotification(countdownSeconds)
+        } else {
+            notificationHelper.buildForegroundNotification(
+                durationSeconds = 0L,
+                isPaused = false,
+                isMicrophoneEnabled = isAudioEnabled
+            )
+        }
 }

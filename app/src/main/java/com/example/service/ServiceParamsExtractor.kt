@@ -23,6 +23,7 @@ data class ServiceRecordingParams(
     val audioSource: String,
     val sampleRate: Int,
     val avSyncOffsetMs: Int,
+    val countdownSeconds: Int,
     val showFloatingBubble: Boolean,
     val showFacecam: Boolean,
     val savedConfig: RecordingConfig
@@ -55,6 +56,7 @@ object ServiceParamsExtractor {
         val bitrate = intent.getIntExtra(ScreenRecordService.EXTRA_BITRATE, savedConfig.getEffectiveBitrateBps())
         val audioSource = intent.getStringExtra(ScreenRecordService.EXTRA_AUDIO_SOURCE) ?: savedConfig.audioSource.name
         val sampleRate = intent.getIntExtra(ScreenRecordService.EXTRA_SAMPLE_RATE, savedConfig.audioSampleRate.sampleRate)
+        val countdownSeconds = intent.getIntExtra(ScreenRecordService.EXTRA_COUNTDOWN_SECONDS, savedConfig.countdownSeconds)
         val showFloatingBubble = intent.getBooleanExtra(ScreenRecordService.EXTRA_SHOW_FLOATING_BUBBLE, savedConfig.showFloatingBubble)
         val showFacecam = intent.getBooleanExtra(ScreenRecordService.EXTRA_SHOW_FACECAM, savedConfig.showFacecam)
 
@@ -78,6 +80,7 @@ object ServiceParamsExtractor {
             audioSource = audioSource,
             sampleRate = sampleRate,
             avSyncOffsetMs = savedConfig.avSyncOffsetMs,
+            countdownSeconds = countdownSeconds,
             showFloatingBubble = showFloatingBubble,
             showFacecam = showFacecam,
             savedConfig = savedConfig

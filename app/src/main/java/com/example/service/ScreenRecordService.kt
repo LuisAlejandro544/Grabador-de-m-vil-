@@ -15,6 +15,7 @@ import com.example.service.overlay.ServiceOverlayCoordinator
 import com.example.service.receiver.ServiceEmergencyReceiver
 import com.example.service.state.ServiceStateManager
 import com.example.service.timer.ServiceChronometerTimer
+import com.example.ui.RecordCountdownManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
@@ -61,12 +62,15 @@ class ScreenRecordService : Service() {
         const val EXTRA_BITRATE = "extra_bitrate"
         const val EXTRA_AUDIO_SOURCE = "extra_audio_source"
         const val EXTRA_SAMPLE_RATE = "extra_sample_rate"
+        const val EXTRA_COUNTDOWN_SECONDS = "extra_countdown_seconds"
         const val EXTRA_SHOW_FLOATING_BUBBLE = "extra_show_floating_bubble"
         const val EXTRA_SHOW_FACECAM = "extra_show_facecam"
 
         // Delegación transparente hacia ServiceStateManager para retrocompatibilidad total
         val recordingState: StateFlow<RecordingStatus> get() = ServiceStateManager.recordingState
         val elapsedSeconds: StateFlow<Int> get() = ServiceStateManager.elapsedSeconds
+        val countdownNumber: StateFlow<Int> get() = ServiceStateManager.countdownNumber
+        val isCountingDown: StateFlow<Boolean> get() = ServiceStateManager.isCountingDown
         val isMicMuted: StateFlow<Boolean> get() = ServiceStateManager.isMicMuted
         val isFacecamActive: StateFlow<Boolean> get() = ServiceStateManager.isFacecamActive
         val isVtuberActive: StateFlow<Boolean> get() = ServiceStateManager.isVtuberActive
@@ -91,6 +95,7 @@ class ScreenRecordService : Service() {
     private lateinit var emergencyReceiver: ServiceEmergencyReceiver
     private lateinit var chronometerTimer: ServiceChronometerTimer
     private lateinit var actionDispatcher: ServiceActionDispatcher
+    private lateinit var countdownManager: RecordCountdownManager
 
     private val serviceScope = CoroutineScope(Dispatchers.Main)
     private var currentActiveFile: File? = null
@@ -151,6 +156,17 @@ class ScreenRecordService : Service() {
             }
         )
 
+        countdownManager = RecordCountdownManager(
+            context = this,
+            scope = serviceScope,
+            onTick = { sec ->
+                ServiceStateManager.setCountdown(sec, sec > 0)
+                if (sec > 0) {
+                    notificationController.updateCountdownNotification(sec)
+                }
+            }
+        )
+
         emergencyReceiver = ServiceEmergencyReceiver(
             onEmergencyBatteryLow = {
                 ServiceStateManager.setErrorMessage("Grabación salvaguardada por batería baja del dispositivo.")
@@ -207,10 +223,24 @@ class ScreenRecordService : Service() {
         currentDensityDpi = params.densityDpi
         val isAudioEnabled = params.audioSource != AudioSourceType.NONE.name
 
-        // 1. Iniciar Foreground Service con tipos específicos (Android 14+)
-        val initialNotification = notificationController.buildInitialNotification(isAudioEnabled)
+        // 1. Iniciar Foreground Service INMEDIATAMENTE (Cumple restricciones estrictas Android 14+ FGS)
+        val initialNotification = notificationController.buildInitialNotification(isAudioEnabled, params.countdownSeconds)
         actionDispatcher.startForegroundWithType(initialNotification, isAudioEnabled, params.showFacecam)
 
+        if (params.countdownSeconds > 0) {
+            ServiceStateManager.setRecordingState(RecordingStatus.COUNTDOWN)
+            ServiceStateManager.setCountdown(params.countdownSeconds, true)
+            countdownManager.startCountdown(params.countdownSeconds) {
+                ServiceStateManager.setCountdown(0, false)
+                startActualCapture(params)
+            }
+        } else {
+            ServiceStateManager.setCountdown(0, false)
+            startActualCapture(params)
+        }
+    }
+
+    private fun startActualCapture(params: ServiceRecordingParams) {
         // 2. Preparar archivo de destino
         val outputFile = RecordStorageHelper.prepareOutputFile(this)
         currentActiveFile = outputFile
@@ -246,6 +276,12 @@ class ScreenRecordService : Service() {
             ServiceStateManager.setElapsedSeconds(0)
             ServiceStateManager.setErrorMessage(null)
             ServiceStateManager.setMicMuted(captureEngine.isMicrophoneMuted)
+
+            // Actualizar notificación al estado activo de grabación
+            notificationController.updateNotification(
+                isPaused = false,
+                isMicrophoneEnabled = !captureEngine.isMicrophoneMuted
+            )
 
             // 4. Lanzar interfaces y overlays configurados
             actionDispatcher.launchActiveOverlays(
@@ -328,6 +364,9 @@ class ScreenRecordService : Service() {
     }
 
     private fun cleanupAndStop() {
+        if (::countdownManager.isInitialized) {
+            countdownManager.cancelCountdown()
+        }
         chronometerTimer.stop()
         emergencyReceiver.unregister(this)
         if (::overlayCoordinator.isInitialized) {

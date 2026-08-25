@@ -7,10 +7,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -176,9 +178,10 @@ fun ReleaseChannelInfoCard(
                                 containerColor = currentChannel.getBadgeColor()
                             ),
                             shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                             modifier = Modifier
                                 .weight(1f)
-                                .height(38.dp)
+                                .heightIn(min = 40.dp)
                                 .testTag("check_updates_button")
                         ) {
                             if (updateInfo.isChecking) {
@@ -188,7 +191,11 @@ fun ReleaseChannelInfoCard(
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text(text = "Buscando...", fontSize = 12.sp)
+                                Text(
+                                    text = "Buscando...",
+                                    fontSize = 12.sp,
+                                    maxLines = 1
+                                )
                             } else {
                                 Icon(
                                     imageVector = Icons.Default.Refresh,
@@ -197,9 +204,10 @@ fun ReleaseChannelInfoCard(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "Buscar Versión",
+                                    text = "Buscar",
                                     fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1
                                 )
                             }
                         }
@@ -207,9 +215,10 @@ fun ReleaseChannelInfoCard(
                         OutlinedButton(
                             onClick = onOpenGitHubReleases,
                             shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                             modifier = Modifier
                                 .weight(1f)
-                                .height(38.dp)
+                                .heightIn(min = 40.dp)
                                 .testTag("open_github_releases_btn")
                         ) {
                             Icon(
@@ -220,7 +229,8 @@ fun ReleaseChannelInfoCard(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "Releases",
-                                fontSize = 12.sp
+                                fontSize = 12.sp,
+                                maxLines = 1
                             )
                         }
                     }

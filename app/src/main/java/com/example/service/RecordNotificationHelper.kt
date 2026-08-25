@@ -166,6 +166,56 @@ class RecordNotificationHelper(private val context: Context) {
     }
 
     /**
+     * Construye la notificación mostrada durante la cuenta regresiva antes de grabar.
+     */
+    fun buildCountdownNotification(secondsRemaining: Int): Notification {
+        val openAppIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val openAppPendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            openAppIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val stopIntent = Intent(context, ScreenRecordService::class.java).apply {
+            action = ScreenRecordService.ACTION_STOP
+        }
+        val stopPendingIntent = PendingIntent.getService(
+            context,
+            1,
+            stopIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setContentTitle("⏱️ Iniciando grabación en ${secondsRemaining}s")
+            .setContentText("Preparando captura en segundo plano... Toca para abrir")
+            .setSmallIcon(android.R.drawable.presence_video_online)
+            .setContentIntent(openAppPendingIntent)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancelar", stopPendingIntent)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
+        }
+
+        return builder.build()
+    }
+
+    /**
+     * Actualiza la notificación con el conteo regresivo activo.
+     */
+    fun updateCountdownNotification(secondsRemaining: Int) {
+        val notification = buildCountdownNotification(secondsRemaining)
+        notificationManager.notify(NOTIFICATION_ID, notification)
+    }
+
+    /**
      * Actualiza la notificación activa con el tiempo transcurrido o estado de pausa.
      */
     fun updateNotification(

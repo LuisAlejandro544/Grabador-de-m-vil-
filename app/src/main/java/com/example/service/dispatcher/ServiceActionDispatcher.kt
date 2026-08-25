@@ -1,10 +1,13 @@
 package com.example.service.dispatcher
 
+import android.Manifest
 import android.app.Notification
 import android.app.Service
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.example.model.RecordingConfig
 import com.example.service.RecordNotificationHelper
 import com.example.service.ScreenCaptureEngine
@@ -27,9 +30,27 @@ class ServiceActionDispatcher(
     fun startForegroundWithType(notification: Notification, isAudioEnabled: Boolean, showFacecam: Boolean) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             var serviceType = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-            if (isAudioEnabled) serviceType = serviceType or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            if (showFacecam) serviceType = serviceType or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
-            service.startForeground(RecordNotificationHelper.NOTIFICATION_ID, notification, serviceType)
+            
+            val hasMicPermission = ContextCompat.checkSelfPermission(service, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+            if (isAudioEnabled || hasMicPermission) {
+                if (hasMicPermission) {
+                    serviceType = serviceType or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                }
+            }
+
+            val hasCameraPermission = ContextCompat.checkSelfPermission(service, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+            if (showFacecam || hasCameraPermission) {
+                if (hasCameraPermission) {
+                    serviceType = serviceType or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+                }
+            }
+
+            try {
+                service.startForeground(RecordNotificationHelper.NOTIFICATION_ID, notification, serviceType)
+            } catch (e: SecurityException) {
+                Log.w(TAG, "Fallback startForeground sin permisos opcionales: ${e.message}")
+                service.startForeground(RecordNotificationHelper.NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+            }
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             service.startForeground(RecordNotificationHelper.NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
         } else {

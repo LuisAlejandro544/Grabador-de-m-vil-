@@ -41,8 +41,8 @@ fun HomeModalsHost(
         )
     }
 
-    // Modal de Cuenta Atrás Global (permite prepararse al grabar desde cualquier pantalla/juego)
-    if (uiState.isCountingDown && uiState.countdownNumber > 0) {
+    // Modal de Cuenta Atrás (solo se muestra en primer plano dentro de la app si no se está lanzando un juego externo)
+    if (uiState.isCountingDown && uiState.countdownNumber > 0 && !uiState.isGameLaunching) {
         CountdownOverlayModal(
             countdownNumber = uiState.countdownNumber,
             isGameMode = uiState.config.isGameMode,

@@ -14,6 +14,7 @@ import java.nio.ByteBuffer
  */
 class MuxerManager(
     private val outputFile: File,
+    private val avSyncOffsetMs: Int = 0,
     private val hasAudioProvider: () -> Boolean
 ) {
 
@@ -29,8 +30,9 @@ class MuxerManager(
     private var isReleased = false
     private var samplesWrittenCount = 0L
 
-    // Sincronización AV: Reloj base compartido anclado al primer fotograma de video
-    private var baseTimeUs = -1L
+    // Sincronización AV: Relojes base independientes para alinear ambas pistas en t=0
+    private var videoBaseTimeUs = -1L
+    private var audioBaseTimeUs = -1L
 
     // Control de Pausas sincronizadas entre pistas
     private var isPaused = false
@@ -80,7 +82,7 @@ class MuxerManager(
             try {
                 mediaMuxer?.start()
                 muxerStarted = true
-                Log.i(TAG, "MediaMuxer iniciado con éxito (Video: $videoTrackIndex, Audio: $audioTrackIndex)")
+                Log.i(TAG, "MediaMuxer iniciado con éxito (Video: $videoTrackIndex, Audio: $audioTrackIndex, Offset: ${avSyncOffsetMs}ms)")
                 lock.notifyAll()
             } catch (e: Exception) {
                 Log.e(TAG, "Fallo al iniciar MediaMuxer: ${e.message}", e)
@@ -125,14 +127,22 @@ class MuxerManager(
                     val rawPts = bufferInfo.presentationTimeUs
                     val isKeyFrame = (bufferInfo.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME) != 0
 
-                    // 1. Establecer el reloj base compartido con el primer fotograma de video
-                    if (baseTimeUs == -1L) {
-                        baseTimeUs = rawPts
-                        Log.i(TAG, "Reloj base AV anclado al primer fotograma de video: baseTimeUs=$baseTimeUs (KeyFrame=$isKeyFrame)")
+                    // 1. Establecer el reloj base de video con el primer fotograma
+                    if (videoBaseTimeUs == -1L) {
+                        videoBaseTimeUs = rawPts
+                        Log.i(TAG, "Reloj base de video anclado: videoBaseTimeUs=$videoBaseTimeUs (KeyFrame=$isKeyFrame)")
                     }
 
                     // 2. Normalizar PTS relativo al inicio (t=0) y descontar pausas reales acumuladas
-                    var adjustedPts = (rawPts - baseTimeUs) - totalPausedDurationUs
+                    var adjustedPts = (rawPts - videoBaseTimeUs) - totalPausedDurationUs
+
+                    // Compensación AV: Si el usuario adelanta el audio (avSyncOffsetMs > 0 para compensar video adelantado),
+                    // desplazamos el video hacia adelante por offsetUs de modo que el audio se reproduzca antes relativo a la imagen
+                    val offsetUs = avSyncOffsetMs * 1_000L
+                    if (offsetUs > 0L) {
+                        adjustedPts += offsetUs
+                    }
+
                     if (adjustedPts < 0L) {
                         adjustedPts = 0L
                     }
@@ -165,21 +175,29 @@ class MuxerManager(
             }
             if (muxerStarted && audioTrackIndex != -1 && !isReleased) {
                 try {
-                    // CRÍTICO: Descartar muestras de audio previas a la inicialización del video
-                    // para evitar que el audio arranque antes de que exista imagen en pantalla.
-                    if (baseTimeUs == -1L) {
-                        return
-                    }
-
                     val rawPts = bufferInfo.presentationTimeUs
 
-                    // Calcular PTS anclado al reloj del primer fotograma de video y descontar pausas acumuladas
-                    var adjustedPts = (rawPts - baseTimeUs) - totalPausedDurationUs
-                    if (adjustedPts < 0L) {
-                        return
+                    // 1. Establecer el reloj base de audio con la primera muestra recibida
+                    if (audioBaseTimeUs == -1L) {
+                        audioBaseTimeUs = rawPts
+                        Log.i(TAG, "Reloj base de audio anclado: audioBaseTimeUs=$audioBaseTimeUs")
                     }
 
-                    // Garantizar monotonicidad estricta para audio
+                    // 2. Calcular PTS normalizado a t=0 para la pista de audio y descontar pausas acumuladas
+                    var adjustedPts = (rawPts - audioBaseTimeUs) - totalPausedDurationUs
+
+                    // Compensación AV: Si el usuario retrasa el audio (avSyncOffsetMs < 0),
+                    // desplazamos el audio hacia adelante por |offsetUs|
+                    val offsetUs = avSyncOffsetMs * 1_000L
+                    if (offsetUs < 0L) {
+                        adjustedPts += (-offsetUs)
+                    }
+
+                    if (adjustedPts < 0L) {
+                        adjustedPts = 0L
+                    }
+
+                    // 3. Garantizar monotonicidad estricta para audio
                     if (adjustedPts <= lastAudioWrittenPtsUs) {
                         adjustedPts = lastAudioWrittenPtsUs + 250L // +0.25ms para granularidad fina de audio
                     }

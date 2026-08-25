@@ -17,6 +17,12 @@ object ServiceStateManager {
     private val _elapsedSeconds = MutableStateFlow(0)
     val elapsedSeconds: StateFlow<Int> = _elapsedSeconds.asStateFlow()
 
+    private val _countdownNumber = MutableStateFlow(0)
+    val countdownNumber: StateFlow<Int> = _countdownNumber.asStateFlow()
+
+    private val _isCountingDown = MutableStateFlow(false)
+    val isCountingDown: StateFlow<Boolean> = _isCountingDown.asStateFlow()
+
     private val _isMicMuted = MutableStateFlow(false)
     val isMicMuted: StateFlow<Boolean> = _isMicMuted.asStateFlow()
 
@@ -67,6 +73,11 @@ object ServiceStateManager {
         _elapsedSeconds.value = seconds
     }
 
+    fun setCountdown(number: Int, isCounting: Boolean) {
+        _countdownNumber.value = number
+        _isCountingDown.value = isCounting
+    }
+
     fun setMicMuted(muted: Boolean) {
         _isMicMuted.value = muted
     }
@@ -114,6 +125,8 @@ object ServiceStateManager {
     fun reset() {
         _recordingState.value = RecordingStatus.IDLE
         _elapsedSeconds.value = 0
+        _countdownNumber.value = 0
+        _isCountingDown.value = false
         _isMicMuted.value = false
         _isFacecamActive.value = false
         _isVtuberActive.value = false

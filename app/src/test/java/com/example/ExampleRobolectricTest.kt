@@ -143,6 +143,21 @@ class ExampleRobolectricTest {
     val toggled = engine.toggleMicrophoneMuted()
     assertEquals(false, toggled)
   }
+
+  @Test
+  fun `settings repository persists av sync offset and audio filters`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val repository = com.example.data.SettingsRepository(context)
+
+    repository.updateAvSyncOffset(100)
+    repository.toggleAudioDucking(true)
+    repository.toggleNoiseGate(true)
+
+    val saved = repository.loadConfig()
+    assertEquals(100, saved.avSyncOffsetMs)
+    assertTrue(saved.audioDuckingEnabled)
+    assertTrue(saved.noiseGateEnabled)
+  }
 }
 
 

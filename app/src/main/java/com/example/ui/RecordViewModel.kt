@@ -59,12 +59,14 @@ data class UiState(
     val infoMessage: String? = null,
     val activeTab: Int = 0, // 0: Grabar, 1: Galería, 2: Juegos, 3: Ajustes
     val isOnboardingCompleted: Boolean = true,
+    val isGameLaunching: Boolean = false,
     val updateInfo: AppUpdateInfo = AppUpdateInfo(),
     val showUpdateDialog: Boolean = false
 )
 
 data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 data class Tuple5<A, B, C, D, E>(val first: A, val second: B, val third: C, val fourth: D, val fifth: E)
+data class Tuple6<A, B, C, D, E, F>(val first: A, val second: B, val third: C, val fourth: D, val fifth: E, val sixth: F)
 
 /**
  * ViewModel modular y reactivo para la pantalla principal de Vortex Studio.
@@ -79,13 +81,13 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     private val repository = RecordingsRepository(application)
     private val gamesHelper = InstalledGamesHelper(application)
     private val settingsRepository = SettingsRepository(application)
-    private val countdownManager = RecordCountdownManager(application, viewModelScope)
     private val updateCheckerRepository = UpdateCheckerRepository(application)
 
     private val _infoMessage = MutableStateFlow<String?>(null)
     private val _activeTab = MutableStateFlow(0)
     private val _installedGames = MutableStateFlow<List<InstalledAppItem>>(emptyList())
     private val _isLoadingGames = MutableStateFlow(false)
+    private val _isGameLaunching = MutableStateFlow(false)
     private val _updateInfo = MutableStateFlow(AppUpdateInfo())
     private val _showUpdateDialog = MutableStateFlow(false)
 
@@ -111,11 +113,11 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     private var pendingLaunchGamePackage: String? = null
 
     val uiState = combine(
-        combine(_config, ScreenRecordService.recordingState, ScreenRecordService.elapsedSeconds, countdownManager.countdownNumber) { config, state, elapsed, cd ->
-            Quadruple(config, state, elapsed, cd)
+        combine(_config, ScreenRecordService.recordingState, ScreenRecordService.elapsedSeconds, ScreenRecordService.countdownNumber, _isGameLaunching) { config, state, elapsed, cd, isLaunching ->
+            Tuple5(config, state, elapsed, cd, isLaunching)
         },
         combine(
-            countdownManager.isCountingDown,
+            ScreenRecordService.isCountingDown,
             _storageInfo,
             galleryDelegate.videos,
             combine(galleryDelegate.isLoadingVideos, galleryDelegate.selectedVideoForPlay, galleryDelegate.selectedVideoForEdit) { lVids, play, edit -> Triple(lVids, play, edit) }
@@ -133,13 +135,13 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             Quadruple(games, loadingGames, err, extraInfo)
         }
     ) { group1, group2, group3 ->
-        val (config, serviceState, elapsed, countdown) = group1
+        val (config, serviceState, elapsed, countdown, isGameLaunching) = group1
         val (isCountingDown, storage, videos, extra) = group2
         val (isLoadingVideos, selectedVideo, selectedVideoForEdit) = extra
         val (games, loadingGames, serviceError, extraInfo) = group3
         val (infoMessage, activeTab, isOnboarded, updateInfo, showUpdateDialog) = extraInfo
 
-        val effectiveStatus = if (isCountingDown) RecordingStatus.COUNTDOWN else serviceState
+        val effectiveStatus = if (isCountingDown && !isGameLaunching) RecordingStatus.COUNTDOWN else serviceState
 
         UiState(
             config = config,
@@ -158,6 +160,7 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             infoMessage = infoMessage,
             activeTab = activeTab,
             isOnboardingCompleted = isOnboarded,
+            isGameLaunching = isGameLaunching,
             updateInfo = updateInfo,
             showUpdateDialog = showUpdateDialog
         )
@@ -167,6 +170,16 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         loadVideos()
         loadInstalledGames()
         refreshStorageInfo()
+
+        // Resetear bandera de lanzamiento de juego cuando cambie el estado del servicio
+        viewModelScope.launch {
+            ScreenRecordService.recordingState.collect { state ->
+                if (state == RecordingStatus.RECORDING || state == RecordingStatus.IDLE || state == RecordingStatus.ERROR) {
+                    _isGameLaunching.value = false
+                    pendingLaunchGamePackage = null
+                }
+            }
+        }
 
         // Sincronizar reactivamente los cambios en la configuración persistida
         viewModelScope.launch {
@@ -298,44 +311,32 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
         targetGamePackage: String? = null
     ) {
         val config = _config.value
-        val countdown = config.countdownSeconds
         pendingLaunchGamePackage = targetGamePackage
 
-        if (countdown > 0) {
-            countdownManager.startCountdown(countdown) {
-                // 1. Iniciar el Foreground Service al completar la cuenta atrás
-                RecordServiceLauncher.startService(
-                    context = getApplication(),
-                    resultCode = resultCode,
-                    resultData = resultData,
-                    config = _config.value
-                )
-
-                // 2. Si se solicitó grabar un juego o aplicación específica, lanzarla ahora
-                launchPendingGame()
-            }
+        if (targetGamePackage != null) {
+            // Modo Juego / App: Lanzar inmediatamente el juego en primer plano para que cargue
+            // y la rotación de pantalla se estabilice mientras el servicio realiza el conteo
+            _isGameLaunching.value = true
+            gamesHelper.launchApp(targetGamePackage)
         } else {
-            RecordServiceLauncher.startService(
-                context = getApplication(),
-                resultCode = resultCode,
-                resultData = resultData,
-                config = config
-            )
-            launchPendingGame()
+            _isGameLaunching.value = false
         }
+
+        // Iniciar el Foreground Service de forma INMEDIATA mientras la app sigue en primer plano
+        // (o justo al disparar el intento). El servicio se encarga de la cuenta atrás y de mantener
+        // la ejecución en primer plano sin violar las restricciones de FGS de Android 14+
+        RecordServiceLauncher.startService(
+            context = getApplication(),
+            resultCode = resultCode,
+            resultData = resultData,
+            config = config
+        )
     }
 
     fun cancelCountdown() {
-        countdownManager.cancelCountdown()
+        _isGameLaunching.value = false
         pendingLaunchGamePackage = null
         stopRecording()
-    }
-
-    private fun launchPendingGame() {
-        pendingLaunchGamePackage?.let { pkg ->
-            gamesHelper.launchApp(pkg)
-            pendingLaunchGamePackage = null
-        }
     }
 
     fun stopRecording() {

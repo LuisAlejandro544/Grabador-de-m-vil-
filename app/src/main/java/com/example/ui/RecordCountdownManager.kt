@@ -16,7 +16,8 @@ import kotlinx.coroutines.launch
  */
 class RecordCountdownManager(
     private val context: Context,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val onTick: ((Int) -> Unit)? = null
 ) {
     private val _countdownNumber = MutableStateFlow(0)
     val countdownNumber = _countdownNumber.asStateFlow()
@@ -30,6 +31,7 @@ class RecordCountdownManager(
         if (seconds <= 0) {
             _isCountingDown.value = false
             _countdownNumber.value = 0
+            onTick?.invoke(0)
             onFinish()
             return
         }
@@ -39,11 +41,13 @@ class RecordCountdownManager(
         countdownJob = scope.launch {
             for (i in seconds downTo 1) {
                 _countdownNumber.value = i
+                onTick?.invoke(i)
                 vibrateQuick()
                 delay(1000)
             }
             _isCountingDown.value = false
             _countdownNumber.value = 0
+            onTick?.invoke(0)
             onFinish()
         }
     }
@@ -52,6 +56,7 @@ class RecordCountdownManager(
         countdownJob?.cancel()
         _isCountingDown.value = false
         _countdownNumber.value = 0
+        onTick?.invoke(0)
     }
 
     private fun vibrateQuick() {

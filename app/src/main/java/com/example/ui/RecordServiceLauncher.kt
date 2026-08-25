@@ -31,6 +31,7 @@ object RecordServiceLauncher {
             putExtra(ScreenRecordService.EXTRA_BITRATE, config.getEffectiveBitrateBps())
             putExtra(ScreenRecordService.EXTRA_AUDIO_SOURCE, config.audioSource.name)
             putExtra(ScreenRecordService.EXTRA_SAMPLE_RATE, config.audioSampleRate.sampleRate)
+            putExtra(ScreenRecordService.EXTRA_COUNTDOWN_SECONDS, config.countdownSeconds)
             putExtra(ScreenRecordService.EXTRA_SHOW_FLOATING_BUBBLE, config.showFloatingBubble)
             putExtra(ScreenRecordService.EXTRA_SHOW_FACECAM, config.showFacecam)
         }

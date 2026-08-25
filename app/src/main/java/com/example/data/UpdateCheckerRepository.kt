@@ -137,10 +137,16 @@ class UpdateCheckerRepository(private val context: Context) {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error comprobando actualizaciones desde GitHub", e)
+            val friendlyMsg = when (e) {
+                is java.net.UnknownHostException -> "No se pudo conectar a GitHub (verifica tu conexión a Internet)"
+                is java.net.SocketTimeoutException -> "Tiempo de espera agotado al conectar a GitHub"
+                is SecurityException -> "Permiso de red denegado por el sistema"
+                else -> e.localizedMessage ?: "No se pudo conectar a GitHub"
+            }
             return@withContext AppUpdateInfo(
                 channel = currentChannel,
                 isUpdateAvailable = false,
-                errorMessage = e.localizedMessage ?: "No se pudo conectar a GitHub"
+                errorMessage = friendlyMsg
             )
         }
     }

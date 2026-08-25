@@ -183,7 +183,7 @@ class AudioEncoderWorker(
             inputBuffer?.clear()
             inputBuffer?.put(bytes, 0, size)
 
-            val nowUs = (System.nanoTime() / 1000L) + (avSyncOffsetMs * 1_000L)
+            val nowUs = System.nanoTime() / 1000L
             val bytesPerFrame = channelCount * 2L // 16-bit PCM = 2 bytes por muestra por canal
             val bufferDurationUs = if (bytesPerFrame > 0 && sampleRate > 0) {
                 (size * 1_000_000L) / (bytesPerFrame * sampleRate)
@@ -195,7 +195,8 @@ class AudioEncoderWorker(
                 nowUs
             } else {
                 val continuousPts = lastQueuedPtsUs + bufferDurationUs
-                if (kotlin.math.abs(nowUs - continuousPts) < 100_000L) {
+                // Si la desviación es menor a 80ms, mantener continuidad estricta por conteo de muestras PCM
+                if (kotlin.math.abs(nowUs - continuousPts) < 80_000L) {
                     continuousPts
                 } else {
                     nowUs
