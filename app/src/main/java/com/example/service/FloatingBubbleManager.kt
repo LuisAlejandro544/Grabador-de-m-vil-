@@ -19,7 +19,6 @@ import android.view.WindowManager
  */
 class FloatingBubbleManager(
     private val context: Context,
-    private val hideInFinalVideo: Boolean = false,
     private val onPauseClicked: () -> Unit,
     private val onResumeClicked: () -> Unit,
     private val onStopClicked: () -> Unit,
@@ -75,15 +74,8 @@ class FloatingBubbleManager(
                 WindowManager.LayoutParams.TYPE_PHONE
             }
 
-            var flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            val flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-
-            // Si hideInFinalVideo está activo, asignamos FLAG_SECURE a la ventana de la burbuja.
-            // Esto permite que el usuario la vea e interactúe con ella en la pantalla física,
-            // pero MediaProjection (la grabación de pantalla MP4) la excluye de la captura.
-            if (hideInFinalVideo) {
-                flags = flags or WindowManager.LayoutParams.FLAG_SECURE
-            }
 
             val p = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,

@@ -1,17 +1,14 @@
 # 🌪️ Vortex Studio & Game Recorder
 
-> **Vortex Studio** es una suite completa de grabación de pantalla de alto rendimiento, edición rápida y transmisión en vivo para Android, diseñada para capturar partidas de videojuegos a 60 FPS con audio interno exclusivo, overlays visuales, herramientas en vivo, **Burbuja Flotante con Exclusión Automática en el Video Final (Android 14+ y versiones anteriores)**, **Filtro de Belleza facial**, **Borde RGB Arcoíris animado**, **Indicador de Toques Táctiles animado**, **Editor de Video con Conversor de Aspect Ratio 1-Toque y División de Clips**, y cimientos nativos en **C++ (OpenGL ES 3.0 / FFmpeg Core)** y **Rust (RTMP/SRT)**.
+> **Vortex Studio** es una suite completa de grabación de pantalla de alto rendimiento, edición rápida y transmisión en vivo para Android, diseñada para capturar partidas de videojuegos a 60 FPS con audio interno exclusivo, overlays visuales, herramientas en vivo, **Burbuja Flotante con Control de Cronómetro y Menú Rápido**, **Aclaración y Modo de Grabación 100% Limpio desde Notificaciones**, **Filtro de Belleza facial**, **Borde RGB Arcoíris animado**, **Indicador de Toques Táctiles animado**, **Editor de Video con Conversor de Aspect Ratio 1-Toque y División de Clips**, y cimientos nativos en **C++ (OpenGL ES 3.0 / FFmpeg Core)** y **Rust (RTMP/SRT)**.
 
 ---
 
 ## 🚀 Características Principales
 
-### 🕹️ Burbuja de Control Flotante con Modo Invisible en el Video Final
-- **👁️ Exclusión en Grabación (Visible para el Jugador, Invisible en el Video):**
-  - Permite tener la burbuja flotante en pantalla con cronómetro, pausa, reanudación y controles de herramientas activos mientras juegas sin que aparezca en el archivo de video final resultante.
-  - **Android 14+ (API 34+):** Exclusión nativa a nivel de compositor y `VirtualDisplay` mediante flags de ventana sin degradar el rendimiento ni el refresco de pantalla.
-  - **Versiones Anteriores:** Atenuación de opacidad y minimización inteligente durante la captura para evitar obstrucción del metraje del juego.
-- **⚡ Control Rápido:** Pausa, reanudar, silenciar micrófono, cambiar fuente de audio, activar dibujo en pantalla o Facecam con 1 toque sobre cualquier videojuego.
+### 🕹️ Burbuja de Control Flotante & Grabaciones Limpias
+- **⚡ Control Rápido en Pantalla:** Acceso instantáneo a cronómetro en vivo, pausa, reanudación, silenciador de micrófono, conmutador de fuentes de audio, activación de cámara Facecam o avatar VTuber y capturas con 1 toque sobre cualquier videojuego.
+- **✨ Modo de Grabación 100% Limpio:** Guía integrada en los ajustes para realizar grabaciones de partidas sin ningún elemento superpuesto, controlando el inicio, pausa y finalización cómodamente desde la barra de notificaciones persistente del sistema.
 
 ### ✂️ Editor de Video Móvil Avanzado (Vortex Studio Pro)
 - **📱 Conversión de Relación de Aspecto con 1 Toque (1-Tap Aspect Ratio Converter):**

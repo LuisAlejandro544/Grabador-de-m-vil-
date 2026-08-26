@@ -52,13 +52,11 @@ class OverlaySettingsStore(private val prefs: SharedPreferences) {
         val vtuberTalkImageUri: String?,
         val vtuberBlinkImageUri: String?,
         val vtuberBlinkTalkImageUri: String?,
-        val showFloatingVuMeter: Boolean,
-        val hideBubbleInFinalVideo: Boolean
+        val showFloatingVuMeter: Boolean
     )
 
     fun load(): OverlayConfigSlice {
         val showFloatingBubble = prefs.getBoolean(KEY_FLOATING_BUBBLE, true)
-        val hideBubbleInFinalVideo = prefs.getBoolean(KEY_HIDE_BUBBLE_IN_FINAL_VIDEO, false)
         val showFacecam = prefs.getBoolean(KEY_SHOW_FACECAM, false)
         val shapeName = prefs.getString(KEY_FACECAM_SHAPE, FacecamShape.CIRCLE.name)
         val facecamShape = try {
@@ -185,14 +183,12 @@ class OverlaySettingsStore(private val prefs: SharedPreferences) {
             vtuberTalkImageUri = vtuberTalkUri,
             vtuberBlinkImageUri = vtuberBlinkUri,
             vtuberBlinkTalkImageUri = vtuberBlinkTalkUri,
-            showFloatingVuMeter = showVuMeter,
-            hideBubbleInFinalVideo = hideBubbleInFinalVideo
+            showFloatingVuMeter = showVuMeter
         )
     }
 
     fun save(editor: SharedPreferences.Editor, config: RecordingConfig) {
         editor.putBoolean(KEY_FLOATING_BUBBLE, config.showFloatingBubble)
-        editor.putBoolean(KEY_HIDE_BUBBLE_IN_FINAL_VIDEO, config.hideBubbleInFinalVideo)
         editor.putBoolean(KEY_SHOW_FACECAM, config.showFacecam)
         editor.putString(KEY_FACECAM_SHAPE, config.facecamShape.name)
         editor.putString(KEY_FACECAM_SIZE, config.facecamSize.name)
@@ -231,7 +227,6 @@ class OverlaySettingsStore(private val prefs: SharedPreferences) {
 
     companion object {
         const val KEY_FLOATING_BUBBLE = "pref_floating_bubble"
-        const val KEY_HIDE_BUBBLE_IN_FINAL_VIDEO = "pref_hide_bubble_in_final_video"
         const val KEY_SHOW_FACECAM = "pref_show_facecam"
         const val KEY_FACECAM_SHAPE = "pref_facecam_shape"
         const val KEY_FACECAM_SIZE = "pref_facecam_size"

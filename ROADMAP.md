@@ -16,7 +16,7 @@ Este documento detalla el progreso actual y las fases de desarrollo de **Vortex 
 | **Fase 6** | Protección Anti-Corrupción, Monitor de Disco & Formato de Imagen Multiformato | ✅ Completado |
 | **Fase 7** | Flujo de Onboarding, Centro de Permisos & Limpieza de Dependencias Google | ✅ Completado |
 | **Fase 8** | Matriz de 4 Canales (Dev, Canary, Beta, Estable) & Despliegue CI/CD a Telegram | ✅ Completado |
-| **Fase 9** | Burbuja Flotante con Exclusión en Grabación (Android 14+ y Versiones Anteriores) | ✅ Completado |
+| **Fase 9** | Burbuja Flotante de Control Gamer & Aclaración de Grabación Limpia | ✅ Completado |
 | **Fase 10** | Seguimiento Facial por IA Local (Face Mesh NDK C++) para Avatar VTuber | ✅ Completado |
 | **Fase 11** | Transmisión en Vivo RTMP / SRT con Rust & Buffer de Repetición (Clips 30s) | ⏳ En Progreso / Base Lista |
 
@@ -40,15 +40,16 @@ Este documento detalla el progreso actual y las fases de desarrollo de **Vortex 
 
 ---
 
-## 🌟 Detalle de la Fase 9: Burbuja Flotante con Exclusión en Grabación (Completada)
+## 🌟 Detalle de la Fase 9: Burbuja Flotante de Control Gamer & Aclaración de Grabación Limpia (Completada)
 
-- [x] **Modo Ocultar Burbuja en el Video Final:**
-  - Opción conmutable en ajustes para que el jugador visualice y controle la grabación desde la burbuja flotante, pero esta quede excluida del archivo MP4 final.
-  - **Android 14+ (API 34+):** Exclusión nativa de ventanas de superposición (`FLAG_SECURE` / exclusión de `VirtualDisplay`).
-  - **Versiones Anteriores a Android 14:** Atenuación y minimización automática durante la captura activa para no obstruir el metraje del juego.
-- [x] **Integración Integral en la Arquitectura:**
-  - Modelo `RecordingConfig.hideBubbleInFinalVideo`, persistencia reactiva en `OverlaySettingsStore` / `SettingsRepository`, propagación en `RecordViewModel` y control visual en `FloatingBubbleSettingsCard` y `SettingsView`.
-  - Integración en el ciclo de vida del servicio: `ScreenRecordService`, `ServiceOverlayCoordinator`, `FloatingBubbleManager` y `ServiceActionDispatcher`.
+- [x] **Burbuja Flotante Interactiva de Alto Rendimiento:**
+  - Control en tiempo real sobre cualquier juego: cronómetro en vivo, pausar/reanudar, silenciador de micrófono, activación de Facecam / VTuber y captura de pantalla rápida.
+  - Arrastre fluido, anclaje a bordes de pantalla y consumo mínimo de CPU/GPU.
+- [x] **Aclaración y Captura 100% Limpia sin Superposiciones:**
+  - Tarjeta informativa en los ajustes que explica claramente que en Android las ventanas flotantes activas forman parte de la composición capturada por el sistema.
+  - Directriz para capturar partidas completamente limpias: desactivar la burbuja flotante y operar la grabación (pausa, reanudación y stop) a través del panel de notificaciones persistente.
+- [x] **Arquitectura Desacoplada y Limpia:**
+  - Integración optimizada en el ciclo de vida del servicio: `ScreenRecordService`, `ServiceOverlayCoordinator`, `FloatingBubbleManager` y `ServiceActionDispatcher`.
 
 ---
 

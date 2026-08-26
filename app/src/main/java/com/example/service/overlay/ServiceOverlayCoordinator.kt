@@ -72,7 +72,6 @@ class ServiceOverlayCoordinator(
         isMicMuted: Boolean,
         isBeautyActive: Boolean,
         isRgbActive: Boolean,
-        hideInFinalVideo: Boolean = false,
         onPauseClicked: () -> Unit,
         onResumeClicked: () -> Unit,
         onStopClicked: () -> Unit,
@@ -82,7 +81,6 @@ class ServiceOverlayCoordinator(
         floatingBubbleManager?.dismiss()
         floatingBubbleManager = FloatingBubbleManager(
             context = context,
-            hideInFinalVideo = hideInFinalVideo,
             onPauseClicked = onPauseClicked,
             onResumeClicked = onResumeClicked,
             onStopClicked = onStopClicked,

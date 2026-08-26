@@ -110,7 +110,6 @@ class ServiceActionDispatcher(
                     isMicMuted = captureEngine.isMicrophoneMuted,
                     isBeautyActive = config.beautyFilterEnabled,
                     isRgbActive = config.facecamRgbBorder,
-                    hideInFinalVideo = config.hideBubbleInFinalVideo,
                     onPauseClicked = onActionCallbacks.onPause,
                     onResumeClicked = onActionCallbacks.onResume,
                     onStopClicked = onActionCallbacks.onStop,

@@ -102,7 +102,6 @@ data class OverlaySettingsEvents(
 data class GeneralSettingsEvents(
     val onToggleGameMode: (Boolean) -> Unit = {},
     val onToggleFloatingBubble: (Boolean) -> Unit = {},
-    val onToggleHideBubbleInFinalVideo: (Boolean) -> Unit = {},
     val onUpdateCountdown: (Int) -> Unit = {},
     val onReopenOnboarding: () -> Unit = {},
     val onCheckForUpdates: () -> Unit = {},

@@ -190,7 +190,6 @@ fun HomeScreen(
                     onUpdateCountdown = { viewModel.updateCountdown(it) },
                     onToggleGameMode = { viewModel.toggleGameMode(it) },
                     onToggleFloatingBubble = { viewModel.toggleFloatingBubble(it) },
-                    onToggleHideBubbleInFinalVideo = { viewModel.toggleHideBubbleInFinalVideo(it) },
                     onToggleFacecam = { enabled ->
                         if (enabled) {
                             recordLaunchersState.requestCameraPermission()

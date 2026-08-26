@@ -32,12 +32,11 @@ Este documento mantiene el estado de desarrollo, decisiones de arquitectura y ma
   * Gestión de sockets para streaming seguro en memoria RTMP/SRT.
   * Función `rustCalculateTargetDimensions` para cálculo de resoluciones y aspect ratio de video.
 
-### 4. Overlays Flotantes, Burbuja Invisible y Sincronización A/V
+### 4. Overlays Flotantes, Burbuja de Control y Sincronización A/V
 - `ScreenRecordService.kt`: Servicio principal en primer plano para captura mediante `MediaProjection`. Posee salvaguardas reactivas contra batería baja (`ACTION_BATTERY_LOW`), almacenamiento lleno (`ACTION_DEVICE_STORAGE_LOW`), `onTaskRemoved` y `onTrimMemory`.
 - `FloatingBubbleManager.kt` & `ServiceOverlayCoordinator.kt`:
-  * **Modo Invisible en Grabación Final:** Soporte para excluir la burbuja flotante del video final manteniendo su visibilidad y controles para el jugador.
-  * **Android 14+ (API 34+):** Exclusión de ventana mediante `FLAG_SECURE` / flags de compositor sobre `VirtualDisplay`.
-  * **Android < 14:** Atenuación automática de opacidad para no interferir con la grabación del juego.
+  * **Burbuja de Control Flotante:** Menú superpuesto interactivo con cronómetro en vivo, pausa, reanudar, silenciador de micrófono, disparador de Facecam y captura de pantalla.
+  * **Aclaración y Modo Limpio:** Documentación en UI de ajustes recomendando desactivar la burbuja y utilizar los controles de notificación para capturar partidas completamente limpias sin elementos en pantalla.
 - `ScreenCaptureEngine.kt` & `MuxerManager.kt`: Coordinación de codificadores con **Protección contra Corrupción de Archivo (Graceful Finalize)**, asegurando la escritura del átomo `moov` y cierre de pistas en contenedores MP4 con JVM Shutdown Hook.
 - `Zero-Latency AV Sync Engine` (`MuxerManager.kt`, `VideoEncoderModule.kt`, `AudioEncoderWorker.kt`): Eliminación de desincronizaciones entre video y audio mediante anclaje de reloj al primer fotograma, inyección de fotogramas repetidos `KEY_REPEAT_PREVIOUS_FRAME_AFTER`, cálculo de PTS lineal continuo por muestras PCM y compensador de delay manual calibrable (`avSyncOffsetMs` de -200ms a +200ms).
 - `StorageMonitorHelper.kt` & `DiskStorageMonitorCard.kt`: Monitorización de espacio en disco en tiempo real con estimación de tiempo de grabación restante según la tasa de bits.

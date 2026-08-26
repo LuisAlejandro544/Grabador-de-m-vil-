@@ -1,17 +1,11 @@
-fix(overlay): ocultar burbuja flotante en video final mediante FLAG_SECURE en WindowManager
+refactor(overlay): remover opción no viable de ocultar burbuja y agregar aclaración informativa en ajustes
 
-- Diagnóstico y Causa Raíz:
-  * Al activar la opción "Ocultar burbuja en el video final" (`hideInFinalVideo = true`), el método `show()` en `FloatingBubbleManager.kt` realizaba un retorno temprano condicional (`if (... || hideInFinalVideo) return`).
-  * Esto causaba que la vista de la burbuja flotante ni siquiera se inflara ni se agregara al `WindowManager`, provocando que el usuario no pudiera verla ni interactuar con los controles de grabación (pausar, detener, herramientas, capturas) en su pantalla física durante la sesión de juego o grabación.
+- Diagnóstico y Justificación Técnica:
+  * La opción experimental de "Ocultar burbuja en el video final" mediante `WindowManager.LayoutParams.FLAG_SECURE` provocaba la aparición de un recuadro o bloque negro opaco en el archivo de video final capturado por `MediaProjection`.
+  * En la arquitectura gráfica de Android (`SurfaceFlinger`), cualquier superficie marcada con `FLAG_SECURE` es protegida por hardware contra capturas de pantalla, resultando en fotogramas negros en lugar de transparencia selectiva. Dado que el sistema operativo no ofrece una API nativa para excluir selectivamente ventanas flotantes individuales de `MediaProjection` sin ocultarlas u oscurecerlas, dicha funcionalidad no resulta viable sin degradar la calidad visual del gameplay.
 
-- Solución Implementada:
-  * Se eliminó `hideInFinalVideo` de la condición de salida temprana en `FloatingBubbleManager.kt`.
-  * Se configuró dinámicamente el flag del sistema `WindowManager.LayoutParams.FLAG_SECURE` en los parámetros de ventana de la burbuja cuando `hideInFinalVideo == true`.
-  * Gracias a `FLAG_SECURE`, la superficie de la ventana de la burbuja permanece 100% visible, interactiva y fluida para el usuario en la pantalla física del teléfono (SurfaceFlinger), mientras que el capturador de pantalla del sistema operativo (`MediaProjection` / `VirtualDisplay`) la excluye automáticamente de los fotogramas codificados en el archivo de video final MP4 (Android 14+ / API 34 y versiones compatibles).
-
-- Optimizaciones de Compilación y Seguridad (R8 / ProGuard):
-  * R8 Full Mode activado (`android.enableR8.fullMode=true` en `gradle.properties`) para inlining agresivo y reducción del tiempo de inicio.
-  * Eliminación de llamadas `android.util.Log` en Release mediante regla `-assumenosideeffects` en `proguard-rules.pro` para máxima tasa de fotogramas (60 FPS fluidos) y privacidad.
-  * Preservación y optimización de reflexión de puentes NDK JNI (`-keepclasseswithmembers` para paquetes nativos C++/Rust).
-  * Reducción de recursos innecesarios activa (`isShrinkResources = true` e `isMinifyEnabled = true` en `build.gradle.kts`).
-  * Ofuscación avanzada y aplanado de paquetes (`-repackageclasses 'com.vortexstudio.internal'` y `-allowaccessmodification`) para proteger el APK en tiendas de terceros como Uptodown.
+- Cambios y Solución Implementada:
+  * Eliminación de `hideInFinalVideo` en `FloatingBubbleManager.kt`, `ServiceOverlayCoordinator.kt` y `ServiceActionDispatcher.kt`, removiendo por completo la aplicación del flag `FLAG_SECURE`.
+  * Actualización de la interfaz de usuario en `FloatingBubbleSettingsCard.kt`: se removió el switch de ocultación y se integró una tarjeta informativa de "Aclaración de grabación limpia", guiando al usuario a desactivar la burbuja y utilizar los controles de la barra de notificaciones (pausar, reanudar y detener) cuando desee capturas 100% libres de superposiciones.
+  * Limpieza y refactorización completa en las capas de datos y presentación: `RecordingConfig`, `OverlaySettingsStore`, `SettingsRepository`, `GeneralSettingsEvents`, `SettingsActionsDelegate` y `RecordViewModel`.
+  * Optimización del flujo de trabajo de auditoría de seguridad (`security-audit.yml`), configurándolo para disparo manual (`workflow_dispatch`) y previniendo la exposición pública de artefactos y registros de análisis.

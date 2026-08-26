@@ -14,13 +14,12 @@
 
 ---
 
-## 🌟 Novedades Recientes: Modo Burbuja Flotante Invisible en Video Final
+## 🌟 Novedades Recientes: Control Flotante Gamer & Grabación Limpia
 
-### 🕹️ Exclusión en Grabación (Android 14+ y versiones anteriores)
-- **Visible para ti, Invisible para tu audiencia:** Ahora puedes mantener en pantalla la burbuja flotante con el cronómetro de grabación en vivo, pausa, reanudación, cámara Facecam, filtro de belleza y herramientas de dibujo sin que aparezcan en el archivo de video final resultante.
-- **Exclusión Nativa en Android 14+ (API 34+):** Exclusión directa a nivel de ventana y `VirtualDisplay` mediante flags de composición de hardware.
-- **Atenuación Inteligente en Versiones Anteriores:** Disminución automática de opacidad e interferencia visual en dispositivos con versiones anteriores a Android 14.
-- **Interruptor Rápido en Ajustes:** Nueva opción *"Ocultar burbuja en el video final"* integrada directamente en la tarjeta de configuración de la Burbuja Flotante.
+### 🕹️ Burbuja de Control Flotante y Modo sin Superposiciones
+- **Menú Flotante Rápido sobre Juegos:** Control de grabación instantáneo con cronómetro de alta precisión, pausa, reanudación, cámara Facecam / VTuber y botón de captura de pantalla.
+- **Grabaciones 100% Limpias desde Notificaciones:** Nueva tarjeta de aclaración en ajustes que detalla cómo capturar metraje de juego sin ningún botón ni elemento superpuesto desactivando la burbuja y utilizando los controles directos en la barra de notificaciones del sistema.
+- **Optimización de Renderizado:** Eliminación de capas de ventanas innecesarias para asegurar una tasa constante de 60 FPS sin caídas de cuadros.
 
 ---
 
