@@ -45,6 +45,8 @@ import com.example.ui.components.settings.NativeModulesStatusCard
 import com.example.ui.components.settings.OnboardingTutorialCard
 import com.example.ui.components.settings.OverlaySettingsEvents
 import com.example.ui.components.settings.SceneOverlaySettingsCard
+import com.example.ui.components.settings.TouchAvatarSettingsCard
+import com.example.ui.components.settings.TouchAvatarSettingsEvents
 import com.example.ui.components.settings.TouchVisualizerSettingsCard
 import com.example.ui.components.settings.VideoQualitySettingsCard
 import com.example.ui.components.settings.VideoSettingsEvents
@@ -63,6 +65,7 @@ fun SettingsView(
     audioEvents: AudioSettingsEvents,
     facecamEvents: FacecamSettingsEvents,
     vtuberEvents: VtuberSettingsEvents,
+    touchAvatarEvents: TouchAvatarSettingsEvents,
     overlayEvents: OverlaySettingsEvents,
     generalEvents: GeneralSettingsEvents,
     modifier: Modifier = Modifier,
@@ -155,6 +158,17 @@ fun SettingsView(
             onTalkImageSelected = vtuberEvents.onUpdateVtuberTalkImage,
             onBlinkImageSelected = vtuberEvents.onUpdateVtuberBlinkImage,
             onBlinkTalkImageSelected = vtuberEvents.onUpdateVtuberBlinkTalkImage
+        )
+
+        // Avatar VTuber Reactivo a Toques Táctiles ("Bongo Cat" Handcam)
+        TouchAvatarSettingsCard(
+            config = config,
+            onToggleTouchAvatar = touchAvatarEvents.onToggleTouchAvatar,
+            onUpdateTouchAvatarGenre = touchAvatarEvents.onUpdateTouchAvatarGenre,
+            onUpdateTouchAvatarSize = touchAvatarEvents.onUpdateTouchAvatarSize,
+            onUpdateTouchAvatarOpacity = touchAvatarEvents.onUpdateTouchAvatarOpacity,
+            onToggleTouchAvatarVoiceSync = touchAvatarEvents.onToggleTouchAvatarVoiceSync,
+            onUpdateTouchAvatarCustomImageUri = touchAvatarEvents.onUpdateTouchAvatarCustomImageUri
         )
 
         // Visualizador de Toques Táctiles
@@ -276,6 +290,12 @@ fun SettingsView(
     onUpdateVtuberTalkImage: (String?) -> Unit = {},
     onUpdateVtuberBlinkImage: (String?) -> Unit = {},
     onUpdateVtuberBlinkTalkImage: (String?) -> Unit = {},
+    onToggleTouchAvatar: (Boolean) -> Unit = {},
+    onUpdateTouchAvatarGenre: (com.example.model.TouchAvatarGenre) -> Unit = {},
+    onUpdateTouchAvatarSize: (com.example.model.TouchAvatarSize) -> Unit = {},
+    onUpdateTouchAvatarOpacity: (Float) -> Unit = {},
+    onToggleTouchAvatarVoiceSync: (Boolean) -> Unit = {},
+    onUpdateTouchAvatarCustomImageUri: (String?) -> Unit = {},
     onToggleTouchVisualizer: (Boolean) -> Unit = {},
     onUpdateTouchVisualizerColor: (TouchColorOption) -> Unit = {},
     onToggleWatermark: (Boolean) -> Unit = {},
@@ -342,6 +362,14 @@ fun SettingsView(
             onUpdateVtuberTalkImage = onUpdateVtuberTalkImage,
             onUpdateVtuberBlinkImage = onUpdateVtuberBlinkImage,
             onUpdateVtuberBlinkTalkImage = onUpdateVtuberBlinkTalkImage
+        ),
+        touchAvatarEvents = TouchAvatarSettingsEvents(
+            onToggleTouchAvatar = onToggleTouchAvatar,
+            onUpdateTouchAvatarGenre = onUpdateTouchAvatarGenre,
+            onUpdateTouchAvatarSize = onUpdateTouchAvatarSize,
+            onUpdateTouchAvatarOpacity = onUpdateTouchAvatarOpacity,
+            onToggleTouchAvatarVoiceSync = onToggleTouchAvatarVoiceSync,
+            onUpdateTouchAvatarCustomImageUri = onUpdateTouchAvatarCustomImageUri
         ),
         overlayEvents = OverlaySettingsEvents(
             onToggleTouchVisualizer = onToggleTouchVisualizer,

@@ -47,6 +47,16 @@
   - **Seguimiento Facial en Tiempo Real:** Detección de parpadeo de ojos independientes, apertura de boca y estimación de pose de cabeza (*Head Tilt / Roll angle*) a 60 FPS con suavizado anti-vibración exponencial.
   - **Modos Flexibles (`VtuberTrackingMode`):** Solo Voz (Micrófono), Seguimiento Facial Completo (Cámara + IA Local) y Modo Híbrido (Visión + Audio para máxima expresividad).
   - **Presets y Personalización:** Presets vectoriales de alta calidad (Cyber Cat, Mecha Robot, Chibi Gamer, etc.) o carga de 4 estados PNG transparentes con rebote dinámico *squash & stretch*.
+- **🐱 Avatar VTuber Reactivo a Toques Táctiles (Handcam Bongo Cat por Género de Juego):**
+  - **Reacción Táctil en Vivo sin Carga de Assets:** Dibujo procedural 100% en vector/Canvas (0 MB de peso añadido al APK) que mueve sus patitas, brazos o dedos al pulsar sobre la pantalla.
+  - **Adaptación por Género de Videojuego (Sin Marcas Hardcodeadas):**
+    * **Juegos de Ritmo / 4 Teclas:** Teclado táctil reactivo con teclas D-F-J-K iluminadas dinámicamente y patas que presionan con precisión rítmica.
+    * **Shooter / FPS / Battle Royale:** Joystick táctil en mano izquierda y gatillo/botón de disparo reactivo en mano derecha.
+    * **Arcade / Lucha / Plataformas:** D-Pad cruz direccional izquierda y botones A-B en la derecha.
+    * **Casual / Táctil Libre:** Patitas reactivas directas al punto de contacto.
+  - **Interceptación Táctil Global No Invasiva:** Detección transparente mediante `WindowManager` con `FLAG_WATCH_OUTSIDE_TOUCH` sin bloquear ni restar sensibilidad a los controles del juego.
+  - **Sincronización Opcional por Micrófono:** Abre la boca y reacciona cuando hablas mientras juegas.
+  - **Personalización Flexible:** Tamaño configurable (Pequeño, Mediano, Grande), opacidad ajustable y selector para cargar avatares PNG personalizados locales.
 - **👆 Indicador de Toques Táctiles Animado (Touch Visualizer):** Ondas y ripples dinámicos de alta respuesta que se renderizan sobre la pantalla mediante overlay `WindowManager` transparente.
 - **🏷️ Marca de Agua / Logo Personalizado:** Superpone tu marca personal, tag de streamer o logo en pantalla con posición libre y opacidad ajustable.
 - **🖼️ Overlays de Escena Personalizados:** Marcos Neón Cyberpunk, Banners de Redes Sociales inferiores, Badges animados "🔴 EN VIVO" y carteles de pausa.

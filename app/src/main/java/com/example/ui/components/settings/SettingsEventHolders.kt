@@ -77,6 +77,18 @@ data class VtuberSettingsEvents(
 )
 
 /**
+ * Agrupación de eventos de Avatar VTuber Reactivo a Toques Táctiles ("Bongo Cat" Handcam).
+ */
+data class TouchAvatarSettingsEvents(
+    val onToggleTouchAvatar: (Boolean) -> Unit = {},
+    val onUpdateTouchAvatarGenre: (com.example.model.TouchAvatarGenre) -> Unit = {},
+    val onUpdateTouchAvatarSize: (com.example.model.TouchAvatarSize) -> Unit = {},
+    val onUpdateTouchAvatarOpacity: (Float) -> Unit = {},
+    val onToggleTouchAvatarVoiceSync: (Boolean) -> Unit = {},
+    val onUpdateTouchAvatarCustomImageUri: (String?) -> Unit = {}
+)
+
+/**
  * Agrupación de eventos de toques, marca de agua y overlays de escena.
  */
 data class OverlaySettingsEvents(

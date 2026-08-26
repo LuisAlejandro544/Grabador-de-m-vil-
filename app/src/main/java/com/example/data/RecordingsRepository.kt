@@ -140,14 +140,17 @@ class RecordingsRepository(private val context: Context) {
 
             try {
                 val retriever = MediaMetadataRetriever()
-                retriever.setDataSource(file.absolutePath)
-                val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-                durationMs = durationStr?.toLongOrNull() ?: 0L
-                val widthStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
-                val heightStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
-                width = widthStr?.toIntOrNull() ?: 1080
-                height = heightStr?.toIntOrNull() ?: 1920
-                retriever.release()
+                try {
+                    retriever.setDataSource(file.absolutePath)
+                    val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                    durationMs = durationStr?.toLongOrNull() ?: 0L
+                    val widthStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+                    val heightStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+                    width = widthStr?.toIntOrNull() ?: 1080
+                    height = heightStr?.toIntOrNull() ?: 1920
+                } finally {
+                    try { retriever.release() } catch (_: Exception) {}
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "No se pudieron extraer metadatos para ${file.name}: ${e.message}")
             }
@@ -172,29 +175,105 @@ class RecordingsRepository(private val context: Context) {
 
     /**
      * Elimina una grabación del sistema de archivos y sincroniza MediaStore para que desaparezca de la galería.
+     * Compatible con Scoped Storage de Android 10/11/12/13/14+ y archivos de gran volumen.
      */
     suspend fun deleteRecording(filePath: String): Boolean = withContext(Dispatchers.IO) {
         try {
             val file = File(filePath)
-            val deleted = if (file.exists()) file.delete() else false
+            var deletedFromMediaStore = false
 
-            // Notificar a MediaStore para remover el registro de la galería del sistema
+            // 1. Intentar resolver y eliminar a través de MediaStore ContentResolver
             try {
-                context.contentResolver.delete(
+                val contentResolver = context.contentResolver
+                val projection = arrayOf(MediaStore.Video.Media._ID)
+                val urisToDelete = mutableListOf<Uri>()
+
+                // Buscar por ruta DATA
+                contentResolver.query(
                     MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                    projection,
                     "${MediaStore.Video.Media.DATA} = ?",
-                    arrayOf(filePath)
+                    arrayOf(filePath),
+                    null
+                )?.use { cursor ->
+                    val idCol = cursor.getColumnIndex(MediaStore.Video.Media._ID)
+                    while (cursor.moveToNext()) {
+                        if (idCol != -1) {
+                            val id = cursor.getLong(idCol)
+                            urisToDelete.add(android.content.ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id))
+                        }
+                    }
+                }
+
+                // Buscar por DISPLAY_NAME si la ruta directa no coincidió
+                if (urisToDelete.isEmpty() && file.name.isNotBlank()) {
+                    contentResolver.query(
+                        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                        projection,
+                        "${MediaStore.Video.Media.DISPLAY_NAME} = ?",
+                        arrayOf(file.name),
+                        null
+                    )?.use { cursor ->
+                        val idCol = cursor.getColumnIndex(MediaStore.Video.Media._ID)
+                        while (cursor.moveToNext()) {
+                            if (idCol != -1) {
+                                val id = cursor.getLong(idCol)
+                                urisToDelete.add(android.content.ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id))
+                            }
+                        }
+                    }
+                }
+
+                for (uri in urisToDelete) {
+                    try {
+                        val count = contentResolver.delete(uri, null, null)
+                        if (count > 0) {
+                            deletedFromMediaStore = true
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Error borrando URI individual $uri de MediaStore: ${e.message}")
+                    }
+                }
+
+                // Intento complementario por DATA
+                try {
+                    val genericCount = contentResolver.delete(
+                        MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                        "${MediaStore.Video.Media.DATA} = ?",
+                        arrayOf(filePath)
+                    )
+                    if (genericCount > 0) {
+                        deletedFromMediaStore = true
+                    }
+                } catch (_: Exception) {}
+            } catch (e: Exception) {
+                Log.w(TAG, "Consulta a ContentResolver falló durante eliminación: ${e.message}")
+            }
+
+            // 2. Intentar eliminación física directa del archivo en disco
+            var deletedDirectly = false
+            if (file.exists()) {
+                try {
+                    deletedDirectly = file.delete()
+                } catch (e: Exception) {
+                    Log.w(TAG, "file.delete() arrojó excepción: ${e.message}")
+                }
+            } else {
+                deletedDirectly = true
+            }
+
+            // 3. Notificar a MediaScannerConnection para actualizar la galería del sistema
+            try {
+                MediaScannerConnection.scanFile(
+                    context.applicationContext,
+                    arrayOf(filePath),
+                    arrayOf("video/mp4"),
+                    null
                 )
             } catch (_: Exception) {}
 
-            MediaScannerConnection.scanFile(
-                context.applicationContext,
-                arrayOf(filePath),
-                arrayOf("video/mp4"),
-                null
-            )
-
-            deleted
+            // Si el archivo ya no existe o fue eliminado de MediaStore, la operación es un éxito
+            deletedDirectly || deletedFromMediaStore || !file.exists()
         } catch (e: Exception) {
             Log.e(TAG, "Error al eliminar grabación: ${e.message}")
             false

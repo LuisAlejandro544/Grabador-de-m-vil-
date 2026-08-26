@@ -46,11 +46,15 @@ class VideoGalleryDelegate(
 
     fun deleteVideo(video: RecordedVideo) {
         scope.launch {
+            // Remover inmediatamente de la lista en memoria para respuesta táctil instantánea
+            _videos.value = _videos.value.filter { it.filePath != video.filePath }
             val success = repository.deleteRecording(video.filePath)
             if (success) {
-                onMessageEmitted("Video eliminado")
-                loadVideos()
+                onMessageEmitted("Video eliminado con éxito")
+            } else {
+                onMessageEmitted("No se pudo eliminar el archivo")
             }
+            loadVideos()
         }
     }
 

@@ -1,15 +1,52 @@
 package com.example.model
 
-enum class VideoResolution(val label: String, val width: Int, val height: Int) {
-    RES_1080P("1080p (Full HD)", 1920, 1080),
-    RES_720P("720p (HD)", 1280, 720),
-    RES_480P("480p (SD)", 854, 480);
+enum class VideoResolution(val label: String, val baseWidth: Int, val baseHeight: Int) {
+    RES_NATIVE("Nativa (Pantalla Completa)", 0, 0),
+    RES_1080P("1080p (Full HD Adaptativo)", 1080, 1920),
+    RES_720P("720p (HD Adaptativo)", 720, 1280),
+    RES_480P("480p (SD Adaptativo)", 480, 854);
+
+    val width: Int get() = if (baseWidth > 0) baseWidth else 1080
+    val height: Int get() = if (baseHeight > 0) baseHeight else 1920
 
     fun getDimensions(isPortrait: Boolean): Pair<Int, Int> {
         return if (isPortrait) {
-            Pair(height, width)
-        } else {
             Pair(width, height)
+        } else {
+            Pair(height, width)
+        }
+    }
+
+    /**
+     * Calcula dimensiones proporcionales exactas a la pantalla física del dispositivo
+     * eliminando bordes negros (pillarbox / letterbox) y alineando a múltiplos de 16 para MediaCodec.
+     */
+    fun getAdaptiveDimensions(screenWidth: Int, screenHeight: Int, isPortrait: Boolean): Pair<Int, Int> {
+        val realShort = minOf(screenWidth, screenHeight).coerceAtLeast(480)
+        val realLong = maxOf(screenWidth, screenHeight).coerceAtLeast(854)
+        val aspectRatio = realLong.toDouble() / realShort.toDouble()
+
+        val targetShort = when (this) {
+            RES_NATIVE -> realShort
+            RES_1080P -> minOf(1080, realShort)
+            RES_720P -> minOf(720, realShort)
+            RES_480P -> minOf(480, realShort)
+        }
+
+        val targetLong = if (this == RES_NATIVE) {
+            realLong
+        } else {
+            kotlin.math.round(targetShort * aspectRatio).toInt()
+        }
+
+        // Alinear a múltiplos de 16 para compatibilidad universal con hardware AVC/H.264
+        val finalShort = ((targetShort + 15) / 16) * 16
+        val finalLong = ((targetLong + 15) / 16) * 16
+
+        return if (isPortrait) {
+            Pair(finalShort, finalLong)
+        } else {
+            Pair(finalLong, finalShort)
         }
     }
 }
@@ -115,6 +152,19 @@ enum class ImageFormatOption(val label: String, val extension: String, val descr
     WEBP("WebP", "webp", "Formato moderno y ligero (Ultra eficiente en tamaño)")
 }
 
+enum class TouchAvatarGenre(val label: String, val shortDesc: String, val iconEmoji: String) {
+    RHYTHM_4K("Juegos de Ritmo / 4 Teclas", "Teclado reactivo con 4 flechas de colores (← ↓ ↑ →)", "🎵"),
+    SHOOTER_FPS("Shooter / Battle Royale", "Joystick táctil izquierdo + Gatillo y apuntado derecho", "🎯"),
+    FIGHTING_ACTION("Lucha / Arcade / Acción", "D-Pad direccional + 4 Botones de combo (A/B/X/Y)", "🥊"),
+    CASUAL_TAP("Casual / Táctil Libre", "Manos reactivas con pulsaciones y gestos libres", "⚡")
+}
+
+enum class TouchAvatarSize(val label: String, val dpWidth: Int, val dpHeight: Int) {
+    COMPACT("Compacto", 140, 100),
+    MEDIUM("Estándar", 180, 130),
+    LARGE("Amplio", 230, 165)
+}
+
 data class RecordingConfig(
     val resolution: VideoResolution = VideoResolution.RES_1080P,
     val fps: VideoFps = VideoFps.FPS_60,
@@ -159,6 +209,12 @@ data class RecordingConfig(
     val vtuberTalkImageUri: String? = null,
     val vtuberBlinkImageUri: String? = null,
     val vtuberBlinkTalkImageUri: String? = null,
+    val showTouchAvatar: Boolean = false,
+    val touchAvatarGenre: TouchAvatarGenre = TouchAvatarGenre.RHYTHM_4K,
+    val touchAvatarSize: TouchAvatarSize = TouchAvatarSize.MEDIUM,
+    val touchAvatarOpacity: Float = 0.95f,
+    val touchAvatarVoiceSync: Boolean = true,
+    val touchAvatarCustomImageUri: String? = null,
     val gameAudioGain: Float = 1.0f,
     val micAudioGain: Float = 1.25f,
     val audioDuckingEnabled: Boolean = true,

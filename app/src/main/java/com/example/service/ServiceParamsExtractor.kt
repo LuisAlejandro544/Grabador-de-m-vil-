@@ -48,10 +48,21 @@ object ServiceParamsExtractor {
         }
 
         val savedConfig = SettingsRepository(context).getConfig()
-        val defaultDims = savedConfig.resolution.getDimensions(isPortrait = true)
 
-        val width = intent.getIntExtra(ScreenRecordService.EXTRA_RES_WIDTH, defaultDims.first)
-        val height = intent.getIntExtra(ScreenRecordService.EXTRA_RES_HEIGHT, defaultDims.second)
+        val metrics = DisplayMetrics()
+        val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        @Suppress("DEPRECATION")
+        windowManager.defaultDisplay.getRealMetrics(metrics)
+
+        val isPortrait = metrics.heightPixels >= metrics.widthPixels
+        val adaptiveDims = savedConfig.resolution.getAdaptiveDimensions(
+            screenWidth = metrics.widthPixels,
+            screenHeight = metrics.heightPixels,
+            isPortrait = isPortrait
+        )
+
+        val width = intent.getIntExtra(ScreenRecordService.EXTRA_RES_WIDTH, adaptiveDims.first)
+        val height = intent.getIntExtra(ScreenRecordService.EXTRA_RES_HEIGHT, adaptiveDims.second)
         val fps = intent.getIntExtra(ScreenRecordService.EXTRA_FPS, savedConfig.fps.fps)
         val bitrate = intent.getIntExtra(ScreenRecordService.EXTRA_BITRATE, savedConfig.getEffectiveBitrateBps())
         val audioSource = intent.getStringExtra(ScreenRecordService.EXTRA_AUDIO_SOURCE) ?: savedConfig.audioSource.name
@@ -60,12 +71,6 @@ object ServiceParamsExtractor {
         val showFloatingBubble = intent.getBooleanExtra(ScreenRecordService.EXTRA_SHOW_FLOATING_BUBBLE, savedConfig.showFloatingBubble)
         val showFacecam = intent.getBooleanExtra(ScreenRecordService.EXTRA_SHOW_FACECAM, savedConfig.showFacecam)
 
-        val metrics = DisplayMetrics()
-        val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        @Suppress("DEPRECATION")
-        windowManager.defaultDisplay.getRealMetrics(metrics)
-
-        val isPortrait = metrics.heightPixels >= metrics.widthPixels
         val recWidth = if (isPortrait) minOf(width, height) else maxOf(width, height)
         val recHeight = if (isPortrait) maxOf(width, height) else minOf(width, height)
 

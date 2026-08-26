@@ -113,7 +113,7 @@ fun HomeScreen(
                     viewModel.setActiveTab(tabIndex)
                     when (tabIndex) {
                         1 -> viewModel.loadVideos()
-                        2 -> viewModel.loadInstalledGames()
+                        2 -> viewModel.loadInstalledGames(force = false)
                     }
                 }
             )
@@ -167,7 +167,7 @@ fun HomeScreen(
                     isRecording = uiState.status == RecordingStatus.RECORDING,
                     onStartRecordingWithGame = { pkg -> recordLaunchersState.requestStartRecording(pkg) },
                     onLaunchGameDirectly = { pkg -> viewModel.launchGame(pkg) },
-                    onRefreshGames = { viewModel.loadInstalledGames() }
+                    onRefreshGames = { viewModel.loadInstalledGames(force = true) }
                 )
 
                 3 -> SettingsView(
@@ -220,6 +220,12 @@ fun HomeScreen(
                     onUpdateVtuberTalkImage = { viewModel.updateVtuberTalkImage(it) },
                     onUpdateVtuberBlinkImage = { viewModel.updateVtuberBlinkImage(it) },
                     onUpdateVtuberBlinkTalkImage = { viewModel.updateVtuberBlinkTalkImage(it) },
+                    onToggleTouchAvatar = { viewModel.toggleTouchAvatar(it) },
+                    onUpdateTouchAvatarGenre = { viewModel.updateTouchAvatarGenre(it) },
+                    onUpdateTouchAvatarSize = { viewModel.updateTouchAvatarSize(it) },
+                    onUpdateTouchAvatarOpacity = { viewModel.updateTouchAvatarOpacity(it) },
+                    onToggleTouchAvatarVoiceSync = { viewModel.toggleTouchAvatarVoiceSync(it) },
+                    onUpdateTouchAvatarCustomImageUri = { viewModel.updateTouchAvatarCustomImage(it) },
                     onToggleTouchVisualizer = { viewModel.toggleTouchVisualizer(it) },
                     onUpdateTouchVisualizerColor = { viewModel.updateTouchVisualizerColor(it) },
                     onToggleWatermark = { viewModel.toggleWatermark(it) },

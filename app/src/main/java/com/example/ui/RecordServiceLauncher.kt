@@ -3,6 +3,8 @@ package com.example.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.DisplayMetrics
+import android.view.WindowManager
 import com.example.model.RecordingConfig
 import com.example.service.ScreenRecordService
 
@@ -18,8 +20,17 @@ object RecordServiceLauncher {
         resultData: Intent,
         config: RecordingConfig
     ) {
+        val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val metrics = DisplayMetrics()
+        @Suppress("DEPRECATION")
+        windowManager.defaultDisplay.getRealMetrics(metrics)
+
         val isLandscape = context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-        val (width, height) = config.resolution.getDimensions(isPortrait = !isLandscape)
+        val (width, height) = config.resolution.getAdaptiveDimensions(
+            screenWidth = metrics.widthPixels,
+            screenHeight = metrics.heightPixels,
+            isPortrait = !isLandscape
+        )
 
         val serviceIntent = Intent(context, ScreenRecordService::class.java).apply {
             action = ScreenRecordService.ACTION_START

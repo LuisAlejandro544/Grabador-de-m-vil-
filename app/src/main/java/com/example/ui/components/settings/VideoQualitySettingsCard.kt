@@ -55,9 +55,15 @@ fun VideoQualitySettingsCard(
             icon = Icons.Default.HighQuality
         ) {
             VideoResolution.values().forEach { res ->
+                val desc = when (res) {
+                    VideoResolution.RES_NATIVE -> "100% de tu pantalla (Sin bordes negros, máxima nitidez)"
+                    VideoResolution.RES_1080P -> "1080p Adaptativo (Proporción exacta de tu pantalla)"
+                    VideoResolution.RES_720P -> "720p Adaptativo (Proporción exacta de tu pantalla)"
+                    VideoResolution.RES_480P -> "480p Adaptativo (Ahorro de almacenamiento)"
+                }
                 SettingsRadioItem(
                     title = res.label,
-                    description = "${res.width} x ${res.height} píxeles",
+                    description = desc,
                     selected = resolution == res,
                     onClick = { onUpdateResolution(res) },
                     testTag = "resolution_option_${res.name}"

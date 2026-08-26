@@ -1,8 +1,12 @@
 package com.example.ui
 
 import android.app.Application
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.os.Build
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.InstalledAppItem
@@ -112,6 +116,19 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
 
     private var pendingLaunchGamePackage: String? = null
 
+    private val packageChangeReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val action = intent?.action
+            if (action == Intent.ACTION_PACKAGE_ADDED ||
+                action == Intent.ACTION_PACKAGE_REMOVED ||
+                action == Intent.ACTION_PACKAGE_REPLACED
+            ) {
+                // Notificación del sistema: una app/juego se instaló o eliminó, actualizar lista
+                loadInstalledGames(force = true)
+            }
+        }
+    }
+
     val uiState = combine(
         combine(_config, ScreenRecordService.recordingState, ScreenRecordService.elapsedSeconds, ScreenRecordService.countdownNumber, _isGameLaunching) { config, state, elapsed, cd, isLaunching ->
             Tuple5(config, state, elapsed, cd, isLaunching)
@@ -204,6 +221,37 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
             delay(2500)
             checkForUpdates(force = false)
         }
+
+        // Registrar receptor dinámico para detectar instalación/desinstalación de juegos y apps
+        try {
+            val packageFilter = IntentFilter().apply {
+                addAction(Intent.ACTION_PACKAGE_ADDED)
+                addAction(Intent.ACTION_PACKAGE_REMOVED)
+                addAction(Intent.ACTION_PACKAGE_REPLACED)
+                addDataScheme("package")
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                getApplication<Application>().registerReceiver(
+                    packageChangeReceiver,
+                    packageFilter,
+                    Context.RECEIVER_NOT_EXPORTED
+                )
+            } else {
+                getApplication<Application>().registerReceiver(
+                    packageChangeReceiver,
+                    packageFilter
+                )
+            }
+        } catch (e: Exception) {
+            Log.w("RecordViewModel", "No se pudo registrar packageChangeReceiver: ${e.message}")
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        try {
+            getApplication<Application>().unregisterReceiver(packageChangeReceiver)
+        } catch (_: Exception) {}
     }
 
     fun refreshStorageInfo() {
@@ -232,8 +280,12 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     fun onThumbnailExtracted(file: File) = galleryDelegate.onThumbnailExtracted(file)
     fun shareVideo(context: Context, video: RecordedVideo) = galleryDelegate.shareVideo(context, video)
 
-    // Juegos y Lanzamiento
-    fun loadInstalledGames() {
+    // Juegos y Lanzamiento (con caché reactivo inteligente)
+    fun loadInstalledGames(force: Boolean = false) {
+        if (!force && _installedGames.value.isNotEmpty()) {
+            // Ya está en memoria caché, evitar re-escaneos innecesarios
+            return
+        }
         viewModelScope.launch(Dispatchers.IO) {
             _isLoadingGames.value = true
             try {
@@ -301,6 +353,12 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     fun updateVtuberTalkImage(uriString: String?) = settingsDelegate.updateVtuberTalkImage(uriString)
     fun updateVtuberBlinkImage(uriString: String?) = settingsDelegate.updateVtuberBlinkImage(uriString)
     fun updateVtuberBlinkTalkImage(uriString: String?) = settingsDelegate.updateVtuberBlinkTalkImage(uriString)
+    fun toggleTouchAvatar(enabled: Boolean) = settingsDelegate.toggleTouchAvatar(enabled)
+    fun updateTouchAvatarGenre(genre: com.example.model.TouchAvatarGenre) = settingsDelegate.updateTouchAvatarGenre(genre)
+    fun updateTouchAvatarSize(size: com.example.model.TouchAvatarSize) = settingsDelegate.updateTouchAvatarSize(size)
+    fun updateTouchAvatarOpacity(opacity: Float) = settingsDelegate.updateTouchAvatarOpacity(opacity)
+    fun toggleTouchAvatarVoiceSync(enabled: Boolean) = settingsDelegate.toggleTouchAvatarVoiceSync(enabled)
+    fun updateTouchAvatarCustomImage(uriString: String?) = settingsDelegate.updateTouchAvatarCustomImage(uriString)
     fun toggleGameMode(enabled: Boolean) = settingsDelegate.toggleGameMode(enabled)
 
     // Grabación y Control de Flujo

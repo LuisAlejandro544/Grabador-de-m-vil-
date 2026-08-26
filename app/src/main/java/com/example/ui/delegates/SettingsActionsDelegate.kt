@@ -128,5 +128,16 @@ class SettingsActionsDelegate(
         }
     }
 
+    fun toggleTouchAvatar(enabled: Boolean) = settingsRepository.toggleTouchAvatar(enabled)
+    fun updateTouchAvatarGenre(genre: com.example.model.TouchAvatarGenre) = settingsRepository.updateTouchAvatarGenre(genre)
+    fun updateTouchAvatarSize(size: com.example.model.TouchAvatarSize) = settingsRepository.updateTouchAvatarSize(size)
+    fun updateTouchAvatarOpacity(opacity: Float) = settingsRepository.updateTouchAvatarOpacity(opacity)
+    fun toggleTouchAvatarVoiceSync(enabled: Boolean) = settingsRepository.toggleTouchAvatarVoiceSync(enabled)
+    fun updateTouchAvatarCustomImage(uriString: String?) {
+        updateVtuberCustomImage(uriString, "touch_avatar") { path ->
+            settingsRepository.updateTouchAvatarCustomImageUri(path)
+        }
+    }
+
     fun toggleGameMode(enabled: Boolean) = settingsRepository.toggleGameMode(enabled)
 }

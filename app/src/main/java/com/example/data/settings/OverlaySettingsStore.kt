@@ -52,7 +52,13 @@ class OverlaySettingsStore(private val prefs: SharedPreferences) {
         val vtuberTalkImageUri: String?,
         val vtuberBlinkImageUri: String?,
         val vtuberBlinkTalkImageUri: String?,
-        val showFloatingVuMeter: Boolean
+        val showFloatingVuMeter: Boolean,
+        val showTouchAvatar: Boolean,
+        val touchAvatarGenre: com.example.model.TouchAvatarGenre,
+        val touchAvatarSize: com.example.model.TouchAvatarSize,
+        val touchAvatarOpacity: Float,
+        val touchAvatarVoiceSync: Boolean,
+        val touchAvatarCustomImageUri: String?
     )
 
     fun load(): OverlayConfigSlice {
@@ -148,6 +154,23 @@ class OverlaySettingsStore(private val prefs: SharedPreferences) {
         val vtuberBlinkTalkUri = prefs.getString(KEY_VTUBER_BLINK_TALK_URI, null)
         val showVuMeter = prefs.getBoolean(KEY_SHOW_FLOATING_VU_METER, false)
 
+        val showTouchAvatar = prefs.getBoolean(KEY_SHOW_TOUCH_AVATAR, false)
+        val genreName = prefs.getString(KEY_TOUCH_AVATAR_GENRE, com.example.model.TouchAvatarGenre.RHYTHM_4K.name)
+        val touchAvatarGenre = try {
+            com.example.model.TouchAvatarGenre.valueOf(genreName ?: com.example.model.TouchAvatarGenre.RHYTHM_4K.name)
+        } catch (_: Exception) {
+            com.example.model.TouchAvatarGenre.RHYTHM_4K
+        }
+        val sizeNameTouch = prefs.getString(KEY_TOUCH_AVATAR_SIZE, com.example.model.TouchAvatarSize.MEDIUM.name)
+        val touchAvatarSize = try {
+            com.example.model.TouchAvatarSize.valueOf(sizeNameTouch ?: com.example.model.TouchAvatarSize.MEDIUM.name)
+        } catch (_: Exception) {
+            com.example.model.TouchAvatarSize.MEDIUM
+        }
+        val touchAvatarOpacity = prefs.getFloat(KEY_TOUCH_AVATAR_OPACITY, 0.95f)
+        val touchAvatarVoiceSync = prefs.getBoolean(KEY_TOUCH_AVATAR_VOICE_SYNC, true)
+        val touchAvatarCustomUri = prefs.getString(KEY_TOUCH_AVATAR_CUSTOM_URI, null)
+
         return OverlayConfigSlice(
             showFloatingBubble = showFloatingBubble,
             showFacecam = showFacecam,
@@ -183,7 +206,13 @@ class OverlaySettingsStore(private val prefs: SharedPreferences) {
             vtuberTalkImageUri = vtuberTalkUri,
             vtuberBlinkImageUri = vtuberBlinkUri,
             vtuberBlinkTalkImageUri = vtuberBlinkTalkUri,
-            showFloatingVuMeter = showVuMeter
+            showFloatingVuMeter = showVuMeter,
+            showTouchAvatar = showTouchAvatar,
+            touchAvatarGenre = touchAvatarGenre,
+            touchAvatarSize = touchAvatarSize,
+            touchAvatarOpacity = touchAvatarOpacity,
+            touchAvatarVoiceSync = touchAvatarVoiceSync,
+            touchAvatarCustomImageUri = touchAvatarCustomUri
         )
     }
 
@@ -223,6 +252,12 @@ class OverlaySettingsStore(private val prefs: SharedPreferences) {
         editor.putString(KEY_VTUBER_BLINK_URI, config.vtuberBlinkImageUri)
         editor.putString(KEY_VTUBER_BLINK_TALK_URI, config.vtuberBlinkTalkImageUri)
         editor.putBoolean(KEY_SHOW_FLOATING_VU_METER, config.showFloatingVuMeter)
+        editor.putBoolean(KEY_SHOW_TOUCH_AVATAR, config.showTouchAvatar)
+        editor.putString(KEY_TOUCH_AVATAR_GENRE, config.touchAvatarGenre.name)
+        editor.putString(KEY_TOUCH_AVATAR_SIZE, config.touchAvatarSize.name)
+        editor.putFloat(KEY_TOUCH_AVATAR_OPACITY, config.touchAvatarOpacity)
+        editor.putBoolean(KEY_TOUCH_AVATAR_VOICE_SYNC, config.touchAvatarVoiceSync)
+        editor.putString(KEY_TOUCH_AVATAR_CUSTOM_URI, config.touchAvatarCustomImageUri)
     }
 
     companion object {
@@ -261,5 +296,11 @@ class OverlaySettingsStore(private val prefs: SharedPreferences) {
         const val KEY_VTUBER_BLINK_URI = "pref_vtuber_blink_uri"
         const val KEY_VTUBER_BLINK_TALK_URI = "pref_vtuber_blink_talk_uri"
         const val KEY_SHOW_FLOATING_VU_METER = "pref_show_floating_vu_meter"
+        const val KEY_SHOW_TOUCH_AVATAR = "pref_show_touch_avatar"
+        const val KEY_TOUCH_AVATAR_GENRE = "pref_touch_avatar_genre"
+        const val KEY_TOUCH_AVATAR_SIZE = "pref_touch_avatar_size"
+        const val KEY_TOUCH_AVATAR_OPACITY = "pref_touch_avatar_opacity"
+        const val KEY_TOUCH_AVATAR_VOICE_SYNC = "pref_touch_avatar_voice_sync"
+        const val KEY_TOUCH_AVATAR_CUSTOM_URI = "pref_touch_avatar_custom_uri"
     }
 }
