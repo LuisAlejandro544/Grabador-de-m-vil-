@@ -68,6 +68,9 @@ Este documento detalla el progreso actual y las fases de desarrollo de **Vortex 
   - Tarjeta `ReleaseChannelInfoCard` en los ajustes y badge identificador reactivo en la barra superior `RecordTopBar`.
 - [x] **Despliegue Automatizado a Telegram en CI/CD:**
   - Empaquetado `.7z` con compresión ultra LZMA2 (Nivel 9) y entrega directa a Telegram sin depender de Google Play.
+- [x] **Infraestructura de Plantilla Foundation & Exportación Limpia:**
+  - Workflow `.github/workflows/foundation.yml` para inicialización de forks/templates con auto-eliminación segura.
+  - Archivo `.gitattributes` con `export-ignore` para descargas `.zip` limpias sin sobrecoste de CI/CD.
 
 ---
 

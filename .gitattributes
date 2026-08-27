@@ -1,0 +1,8 @@
+# Archivo de atributos Git para empaquetado y exportación limpia (git archive / Download ZIP)
+# Excluye flujos de trabajo de CI/CD e infraestructura interna de GitHub al descargar el código fuente en .zip
+
+.github/            export-ignore
+.github/**          export-ignore
+.gitattributes      export-ignore
+.gitignore          export-ignore
+commit_message.txt  export-ignore

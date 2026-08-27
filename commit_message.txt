@@ -1,15 +1,10 @@
-refactor(overlay, touches): reemplazo de toques overlay por guía y acceso nativo a Mostrar Pulsaciones del sistema (60 FPS)
+feat(ci): agregar GitHub Action Foundation y reglas de exportación limpia (.gitattributes)
 
-- Reemplazo y Eliminación de Indicador Táctil Custom (Overlay):
-  * Se eliminaron `GlobalTouchDetector.kt` y `TouchVisualizerOverlay.kt` debido a las restricciones de seguridad anti-tapjacking de Android que impedían capturar arrastres continuos (swipes) y toques globales en aplicaciones externas.
-  * Se rediseñó `TouchVisualizerSettingsCard.kt` como un centro de control inteligente que detecta en tiempo real el estado de "Mostrar toques" en el sistema Android.
-  * Se incorporó botón de 1 toque para abrir directamente las "Opciones de Desarrollador" (`Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS`), junto con guía ilustrada paso a paso y tutorial de desbloqueo (7 toques en número de compilación).
-  * Se limpiaron las llamadas y coordinadores de servicio en `ServiceOverlayCoordinator.kt`, `ServiceActionDispatcher.kt`, `ScreenRecordService.kt`, `FloatingBubbleManager.kt`, `BubbleOverlayView.kt` y `BubbleToolsSubmenu.kt`.
+- Creación del Workflow de Scaffolding Foundation (`.github/workflows/foundation.yml`):
+  * Automatiza la inicialización cuando un usuario crea un nuevo repositorio o fork a partir de la plantilla original (https://github.com/LuisAlejandro544/Vortex).
+  * Incluye validación de seguridad condicional (`if: github.repository != 'LuisAlejandro544/Vortex'`) para proteger el repositorio plantilla principal y activarse únicamente en repositorios derivados.
+  * Personaliza automáticamente referencias y enlaces en la documentación hacia el nuevo propietario del repositorio.
+  * Implementa auto-eliminación segura del propio script de inicialización tras la primera ejecución, dejando el árbol de código fuente limpio.
 
-- Eliminación de Presets Pre-hechos de PNGtuber y Avatar Táctil Procedural:
-  * Se removieron los assets vectoriales en `VtuberPresetDrawables.kt` para centrar el módulo VTuber en sprites PNG 100% personalizados por el usuario con IA local y reactividad por voz.
-  * Se eliminó el paquete `com.example.service.touchavatar` y todas sus referencias en la arquitectura.
-
-- Beneficio y Rendimiento:
-  * Visualización perfecta de toques y deslices a 60 FPS nativos renderizados por la GPU del sistema operativo Android sin sobrecosto de CPU ni bloqueos táctiles en juegos.
-  * Mayor fluidez, código desacoplado y consumo de batería y memoria optimizados al 100%.
+- Configuración de Empaquetado Limpio (`.gitattributes`):
+  * Integra directivas `export-ignore` para omitir la carpeta `.github/`, workflows internos de CI/CD y metadatos del repositorio cuando un usuario descarga el código en formato ZIP (*Download ZIP*) o mediante `git archive`.

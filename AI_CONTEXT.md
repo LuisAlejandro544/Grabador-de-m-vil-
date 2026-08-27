@@ -56,8 +56,11 @@ Este documento mantiene el estado de desarrollo, decisiones de arquitectura y ma
 - **Canales Multi-Instalación:** DEV (`com.vortexstudio.recorder.dev`), CANARY (`com.vortexstudio.recorder.canary`), BETA (`com.vortexstudio.recorder.beta`), STABLE (`com.vortexstudio.recorder`).
 
 ### 7. Integración Continua y Despliegue Automatizado (CI/CD)
+- `.github/workflows/foundation.yml`: Workflow de inicialización de repositorios derivados (*Foundation Template Setup*) con comprobación de seguridad condicional (`if: github.repository != 'LuisAlejandro544/Vortex'`) y auto-eliminación.
+- `.gitattributes`: Reglas `export-ignore` para excluir infraestructura CI/CD en descargas `.zip` limpias.
 - `.github/workflows/build-apk.yml`: Compilación de APKs Debug con entrega a Telegram.
 - `.github/workflows/build-beta-release.yml`: Flujo de **Release Beta** activado ante **Pre-releases de GitHub** o **ejecución manual (workflow_dispatch)**, inyección automática de notas desde `changelog-beta-release.md`, compilación limpia, firma de producción y entrega directa a Telegram.
+- `.github/workflows/security-audit.yml` & `clean-actions-history.yml`: Auditoría de seguridad y mantenimiento del historial.
 
 ---
 

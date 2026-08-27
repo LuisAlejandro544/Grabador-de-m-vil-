@@ -2,7 +2,8 @@
 
 ```
 vortex-studio/
-├── .github/workflows/          # CI/CD Workflows (build-apk.yml y build-beta-release.yml)
+├── .github/workflows/          # CI/CD Workflows (foundation.yml, build-apk.yml, build-beta-release.yml, security-audit.yml, clean-actions-history.yml)
+├── .gitattributes              # Reglas export-ignore para empaquetado limpio de código fuente
 ├── app/
 │   ├── build.gradle.kts        # Configuración de compilación Android y dependencias
 │   └── src/

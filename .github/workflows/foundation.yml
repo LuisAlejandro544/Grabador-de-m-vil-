@@ -1,0 +1,71 @@
+name: Foundation Template Setup
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: foundation-setup-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scaffold:
+    name: Inicializar Repositorio desde Vortex Foundation Template
+    # Solo se ejecuta si el repositorio actual NO es el repositorio original de la plantilla
+    if: github.repository != 'LuisAlejandro544/Vortex'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+
+    steps:
+      - name: 📥 Clonar repositorio
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: ⚙️ Configurar Entorno Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: 🛠️ Ejecutar Scaffolding y Personalización del Proyecto
+        env:
+          ORIGINAL_REPO: "LuisAlejandro544/Vortex"
+          NEW_REPO: "${{ github.repository }}"
+          NEW_REPO_NAME: "${{ github.event.repository.name }}"
+          NEW_OWNER: "${{ github.repository_owner }}"
+        run: |
+          echo "=== 🚀 Inicializando Proyecto desde Vortex Foundation Template ==="
+          echo "Repositorio original: $ORIGINAL_REPO"
+          echo "Nuevo repositorio: $NEW_REPO"
+          echo "Nuevo propietario: $NEW_OWNER"
+          echo "Nombre del proyecto: $NEW_REPO_NAME"
+
+          # 1. Actualizar enlaces y nombres de repositorio en los archivos de documentación
+          if [ -f "README.md" ]; then
+            sed -i "s|LuisAlejandro544/Vortex|$NEW_REPO|g" README.md
+            sed -i "s|https://github.com/LuisAlejandro544/Vortex|https://github.com/$NEW_REPO|g" README.md
+          fi
+
+          if [ -f "CONTRIBUTING.md" ]; then
+            sed -i "s|LuisAlejandro544/Vortex|$NEW_REPO|g" CONTRIBUTING.md
+          fi
+
+          # 2. Auto-eliminación del workflow Foundation para que no vuelva a ejecutarse
+          echo "=== 🧹 Eliminando el workflow de inicialización Foundation ==="
+          rm -f .github/workflows/foundation.yml
+
+      - name: 💾 Guardar e impulsar cambios limpios (Commit & Push)
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Guardando cambios de inicialización..."
+            git add -A
+            git commit -m "chore(foundation): inicializar proyecto limpio desde Vortex Foundation Template"
+            git push origin HEAD:${{ github.ref }}
+            echo "✅ Proyecto inicializado y listo para desarrollo."
+          else
+            echo "No se requirieron cambios adicionales."
+          fi

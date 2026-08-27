@@ -113,11 +113,15 @@ Vortex Studio cuenta con una arquitectura de 4 canales de distribución con `app
 
 ---
 
-## 🤖 CI/CD y Despliegue Automatizado (Debug y Beta Release)
+## 🤖 CI/CD, Foundation Template y Despliegue Automatizado
 
-El proyecto cuenta con dos flujos de trabajo de GitHub Actions automatizados:
-1. **Compilación Debug (`.github/workflows/build-apk.yml`):** Compilación rápida para desarrollo con caché opcional y entrega comprimida a Telegram.
-2. **Compilación Beta Release Firmada (`.github/workflows/build-beta-release.yml`):** Activación ante **Pre-releases de GitHub** (`on.release.types: [prereleased]`) o **ejecución manual (workflow_dispatch)** para generar el APK Release sin crear una release formal. Cuenta con inyección automática de `changelog-beta-release.md`, compilación limpia (Clean Build), firma de producción y entrega directa a Telegram.
+El proyecto cuenta con flujos de trabajo de GitHub Actions automatizados:
+1. **Foundation Template Setup (`.github/workflows/foundation.yml`):** Inicializador automático para forks y nuevos repositorios generados a partir de este repositorio plantilla (`LuisAlejandro544/Vortex`). Configura referencias limpias y se auto-elimina tras su primera ejecución.
+2. **Descarga Limpia de Código (`.gitattributes`):** Reglas `export-ignore` que excluyen `.github/` y archivos de CI/CD al descargar el código fuente en formato `.zip` desde GitHub.
+3. **Compilación Debug (`.github/workflows/build-apk.yml`):** Compilación rápida para desarrollo con caché opcional y entrega comprimida a Telegram.
+4. **Compilación Beta Release Firmada (`.github/workflows/build-beta-release.yml`):** Activación ante **Pre-releases de GitHub** (`on.release.types: [prereleased]`) o **ejecución manual (workflow_dispatch)** para generar el APK Release sin crear una release formal. Cuenta con inyección automática de `changelog-beta-release.md`, compilación limpia (Clean Build), firma de producción y entrega directa a Telegram.
+5. **Auditoría de Seguridad (`.github/workflows/security-audit.yml`):** Verificación estática y análisis de dependencias.
+6. **Limpieza de Historial (`.github/workflows/clean-actions-history.yml`):** Mantenimiento y depuración de ejecuciones pasadas.
 
 ---
 
