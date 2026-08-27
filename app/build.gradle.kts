@@ -33,6 +33,26 @@ android {
     buildConfigField("boolean", "ENABLE_EXPERIMENTAL_FEATURES", "$allowExp")
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+    externalNativeBuild {
+      cmake {
+        cppFlags("-std=c++17", "-O3")
+        arguments("-DANDROID_STL=c++_shared")
+      }
+    }
+  }
+
+  externalNativeBuild {
+    cmake {
+      path = file("src/main/cpp/CMakeLists.txt")
+      version = "3.22.1"
+    }
+  }
+
+  sourceSets {
+    getByName("main") {
+      jniLibs.srcDirs("src/main/jniLibs")
+    }
   }
 
   signingConfigs {
@@ -58,8 +78,16 @@ android {
       isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.getByName("release")
+      ndk {
+        abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+      }
     }
-    debug { signingConfig = signingConfigs.getByName("debugConfig") }
+    debug {
+      signingConfig = signingConfigs.getByName("debugConfig")
+      ndk {
+        abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+      }
+    }
   }
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11

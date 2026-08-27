@@ -1,10 +1,12 @@
-feat(ci): agregar GitHub Action Foundation y reglas de exportación limpia (.gitattributes)
+feat(native): optimizar compilación nativa CMake, NDK C++ y Rust excluyendo x86_64 en APK release
 
-- Creación del Workflow de Scaffolding Foundation (`.github/workflows/foundation.yml`):
-  * Automatiza la inicialización cuando un usuario crea un nuevo repositorio o fork a partir de la plantilla original (https://github.com/LuisAlejandro544/Vortex).
-  * Incluye validación de seguridad condicional (`if: github.repository != 'LuisAlejandro544/Vortex'`) para proteger el repositorio plantilla principal y activarse únicamente en repositorios derivados.
-  * Personaliza automáticamente referencias y enlaces en la documentación hacia el nuevo propietario del repositorio.
-  * Implementa auto-eliminación segura del propio script de inicialización tras la primera ejecución, dejando el árbol de código fuente limpio.
+- Configuración de compilación nativa C++ en `app/build.gradle.kts`:
+  * Activación del bloque `externalNativeBuild.cmake` apuntando a `src/main/cpp/CMakeLists.txt` (CMake 3.22.1).
+  * Optimización de flags C++17 (`-std=c++17`, `-O3`) y STL compartida (`-DANDROID_STL=c++_shared`).
+  * Filtrado granular de arquitecturas NDK (`abiFilters`):
+    - **Release**: Exclusivo para móviles reales con `arm64-v8a` (64 bits) y `armeabi-v7a` (32 bits), reduciendo el tamaño final del APK al descartar arquitecturas de PC.
+    - **Debug**: Soporte extendido incluyendo `x86_64` para pruebas en emuladores de desarrollo.
 
-- Configuración de Empaquetado Limpio (`.gitattributes`):
-  * Integra directivas `export-ignore` para omitir la carpeta `.github/`, workflows internos de CI/CD y metadatos del repositorio cuando un usuario descarga el código en formato ZIP (*Download ZIP*) o mediante `git archive`.
+- Integración de binarios Rust y librerías JNI:
+  * Declaración de `sourceSets.main.jniLibs` hacia `src/main/jniLibs` para empaquetar automáticamente las bibliotecas nativas de Rust (`librust_network.so`) generadas por `cargo-ndk`.
+  * Empaquetado conjunto de los motores nativos `libobs_core.so` (C++) y `librust_network.so` (Rust) optimizado para dispositivos móviles.
