@@ -14,8 +14,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,10 +26,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Upload
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -62,15 +58,14 @@ import com.example.model.VtuberTrackingMode
 
 /**
  * Tarjeta de configuración para el Avatar 2D Reactivo / PNGtuber (Modo VTuber).
- * Permite seleccionar presets vectoriales, modo de seguimiento (Voz vs IA Local Seguimiento Facial vs Híbrido)
- * o subir imágenes PNG transparentes de 4 estados.
+ * Permite seleccionar el modo de seguimiento (Voz vs IA Local Seguimiento Facial vs Híbrido)
+ * y subir imágenes PNG transparentes de 4 estados para el avatar personalizado.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun VtuberSettingsCard(
     config: RecordingConfig,
     onToggleVtuber: (Boolean) -> Unit,
-    onPresetSelected: (VtuberPreset) -> Unit,
+    onPresetSelected: (VtuberPreset) -> Unit = {},
     onSizeSelected: (VtuberSize) -> Unit,
     onSensitivityChanged: (Float) -> Unit,
     onToggleBounce: (Boolean) -> Unit,
@@ -148,7 +143,7 @@ fun VtuberSettingsCard(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Avatar flotante reactivo a tu voz en tiempo real",
+                            text = "Avatar flotante reactivo a voz y seguimiento facial",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -179,41 +174,7 @@ fun VtuberSettingsCard(
                 ) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 
-                    // 1. Selector de Modelo / Preset
-                    Text(
-                        text = "MODELO DE AVATAR",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = vtuberPurple
-                    )
-
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        VtuberPreset.entries.forEach { preset ->
-                            val isSelected = config.vtuberPreset == preset
-                            val iconEmoji = when (preset) {
-                                VtuberPreset.CYBER_CAT -> "🐱"
-                                VtuberPreset.ANIME_AOI -> "🦊"
-                                VtuberPreset.PIXEL_SLIME -> "🤖"
-                                VtuberPreset.CUSTOM -> "🎨"
-                            }
-
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = { onPresetSelected(preset) },
-                                label = { Text("$iconEmoji ${preset.label}", fontSize = 12.sp) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = vtuberPurple,
-                                    selectedLabelColor = Color.White
-                                )
-                            )
-                        }
-                    }
-
-                    // 2. Selector de Tamaño
+                    // 1. Selector de Tamaño
                     Text(
                         text = "TAMAÑO DEL AVATAR",
                         fontSize = 11.sp,
@@ -485,93 +446,91 @@ fun VtuberSettingsCard(
                         )
                     }
 
-                    // 5. Configuración de PNGs Personalizados (cuando el preset es CUSTOM)
-                    if (config.vtuberPreset == VtuberPreset.CUSTOM) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                    // 5. Configuración de PNGs Personalizados (4 Estados)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 
-                        Text(
-                            text = "IMÁGENES PNG DEL AVATAR (4 ESTADOS)",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = vtuberPurple
-                        )
+                    Text(
+                        text = "IMÁGENES PNG DEL AVATAR (4 ESTADOS)",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = vtuberPurple
+                    )
 
-                        // Banner de ayuda informativa sobre fallback
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color(0xFF1E293B), RoundedCornerShape(10.dp))
-                                .padding(12.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.Top) {
-                                Icon(
-                                    imageVector = Icons.Default.Info,
-                                    contentDescription = null,
-                                    tint = vtuberPurpleLight,
-                                    modifier = Modifier
-                                        .size(18.dp)
-                                        .padding(top = 2.dp)
+                    // Banner de ayuda informativa sobre fallback
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFF1E293B), RoundedCornerShape(10.dp))
+                            .padding(12.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.Top) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = vtuberPurpleLight,
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .padding(top = 2.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "¿Tienes solo 2 imágenes?",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column {
-                                    Text(
-                                        text = "¿Tienes solo 2 imágenes?",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
-                                    )
-                                    Text(
-                                        text = "Solo necesitas 'Reposo' y 'Hablando'. Si no tienes los parpadeos, la app usará automáticamente las imágenes con ojos abiertos sin errores.",
-                                        fontSize = 11.sp,
-                                        color = Color(0xFF94A3B8),
-                                        lineHeight = 14.sp
-                                    )
-                                }
+                                Text(
+                                    text = "Solo necesitas 'Reposo' y 'Hablando'. Si no tienes los parpadeos, la app usará automáticamente las imágenes con ojos abiertos sin errores.",
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF94A3B8),
+                                    lineHeight = 14.sp
+                                )
                             }
                         }
+                    }
 
-                        // Ranuras de Carga de Imágenes
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            // 1. Reposo (Boca cerrada + Ojos abiertos)
-                            PngSlotRow(
-                                title = "1. Reposo (Boca Cerrada)",
-                                subtitle = "Ojos abiertos / En silencio (Obligatorio)",
-                                emoji = "👁️🤐",
-                                uri = config.vtuberIdleImageUri,
-                                onSelectClicked = { idlePickerLauncher.launch("image/*") },
-                                onClearClicked = { onIdleImageSelected(null) }
-                            )
+                    // Ranuras de Carga de Imágenes
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // 1. Reposo (Boca cerrada + Ojos abiertos)
+                        PngSlotRow(
+                            title = "1. Reposo (Boca Cerrada)",
+                            subtitle = "Ojos abiertos / En silencio (Obligatorio)",
+                            emoji = "👁️🤐",
+                            uri = config.vtuberIdleImageUri,
+                            onSelectClicked = { idlePickerLauncher.launch("image/*") },
+                            onClearClicked = { onIdleImageSelected(null) }
+                        )
 
-                            // 2. Hablando (Boca abierta + Ojos abiertos)
-                            PngSlotRow(
-                                title = "2. Hablando (Boca Abierta)",
-                                subtitle = "Ojos abiertos / Al hablar (Obligatorio)",
-                                emoji = "👁️🗣️",
-                                uri = config.vtuberTalkImageUri,
-                                onSelectClicked = { talkPickerLauncher.launch("image/*") },
-                                onClearClicked = { onTalkImageSelected(null) }
-                            )
+                        // 2. Hablando (Boca abierta + Ojos abiertos)
+                        PngSlotRow(
+                            title = "2. Hablando (Boca Abierta)",
+                            subtitle = "Ojos abiertos / Al hablar (Obligatorio)",
+                            emoji = "👁️🗣️",
+                            uri = config.vtuberTalkImageUri,
+                            onSelectClicked = { talkPickerLauncher.launch("image/*") },
+                            onClearClicked = { onTalkImageSelected(null) }
+                        )
 
-                            // 3. Parpadeo Reposo (Boca cerrada + Ojos cerrados)
-                            PngSlotRow(
-                                title = "3. Parpadeo Reposo",
-                                subtitle = "Ojos cerrados / En silencio (Opcional)",
-                                emoji = "😌🤐",
-                                uri = config.vtuberBlinkImageUri,
-                                onSelectClicked = { blinkPickerLauncher.launch("image/*") },
-                                onClearClicked = { onBlinkImageSelected(null) }
-                            )
+                        // 3. Parpadeo Reposo (Boca cerrada + Ojos cerrados)
+                        PngSlotRow(
+                            title = "3. Parpadeo Reposo",
+                            subtitle = "Ojos cerrados / En silencio (Opcional)",
+                            emoji = "😌🤐",
+                            uri = config.vtuberBlinkImageUri,
+                            onSelectClicked = { blinkPickerLauncher.launch("image/*") },
+                            onClearClicked = { onBlinkImageSelected(null) }
+                        )
 
-                            // 4. Parpadeo Hablando (Boca abierta + Ojos cerrados)
-                            PngSlotRow(
-                                title = "4. Parpadeo Hablando",
-                                subtitle = "Ojos cerrados / Al hablar (Opcional)",
-                                emoji = "😆🗣️",
-                                uri = config.vtuberBlinkTalkImageUri,
-                                onSelectClicked = { blinkTalkPickerLauncher.launch("image/*") },
-                                onClearClicked = { onBlinkTalkImageSelected(null) }
-                            )
-                        }
+                        // 4. Parpadeo Hablando (Boca abierta + Ojos cerrados)
+                        PngSlotRow(
+                            title = "4. Parpadeo Hablando",
+                            subtitle = "Ojos cerrados / Al hablar (Opcional)",
+                            emoji = "😆🗣️",
+                            uri = config.vtuberBlinkTalkImageUri,
+                            onSelectClicked = { blinkTalkPickerLauncher.launch("image/*") },
+                            onClearClicked = { onBlinkTalkImageSelected(null) }
+                        )
                     }
                 }
             }

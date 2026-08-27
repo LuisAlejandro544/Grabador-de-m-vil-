@@ -27,7 +27,6 @@ class BubbleOverlayView(
     private val onFacecamToggleClicked: () -> Unit = {},
     private val onBeautyToggleClicked: () -> Unit = {},
     private val onRgbBorderToggleClicked: () -> Unit = {},
-    private val onTouchToggleClicked: () -> Unit = {},
     private val onWatermarkToggleClicked: () -> Unit = {},
     private val onSceneOverlayToggleClicked: () -> Unit = {},
     private val onVtuberToggleClicked: () -> Unit = {},
@@ -53,8 +52,6 @@ class BubbleOverlayView(
     var isBeautyActive: Boolean = false
         private set
     var isRgbActive: Boolean = false
-        private set
-    var isTouchActive: Boolean = false
         private set
     var isWatermarkActive: Boolean = false
         private set
@@ -95,7 +92,6 @@ class BubbleOverlayView(
             onFacecamToggleClicked = onFacecamToggleClicked,
             onBeautyToggleClicked = onBeautyToggleClicked,
             onRgbBorderToggleClicked = onRgbBorderToggleClicked,
-            onTouchToggleClicked = onTouchToggleClicked,
             onWatermarkToggleClicked = onWatermarkToggleClicked,
             onSceneOverlayToggleClicked = onSceneOverlayToggleClicked,
             onVtuberToggleClicked = onVtuberToggleClicked,
@@ -168,13 +164,6 @@ class BubbleOverlayView(
         this.isRgbActive = active
         rootView.post {
             toolsSubmenu.updateRgbStatus(active)
-        }
-    }
-
-    fun updateTouchStatus(active: Boolean) {
-        this.isTouchActive = active
-        rootView.post {
-            toolsSubmenu.updateTouchStatus(active)
         }
     }
 

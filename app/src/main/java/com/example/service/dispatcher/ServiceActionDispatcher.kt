@@ -75,13 +75,6 @@ class ServiceActionDispatcher(
             Log.e(TAG, "Error iniciando PNGtuber: ${t.message}")
         }
 
-        // 2.1 Avatar Reactivo a Toques ("Bongo Cat" Handcam)
-        try {
-            if (config.showTouchAvatar) overlayCoordinator.launchTouchAvatar(config)
-        } catch (t: Throwable) {
-            Log.e(TAG, "Error iniciando Avatar Reactivo a Toques: ${t.message}")
-        }
-
         // 3. Vúmetro
         try {
             if (config.showFloatingVuMeter) overlayCoordinator.launchVuMeter(config)
@@ -89,14 +82,7 @@ class ServiceActionDispatcher(
             Log.e(TAG, "Error iniciando Vúmetro Flotante: ${t.message}")
         }
 
-        // 4. Toques
-        try {
-            if (config.showTouchVisualizer) overlayCoordinator.launchTouchVisualizer(config)
-        } catch (t: Throwable) {
-            Log.e(TAG, "Error iniciando Toques: ${t.message}")
-        }
-
-        // 5. Marca de Agua
+        // 4. Marca de Agua
         try {
             if (config.showWatermark) overlayCoordinator.launchWatermark(config)
         } catch (t: Throwable) {

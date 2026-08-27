@@ -353,12 +353,6 @@ class RecordViewModel(application: Application) : AndroidViewModel(application) 
     fun updateVtuberTalkImage(uriString: String?) = settingsDelegate.updateVtuberTalkImage(uriString)
     fun updateVtuberBlinkImage(uriString: String?) = settingsDelegate.updateVtuberBlinkImage(uriString)
     fun updateVtuberBlinkTalkImage(uriString: String?) = settingsDelegate.updateVtuberBlinkTalkImage(uriString)
-    fun toggleTouchAvatar(enabled: Boolean) = settingsDelegate.toggleTouchAvatar(enabled)
-    fun updateTouchAvatarGenre(genre: com.example.model.TouchAvatarGenre) = settingsDelegate.updateTouchAvatarGenre(genre)
-    fun updateTouchAvatarSize(size: com.example.model.TouchAvatarSize) = settingsDelegate.updateTouchAvatarSize(size)
-    fun updateTouchAvatarOpacity(opacity: Float) = settingsDelegate.updateTouchAvatarOpacity(opacity)
-    fun toggleTouchAvatarVoiceSync(enabled: Boolean) = settingsDelegate.toggleTouchAvatarVoiceSync(enabled)
-    fun updateTouchAvatarCustomImage(uriString: String?) = settingsDelegate.updateTouchAvatarCustomImage(uriString)
     fun toggleGameMode(enabled: Boolean) = settingsDelegate.toggleGameMode(enabled)
 
     // Grabación y Control de Flujo

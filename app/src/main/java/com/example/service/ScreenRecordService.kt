@@ -201,7 +201,6 @@ class ScreenRecordService : Service() {
             ACTION_TOGGLE_FACECAM -> overlayCoordinator.toggleFacecam()
             ACTION_TOGGLE_BEAUTY -> overlayCoordinator.toggleBeauty()
             ACTION_TOGGLE_RGB -> overlayCoordinator.toggleRgbBorder()
-            ACTION_TOGGLE_TOUCH -> overlayCoordinator.toggleTouchVisualizer()
             ACTION_TOGGLE_WATERMARK -> overlayCoordinator.toggleWatermark()
             ACTION_TOGGLE_SCENE_OVERLAY -> overlayCoordinator.toggleSceneOverlay()
             ACTION_TOGGLE_VTUBER -> overlayCoordinator.toggleVtuber()

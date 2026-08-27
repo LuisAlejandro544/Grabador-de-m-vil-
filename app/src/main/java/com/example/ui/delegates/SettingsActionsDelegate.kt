@@ -16,6 +16,7 @@ import com.example.model.VideoFps
 import com.example.model.VideoResolution
 import com.example.model.VtuberPreset
 import com.example.model.VtuberSize
+import com.example.model.VtuberTrackingMode
 import com.example.model.WatermarkSize
 import com.example.model.WatermarkType
 import com.example.service.vtuber.VtuberPresetDrawables
@@ -80,7 +81,7 @@ class SettingsActionsDelegate(
 
     fun toggleVtuber(enabled: Boolean) = settingsRepository.toggleVtuber(enabled)
     fun updateVtuberPreset(preset: VtuberPreset) = settingsRepository.updateVtuberPreset(preset)
-    fun updateVtuberTrackingMode(mode: com.example.model.VtuberTrackingMode) = settingsRepository.updateVtuberTrackingMode(mode)
+    fun updateVtuberTrackingMode(mode: VtuberTrackingMode) = settingsRepository.updateVtuberTrackingMode(mode)
     fun toggleVtuberHeadTilt(enabled: Boolean) = settingsRepository.toggleVtuberHeadTilt(enabled)
     fun updateVtuberEyeBlinkSensitivity(sensitivity: Float) = settingsRepository.updateVtuberEyeBlinkSensitivity(sensitivity)
     fun updateVtuberMouthSensitivity(sensitivity: Float) = settingsRepository.updateVtuberMouthSensitivity(sensitivity)
@@ -125,17 +126,6 @@ class SettingsActionsDelegate(
     fun updateVtuberBlinkTalkImage(uriString: String?) {
         updateVtuberCustomImage(uriString, "blink_talk") { path ->
             settingsRepository.updateVtuberBlinkTalkUri(path)
-        }
-    }
-
-    fun toggleTouchAvatar(enabled: Boolean) = settingsRepository.toggleTouchAvatar(enabled)
-    fun updateTouchAvatarGenre(genre: com.example.model.TouchAvatarGenre) = settingsRepository.updateTouchAvatarGenre(genre)
-    fun updateTouchAvatarSize(size: com.example.model.TouchAvatarSize) = settingsRepository.updateTouchAvatarSize(size)
-    fun updateTouchAvatarOpacity(opacity: Float) = settingsRepository.updateTouchAvatarOpacity(opacity)
-    fun toggleTouchAvatarVoiceSync(enabled: Boolean) = settingsRepository.toggleTouchAvatarVoiceSync(enabled)
-    fun updateTouchAvatarCustomImage(uriString: String?) {
-        updateVtuberCustomImage(uriString, "touch_avatar") { path ->
-            settingsRepository.updateTouchAvatarCustomImageUri(path)
         }
     }
 

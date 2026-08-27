@@ -1,6 +1,6 @@
 # 🌪️ Vortex Studio & Game Recorder
 
-> **Vortex Studio** es una suite completa de grabación de pantalla de alto rendimiento, edición rápida y transmisión en vivo para Android, diseñada para capturar partidas de videojuegos a 60 FPS con audio interno exclusivo, overlays visuales, herramientas en vivo, **Burbuja Flotante con Control de Cronómetro y Menú Rápido**, **Aclaración y Modo de Grabación 100% Limpio desde Notificaciones**, **Filtro de Belleza facial**, **Borde RGB Arcoíris animado**, **Indicador de Toques Táctiles animado**, **Editor de Video con Conversor de Aspect Ratio 1-Toque y División de Clips**, y cimientos nativos en **C++ (OpenGL ES 3.0 / FFmpeg Core)** y **Rust (RTMP/SRT)**.
+> **Vortex Studio** es una suite completa de grabación de pantalla de alto rendimiento, edición rápida y transmisión en vivo para Android, diseñada para capturar partidas de videojuegos a 60 FPS con audio interno exclusivo, overlays visuales, herramientas en vivo, **Burbuja Flotante con Control de Cronómetro y Menú Rápido**, **Aclaración y Modo de Grabación 100% Limpio desde Notificaciones**, **Filtro de Belleza facial**, **Borde RGB Arcoíris animado**, **Indicador de Toques Táctiles animado**, **Avatar 2D PNGtuber Personalizable con IA Facial Local**, **Editor de Video con Conversor de Aspect Ratio 1-Toque y División de Clips**, y cimientos nativos en **C++ (OpenGL ES 3.0 / FFmpeg Core)** y **Rust (RTMP/SRT)**.
 
 ---
 
@@ -46,18 +46,8 @@
   - **100% On-Device & Offline:** Motor de visión por IA desarrollado en C++ nativo sin conexión a servidores externos ni envío de datos privados.
   - **Seguimiento Facial en Tiempo Real:** Detección de parpadeo de ojos independientes, apertura de boca y estimación de pose de cabeza (*Head Tilt / Roll angle*) a 60 FPS con suavizado anti-vibración exponencial.
   - **Modos Flexibles (`VtuberTrackingMode`):** Solo Voz (Micrófono), Seguimiento Facial Completo (Cámara + IA Local) y Modo Híbrido (Visión + Audio para máxima expresividad).
-  - **Presets y Personalización:** Presets vectoriales de alta calidad (Cyber Cat, Mecha Robot, Chibi Gamer, etc.) o carga de 4 estados PNG transparentes con rebote dinámico *squash & stretch*.
-- **🐱 Avatar VTuber Reactivo a Toques Táctiles (Handcam Bongo Cat por Género de Juego):**
-  - **Reacción Táctil en Vivo sin Carga de Assets:** Dibujo procedural 100% en vector/Canvas (0 MB de peso añadido al APK) que mueve sus patitas, brazos o dedos al pulsar sobre la pantalla.
-  - **Adaptación por Género de Videojuego (Sin Marcas Hardcodeadas):**
-    * **Juegos de Ritmo / 4 Teclas:** Teclado táctil reactivo con teclas D-F-J-K iluminadas dinámicamente y patas que presionan con precisión rítmica.
-    * **Shooter / FPS / Battle Royale:** Joystick táctil en mano izquierda y gatillo/botón de disparo reactivo en mano derecha.
-    * **Arcade / Lucha / Plataformas:** D-Pad cruz direccional izquierda y botones A-B en la derecha.
-    * **Casual / Táctil Libre:** Patitas reactivas directas al punto de contacto.
-  - **Interceptación Táctil Global No Invasiva:** Detección transparente mediante `WindowManager` con `FLAG_WATCH_OUTSIDE_TOUCH` sin bloquear ni restar sensibilidad a los controles del juego.
-  - **Sincronización Opcional por Micrófono:** Abre la boca y reacciona cuando hablas mientras juegas.
-  - **Personalización Flexible:** Tamaño configurable (Pequeño, Mediano, Grande), opacidad ajustable y selector para cargar avatares PNG personalizados locales.
-- **👆 Indicador de Toques Táctiles Animado (Touch Visualizer):** Ondas y ripples dinámicos de alta respuesta que se renderizan sobre la pantalla mediante overlay `WindowManager` transparente.
+  - **Personalización Ligera:** Carga de tus propios 4 estados PNG transparentes (Reposo, Hablando, Parpadeo y Parpadeo+Habla) con rebote dinámico *squash & stretch* sin sobrecargar la aplicación con assets pesados.
+- **👆 Indicador de Toques y Deslices Nativos (60 FPS):** Guía asistida y acceso en 1 toque a las Opciones de Desarrollador del sistema Android para activar la visualización nativa de toques (*Show taps*) y estelas continuas de arrastre, garantizando que queden capturadas en el video a 60 FPS sin retraso ni caídas de frames.
 - **🏷️ Marca de Agua / Logo Personalizado:** Superpone tu marca personal, tag de streamer o logo en pantalla con posición libre y opacidad ajustable.
 - **🖼️ Overlays de Escena Personalizados:** Marcos Neón Cyberpunk, Banners de Redes Sociales inferiores, Badges animados "🔴 EN VIVO" y carteles de pausa.
 

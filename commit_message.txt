@@ -1,26 +1,15 @@
-fix(storage, launcher, capture): corrección de eliminación de videos en Scoped Storage, caché inteligente en juegos y grabación adaptativa a pantalla completa sin bordes negros
+refactor(overlay, touches): reemplazo de toques overlay por guía y acceso nativo a Mostrar Pulsaciones del sistema (60 FPS)
 
-- Grabación Adaptativa a Pantalla Completa (Eliminación de Bordes Negros):
-  * Causa: Las resoluciones fijas 16:9 (1080x1920, 720x1280, etc.) no coincidían con las pantallas panorámicas de los teléfonos modernos (20:9, 19.5:9, 20.5:9), lo que forzaba a `VirtualDisplay` y `MediaCodec` a insertar barras negras (pillarboxing/letterboxing) en los laterales para compensar la diferencia de aspecto.
-  * Solución: Implementación de cálculo de resolución adaptativo proporcional en `RecordingConfig.kt` (`getAdaptiveDimensions()`), adaptando la altura/ancho objetivo en tiempo real a partir de la relación de aspecto física del dispositivo (`realMetrics`).
-  * Soporte Nativo y Alineación de Hardware: Se incorporó la opción de Resolución Nativa (100% de la pantalla) y alineación estricta de píxeles a múltiplos de 16 para garantizar compatibilidad total y aceleración de hardware en `MediaCodec` (H.264 / AVC).
-  * Integración en Servicio: `RecordServiceLauncher.kt` y `ServiceParamsExtractor.kt` calculan y envían las dimensiones adaptativas exactas al codificador de video y al `VirtualDisplay`.
+- Reemplazo y Eliminación de Indicador Táctil Custom (Overlay):
+  * Se eliminaron `GlobalTouchDetector.kt` y `TouchVisualizerOverlay.kt` debido a las restricciones de seguridad anti-tapjacking de Android que impedían capturar arrastres continuos (swipes) y toques globales en aplicaciones externas.
+  * Se rediseñó `TouchVisualizerSettingsCard.kt` como un centro de control inteligente que detecta en tiempo real el estado de "Mostrar toques" en el sistema Android.
+  * Se incorporó botón de 1 toque para abrir directamente las "Opciones de Desarrollador" (`Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS`), junto con guía ilustrada paso a paso y tutorial de desbloqueo (7 toques en número de compilación).
+  * Se limpiaron las llamadas y coordinadores de servicio en `ServiceOverlayCoordinator.kt`, `ServiceActionDispatcher.kt`, `ScreenRecordService.kt`, `FloatingBubbleManager.kt`, `BubbleOverlayView.kt` y `BubbleToolsSubmenu.kt`.
 
-- Diagnóstico y Solución de Eliminación de Grabaciones:
-  * Causa: En Android 10+ (API 29 a 34), el borrado directo mediante `java.io.File.delete()` sobre archivos indexados por `MediaStore` o grabaciones de gran tamaño (cientos de MBs / GBs) fallaba de forma silenciosa debido a restricciones de Scoped Storage y retención de descriptores de metadatos.
-  * Solución: Reestructuración de `deleteRecording()` en `RecordingsRepository.kt` para consultar y eliminar de manera precisa mediante `ContentResolver` sobre `MediaStore.Video.Media.EXTERNAL_CONTENT_URI` por `_ID`, `_DATA` y `DISPLAY_NAME`. Se aseguró el cierre seguro en bloque `finally` de `MediaMetadataRetriever` para evitar retención de descriptores, se implementó eliminación complementaria en disco con fallback reactivo y sincronización forzada mediante `MediaScannerConnection`.
-  * Optimización de UI en `VideoGalleryDelegate.kt`: Actualización inmediata del estado de la lista en memoria al pulsar eliminar para respuesta táctil instantánea sin desfase visual, emitiendo mensajes de estado claros al usuario.
+- Eliminación de Presets Pre-hechos de PNGtuber y Avatar Táctil Procedural:
+  * Se removieron los assets vectoriales en `VtuberPresetDrawables.kt` para centrar el módulo VTuber en sprites PNG 100% personalizados por el usuario con IA local y reactividad por voz.
+  * Se eliminó el paquete `com.example.service.touchavatar` y todas sus referencias en la arquitectura.
 
-- Optimización y Caché Reactivo del Lanzador de Juegos:
-  * Causa: Cada vez que el usuario cambiaba a la pestaña de Juegos, se forzaba un re-escaneo completo de todos los paquetes y actividades del dispositivo en `PackageManager`, provocando cargas innecesarias y tiempo de espera al navegar entre pestañas.
-  * Solución: Implementación de caché en memoria en `RecordViewModel.kt` (`loadInstalledGames(force = false)`), evitando re-escaneos al alternar pestañas.
-  * Sincronización Automática del Sistema: Registro de un `BroadcastReceiver` dinámico con filtro para `ACTION_PACKAGE_ADDED`, `ACTION_PACKAGE_REMOVED` y `ACTION_PACKAGE_REPLACED` con esquema `package:`. La lista de juegos se actualiza de manera 100% automática cuando el usuario instala, actualiza o desinstala un juego o APK de terceros (Uptodown, etc.).
-  * Se mantiene el botón de recarga manual (`force = true`) en la cabecera del lanzador de juegos para escaneo manual a demanda del usuario.
-
-- Avatar VTuber Reactivo a Toques Táctiles (Handcam Bongo Cat por Género de Videojuego):
-  * Renderizado Procedural en Tiempo Real: Implementación de `TouchAvatarView.kt` con gráficos vectoriales y animaciones reactivas en Canvas de 60 FPS sin precargar assets pesados (0 MB añadidos a la app para proteger el almacenamiento del teléfono).
-  * Selector de Género Adaptativo: Pregunta y adapta los controles del avatar según la mecánica de juego (`TouchAvatarGenre`): Juegos de Ritmo (4 teclas D-F-J-K iluminadas y patitas para demostrar legitimidad contra acusaciones de botplay), Shooters / FPS (joystick izquierdo y gatillo de disparo derecho), Arcade / Lucha (D-Pad direccional y botones) y Casual / Táctil Libre.
-  * Interceptación Táctil Global No Invasiva: Creación de `GlobalTouchDetector.kt` con ventana overlay de 1x1 transparente mediante `FLAG_WATCH_OUTSIDE_TOUCH` y `FLAG_NOT_TOUCH_MODAL` para capturar la posición de los dedos sin bloquear ni restar sensibilidad al juego.
-  * Sincronización con Audio y Personalización: Reacción bucal opcional al hablar por el micrófono, sliders de tamaño/opacidad y soporte para cargar imágenes personalizadas desde la memoria local.
-  * Interfaz y Arquitectura: Integración en `RecordingConfig.kt`, `SettingsRepository.kt`, `ServiceOverlayCoordinator.kt`, `TouchAvatarOverlayManager.kt`, `TouchAvatarSettingsCard.kt` y `RecordViewModel.kt`.
-
+- Beneficio y Rendimiento:
+  * Visualización perfecta de toques y deslices a 60 FPS nativos renderizados por la GPU del sistema operativo Android sin sobrecosto de CPU ni bloqueos táctiles en juegos.
+  * Mayor fluidez, código desacoplado y consumo de batería y memoria optimizados al 100%.

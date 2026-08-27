@@ -42,9 +42,9 @@ Este documento mantiene el estado de desarrollo, decisiones de arquitectura y ma
 - `StorageMonitorHelper.kt` & `DiskStorageMonitorCard.kt`: Monitorización de espacio en disco en tiempo real con estimación de tiempo de grabación restante según la tasa de bits.
 - `ScreenshotHelper.kt` & `ImageFormatSettingsCard.kt`: Selector y motor de compresión multiformato para capturas de pantalla (PNG, JPEG 10-100% y WebP lossless).
 - `FacecamOverlayManager.kt`: Cámara frontal/trasera con CameraX, FPS configurable (30-60 FPS), marco RGB animado y filtro de belleza.
-- `VtuberOverlayManager.kt` & `VtuberCameraTracker.kt`: Avatar 2D / PNGtuber con IA Local en C++ (`Face Mesh`), reactividad a volumen de voz o modo híbrido, soporte de rotación de cabeza (*Head Tilt*) y rebote dinámico.
+- `VtuberOverlayManager.kt` & `VtuberCameraTracker.kt`: Avatar 2D / PNGtuber con IA Local en C++ (`Face Mesh`), reactividad a volumen de voz o modo híbrido, soporte de rotación de cabeza (*Head Tilt*), rebote dinámico y carga de 4 sprites PNG transparentes personalizados por el usuario.
 - `FloatingVuMeterManager.kt`: Vúmetro LED en vivo y mezclador de volumen flotante con control de ganancia.
-- `TouchVisualizerOverlay.kt`: Visualizador táctil con ripples animados sin necesidad de opciones de desarrollador.
+- `TouchVisualizerSettingsCard.kt`: Asistente interactivo y acceso directo a las Opciones de Desarrollador del sistema Android para activar la visualización nativa de toques y estelas de arrastre (*Show taps* a 60 FPS), garantizando compatibilidad global y captura fiel en el video final sin sobrecosto de CPU ni bloqueos en juegos.
 - `WatermarkOverlayManager.kt` y `SceneOverlayManager.kt`: Marca de agua arrastrable y overlays de escena.
 
 ### 5. Flujo de Bienvenida (Onboarding) y Centro de Permisos (`com.example.ui.onboarding`)

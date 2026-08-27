@@ -9,39 +9,20 @@ Este documento detalla el progreso actual y las fases de desarrollo de **Vortex 
 | Fase | Descripción | Estado |
 | :--- | :--- | :--- |
 | **Fase 1** | Captura 60 FPS, Bitrate Personalizable & Motor Base de Grabación | ✅ Completado |
-| **Fase 2** | Facecam Pro (FPS, RGB, Belleza) & Avatar 2D / PNGtuber Reactivo | ✅ Completado |
+| **Fase 2** | Facecam Pro (FPS, RGB, Belleza) & Avatar 2D / PNGtuber Reactivo por Voz | ✅ Completado |
 | **Fase 3** | Audio DSP (Noise Gate, Ducking), Sincronización A/V & Vúmetro / Mezclador Flotante | ✅ Completado |
-| **Fase 4** | Overlays de Escena, Marca de Agua y Visualizador Táctil | ✅ Completado |
+| **Fase 4** | Overlays de Escena, Marca de Agua y Asistente de Toques/Deslices Nativos (60 FPS) | ✅ Completado |
 | **Fase 5** | Editor de Video Avanzado (Recorte, División Split y Aspect Ratio 9:16) | ✅ Completado |
 | **Fase 6** | Protección Anti-Corrupción, Monitor de Disco & Formato de Imagen Multiformato | ✅ Completado |
 | **Fase 7** | Flujo de Onboarding, Centro de Permisos & Limpieza de Dependencias Google | ✅ Completado |
 | **Fase 8** | Matriz de 4 Canales (Dev, Canary, Beta, Estable) & Despliegue CI/CD a Telegram | ✅ Completado |
 | **Fase 9** | Burbuja Flotante de Control Gamer & Aclaración de Grabación Limpia | ✅ Completado |
-| **Fase 10** | Seguimiento Facial por IA Local (Face Mesh NDK C++) para Avatar VTuber | ✅ Completado |
-| **Fase 11** | Avatar VTuber Reactivo a Toques Táctiles (Handcam Bongo Cat por Género) | ✅ Completado |
-| **Fase 12** | Transmisión en Vivo RTMP / SRT con Rust & Buffer de Repetición (Clips 30s) | ⏳ En Progreso / Base Lista |
+| **Fase 10** | Seguimiento Facial por IA Local (Face Mesh NDK C++) para Avatar VTuber Personalizado | ✅ Completado |
+| **Fase 11** | Transmisión en Vivo RTMP / SRT con Rust & Buffer de Repetición (Clips 30s) | ⏳ En Progreso / Base Lista |
 
 ---
 
-## 🌟 Detalle de la Fase 11: Avatar VTuber Reactivo a Toques Táctiles (Handcam Bongo Cat por Género) (Completada)
-
-- [x] **Renderizado Procedural en Tiempo Real (0 MB de almacenamiento):**
-  - Vista personalizada acelerada por hardware `TouchAvatarView.kt` con gráficos vectoriales y animaciones de patas/manos independientes a 60 FPS.
-  - Cero assets predefinidos empaquetados para preservar el tamaño del APK y respetar el almacenamiento del usuario.
-- [x] **Adaptabilidad Universal por Género de Juego:**
-  - Selector de género configurable sin marcas protegidas hardcodeadas (`TouchAvatarGenre`):
-    * **Juegos de Ritmo / 4 Teclas:** Teclas reactivas D-F-J-K con iluminación dinámica y golpe de patas sincronizado para demostrar autenticidad (evitar acusaciones de botplay).
-    * **Shooter / FPS / Battle Royale:** Joystick análogo en mano izquierda y disparador reactivo en mano derecha.
-    * **Arcade / Lucha / Plataformas:** Pad direccional izquierdo y botones de acción derecho.
-    * **Casual / Táctil Libre:** Patitas dinámicas que responden directamente a la posición de los dedos.
-- [x] **Intercepción Global de Toques No Invasiva:**
-  - Módulo `GlobalTouchDetector.kt` con ventana overlay de 1x1 transparente usando `FLAG_WATCH_OUTSIDE_TOUCH` y `FLAG_NOT_TOUCH_MODAL` para registrar toques sin bloquear ni retrasar la respuesta táctil del juego.
-- [x] **Control, Sincronización y Personalización:**
-  - Tarjeta de ajustes Jetpack Compose `TouchAvatarSettingsCard.kt` con control de tamaño, opacidad, sincronización bucal por micrófono y selector para cargar avatares locales personalizados.
-
----
-
-## 🌟 Detalle de la Fase 10: Seguimiento Facial por IA Local (Face Mesh NDK C++) (Completada)
+## 🌟 Detalle de la Fase 10: Seguimiento Facial por IA Local (Face Mesh NDK C++) y PNGtuber Personalizado (Completada)
 
 - [x] **Motor de Visión por Computador e IA On-Device (`vtuber_face_mesh.hpp` / `.cpp`):**
   - Procesamiento nativo en C++ de alta velocidad a 60 FPS con extracción de landmarks faciales.
@@ -54,7 +35,9 @@ Este documento detalla el progreso actual y las fases de desarrollo de **Vortex 
   - Selector en ajustes `VtuberTrackingMode` con opciones: Solo Voz, IA Local Seguimiento Facial y Modo Híbrido.
   - Calibración interactiva de sensibilidad de parpadeo, sensibilidad de boca y switch de inclinación de cabeza.
   - Renderizado de rotación física en canvas sobre la ventana flotante `VtuberOverlayView`.
-- [x] **100% Offline & Privacidad Garantizada:**
+- [x] **Personalización Ligera y 100% Offline:**
+  - Carga de imágenes PNG transparentes propias del usuario para 4 estados (Reposo, Hablando, Parpadeo, Parpadeo+Habla).
+  - Eliminación de assets preempaquetados para mantener el APK liviano y optimizar el almacenamiento del teléfono.
   - Cero telemetría, sin modelos pesados ni conexión a servidores externos. Operación totalmente autosuficiente para tiendas de APKs alternativas.
 
 ---

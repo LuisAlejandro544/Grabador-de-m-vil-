@@ -7,17 +7,14 @@ import com.example.model.RecordingConfig
 import com.example.service.FacecamOverlayManager
 import com.example.service.FloatingBubbleManager
 import com.example.service.SceneOverlayManager
-import com.example.service.TouchVisualizerOverlay
 import com.example.service.WatermarkOverlayManager
-import com.example.service.touchavatar.GlobalTouchDetector
-import com.example.service.touchavatar.TouchAvatarOverlayManager
 import com.example.service.vtuber.VtuberOverlayManager
 import com.example.service.vumeter.FloatingVuMeterManager
 
 /**
  * Coordinador modular de todas las capas visuales y widgets flotantes del servicio.
- * Desacopla la gestión de Facecam, PNGtuber / Avatar 2D, Avatar Reactivo a Toques ("Bongo Cat" Handcam), Vúmetro Flotante, Burbuja Flotante,
- * Toques Táctiles, Marca de Agua y Overlays de Escena fuera del ciclo de vida de [ScreenRecordService].
+ * Desacopla la gestión de Facecam, PNGtuber / Avatar 2D, Vúmetro Flotante, Burbuja Flotante,
+ * Marca de Agua y Overlays de Escena fuera del ciclo de vida de [ScreenRecordService].
  */
 class ServiceOverlayCoordinator(
     private val context: Context,
@@ -30,7 +27,6 @@ class ServiceOverlayCoordinator(
     private val onSceneOverlayStateChanged: (Boolean) -> Unit,
     private val onVtuberStateChanged: (Boolean) -> Unit = {},
     private val onVuMeterStateChanged: (Boolean) -> Unit = {},
-    private val onTouchAvatarStateChanged: (Boolean) -> Unit = {},
     private val onAudioGainsChanged: (gameGain: Float, micGain: Float) -> Unit = { _, _ -> },
     private val onAudioFiltersChanged: (noiseGate: Boolean, ducking: Boolean) -> Unit = { _, _ -> },
     private val onMicMuteToggled: (Boolean) -> Unit = {},
@@ -43,21 +39,17 @@ class ServiceOverlayCoordinator(
 
     private var floatingBubbleManager: FloatingBubbleManager? = null
     private var facecamOverlayManager: FacecamOverlayManager? = null
-    private var touchVisualizerOverlay: TouchVisualizerOverlay? = null
     private var watermarkOverlayManager: WatermarkOverlayManager? = null
     private var sceneOverlayManager: SceneOverlayManager? = null
     private var vtuberOverlayManager: VtuberOverlayManager? = null
     private var floatingVuMeterManager: FloatingVuMeterManager? = null
-    private var touchAvatarOverlayManager: TouchAvatarOverlayManager? = null
-    private var globalTouchDetector: GlobalTouchDetector? = null
 
     val isFacecamActive: Boolean get() = facecamOverlayManager?.isShowing == true
-    val isTouchActive: Boolean get() = touchVisualizerOverlay?.isShowing == true
+    val isTouchActive: Boolean get() = false
     val isWatermarkActive: Boolean get() = watermarkOverlayManager?.isShowing == true
     val isSceneOverlayActive: Boolean get() = sceneOverlayManager?.isShowing == true
     val isVtuberActive: Boolean get() = vtuberOverlayManager?.isShowing == true
     val isVuMeterActive: Boolean get() = floatingVuMeterManager?.isShowing == true
-    val isTouchAvatarActive: Boolean get() = touchAvatarOverlayManager?.isShowing == true
 
     fun onConfigUpdated(config: RecordingConfig) {
         if (facecamOverlayManager?.isShowing == true) {
@@ -67,12 +59,10 @@ class ServiceOverlayCoordinator(
             facecamOverlayManager?.setBeautyFilter(config.beautyFilterEnabled)
             facecamOverlayManager?.setRgbBorder(config.facecamRgbBorder)
         }
-        touchVisualizerOverlay?.updateColor(config.touchVisualizerColor)
         watermarkOverlayManager?.updateConfig(config)
         sceneOverlayManager?.updateConfig(config)
         vtuberOverlayManager?.updateConfig(config)
         floatingVuMeterManager?.updateConfig(config)
-        touchAvatarOverlayManager?.updateConfig(config)
     }
 
     fun setupFloatingBubble(
@@ -96,7 +86,6 @@ class ServiceOverlayCoordinator(
             onFacecamToggleClicked = { toggleFacecam() },
             onBeautyToggleClicked = { toggleBeauty() },
             onRgbBorderToggleClicked = { toggleRgbBorder() },
-            onTouchToggleClicked = { toggleTouchVisualizer() },
             onWatermarkToggleClicked = { toggleWatermark() },
             onSceneOverlayToggleClicked = { toggleSceneOverlay() },
             onVtuberToggleClicked = { toggleVtuber() },
@@ -107,7 +96,6 @@ class ServiceOverlayCoordinator(
             updateFacecamStatus(isFacecamActive)
             updateBeautyStatus(isBeautyActive)
             updateRgbStatus(isRgbActive)
-            updateTouchStatus(isTouchActive)
             updateWatermarkStatus(isWatermarkActive)
             updateSceneOverlayStatus(isSceneOverlayActive)
             updateVtuberStatus(isVtuberActive)
@@ -201,86 +189,6 @@ class ServiceOverlayCoordinator(
         facecamOverlayManager?.setRgbBorder(newState)
         floatingBubbleManager?.updateRgbStatus(newState)
         Log.i(TAG, "Borde RGB Arcoíris: $newState")
-    }
-
-    fun launchTouchVisualizer(config: RecordingConfig) {
-        touchVisualizerOverlay?.dismiss()
-        touchVisualizerOverlay = TouchVisualizerOverlay(
-            context = context,
-            touchColor = config.touchVisualizerColor
-        ).apply {
-            show()
-        }
-        val isShowing = touchVisualizerOverlay?.isShowing == true
-        onTouchStateChanged(isShowing)
-        floatingBubbleManager?.updateTouchStatus(isShowing)
-        ensureTouchDetectorState()
-    }
-
-    fun toggleTouchVisualizer() {
-        if (touchVisualizerOverlay?.isShowing == true) {
-            touchVisualizerOverlay?.dismiss()
-            touchVisualizerOverlay = null
-            onTouchStateChanged(false)
-            floatingBubbleManager?.updateTouchStatus(false)
-            settingsRepository.toggleTouchVisualizer(false)
-            Log.i(TAG, "Touch Visualizer desactivado")
-        } else {
-            val config = settingsRepository.getConfig()
-            settingsRepository.toggleTouchVisualizer(true)
-            launchTouchVisualizer(config)
-            Log.i(TAG, "Touch Visualizer activado")
-        }
-        ensureTouchDetectorState()
-    }
-
-    fun launchTouchAvatar(config: RecordingConfig) {
-        try {
-            touchAvatarOverlayManager?.dismiss()
-            touchAvatarOverlayManager = TouchAvatarOverlayManager(context).apply {
-                show(config)
-            }
-            val isShowing = touchAvatarOverlayManager?.isShowing == true
-            onTouchAvatarStateChanged(isShowing)
-            ensureTouchDetectorState()
-            Log.i(TAG, "Touch Avatar Overlay lanzado con éxito (Género: ${config.touchAvatarGenre.name})")
-        } catch (t: Throwable) {
-            Log.e(TAG, "Error lanzando Touch Avatar Overlay: ${t.message}", t)
-            onTouchAvatarStateChanged(false)
-        }
-    }
-
-    fun toggleTouchAvatar() {
-        if (touchAvatarOverlayManager?.isShowing == true) {
-            touchAvatarOverlayManager?.dismiss()
-            touchAvatarOverlayManager = null
-            onTouchAvatarStateChanged(false)
-            settingsRepository.toggleTouchAvatar(false)
-            Log.i(TAG, "Touch Avatar Overlay desactivado")
-        } else {
-            val config = settingsRepository.getConfig()
-            settingsRepository.toggleTouchAvatar(true)
-            launchTouchAvatar(config)
-            Log.i(TAG, "Touch Avatar Overlay activado")
-        }
-        ensureTouchDetectorState()
-    }
-
-    private fun ensureTouchDetectorState() {
-        val needsDetector = isTouchActive || isTouchAvatarActive
-        if (needsDetector) {
-            if (globalTouchDetector == null) {
-                globalTouchDetector = GlobalTouchDetector(context) { x, y ->
-                    touchVisualizerOverlay?.triggerTouch(x, y)
-                    touchAvatarOverlayManager?.onScreenTouch(x, y)
-                }.apply {
-                    start()
-                }
-            }
-        } else {
-            globalTouchDetector?.stop()
-            globalTouchDetector = null
-        }
     }
 
     fun launchWatermark(config: RecordingConfig) {
@@ -438,7 +346,6 @@ class ServiceOverlayCoordinator(
     fun onAudioAmplitude(amp: Float) {
         try {
             vtuberOverlayManager?.onAudioVolume(amp)
-            touchAvatarOverlayManager?.onAudioAmplitude(amp)
         } catch (t: Throwable) {
             // Prevenir excepciones en pipeline de audio
         }
@@ -449,8 +356,6 @@ class ServiceOverlayCoordinator(
         floatingBubbleManager = null
         facecamOverlayManager?.dismiss()
         facecamOverlayManager = null
-        touchVisualizerOverlay?.dismiss()
-        touchVisualizerOverlay = null
         watermarkOverlayManager?.dismiss()
         watermarkOverlayManager = null
         sceneOverlayManager?.dismiss()
@@ -459,10 +364,6 @@ class ServiceOverlayCoordinator(
         vtuberOverlayManager = null
         floatingVuMeterManager?.dismiss()
         floatingVuMeterManager = null
-        touchAvatarOverlayManager?.dismiss()
-        touchAvatarOverlayManager = null
-        globalTouchDetector?.stop()
-        globalTouchDetector = null
 
         onFacecamStateChanged(false)
         onBeautyStateChanged(false)
@@ -472,7 +373,5 @@ class ServiceOverlayCoordinator(
         onSceneOverlayStateChanged(false)
         onVtuberStateChanged(false)
         onVuMeterStateChanged(false)
-        onTouchAvatarStateChanged(false)
     }
 }
-

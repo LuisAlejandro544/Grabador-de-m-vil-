@@ -68,7 +68,7 @@ class SettingsRepository(context: Context) {
             bitrate = videoAudioSlice.bitrate,
             bitrateMbps = videoAudioSlice.bitrateMbps,
             facecamFps = videoAudioSlice.facecamFps,
-            audioSampleRate = videoAudioSlice.audioSampleRate,
+            audioSampleRate = videoAudioRateOrFallback(videoAudioSlice.audioSampleRate),
             audioSource = videoAudioSlice.audioSource,
             countdownSeconds = gameImageSlice.countdownSeconds,
             isGameMode = gameImageSlice.isGameMode,
@@ -106,12 +106,6 @@ class SettingsRepository(context: Context) {
             vtuberTalkImageUri = overlaySlice.vtuberTalkImageUri,
             vtuberBlinkImageUri = overlaySlice.vtuberBlinkImageUri,
             vtuberBlinkTalkImageUri = overlaySlice.vtuberBlinkTalkImageUri,
-            showTouchAvatar = overlaySlice.showTouchAvatar,
-            touchAvatarGenre = overlaySlice.touchAvatarGenre,
-            touchAvatarSize = overlaySlice.touchAvatarSize,
-            touchAvatarOpacity = overlaySlice.touchAvatarOpacity,
-            touchAvatarVoiceSync = overlaySlice.touchAvatarVoiceSync,
-            touchAvatarCustomImageUri = overlaySlice.touchAvatarCustomImageUri,
             gameAudioGain = videoAudioSlice.gameAudioGain,
             micAudioGain = videoAudioSlice.micAudioGain,
             audioDuckingEnabled = videoAudioSlice.audioDuckingEnabled,
@@ -123,6 +117,8 @@ class SettingsRepository(context: Context) {
             imageWebpLossless = gameImageSlice.imageWebpLossless
         )
     }
+
+    private fun videoAudioRateOrFallback(rate: AudioSampleRate): AudioSampleRate = rate
 
     fun saveConfig(config: RecordingConfig) {
         prefs.edit().apply {
@@ -226,31 +222,6 @@ class SettingsRepository(context: Context) {
 
     fun updateVtuberBlinkTalkUri(uri: String?) {
         saveConfig(_configFlow.value.copy(vtuberBlinkTalkImageUri = uri, vtuberPreset = VtuberPreset.CUSTOM))
-    }
-
-    fun toggleTouchAvatar(enabled: Boolean) {
-        saveConfig(_configFlow.value.copy(showTouchAvatar = enabled))
-    }
-
-    fun updateTouchAvatarGenre(genre: com.example.model.TouchAvatarGenre) {
-        saveConfig(_configFlow.value.copy(touchAvatarGenre = genre))
-    }
-
-    fun updateTouchAvatarSize(size: com.example.model.TouchAvatarSize) {
-        saveConfig(_configFlow.value.copy(touchAvatarSize = size))
-    }
-
-    fun updateTouchAvatarOpacity(opacity: Float) {
-        val clamped = opacity.coerceIn(0.2f, 1.0f)
-        saveConfig(_configFlow.value.copy(touchAvatarOpacity = clamped))
-    }
-
-    fun toggleTouchAvatarVoiceSync(enabled: Boolean) {
-        saveConfig(_configFlow.value.copy(touchAvatarVoiceSync = enabled))
-    }
-
-    fun updateTouchAvatarCustomImageUri(uri: String?) {
-        saveConfig(_configFlow.value.copy(touchAvatarCustomImageUri = uri))
     }
 
     fun updateVtuberCustomImages(

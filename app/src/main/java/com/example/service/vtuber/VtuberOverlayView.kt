@@ -85,17 +85,10 @@ class VtuberOverlayView(
 
     private fun loadCustomBitmaps() {
         try {
-            if (config.vtuberPreset == VtuberPreset.CUSTOM) {
-                customIdleBitmap = VtuberPresetDrawables.loadBitmapFromUri(context, config.vtuberIdleImageUri)
-                customTalkBitmap = VtuberPresetDrawables.loadBitmapFromUri(context, config.vtuberTalkImageUri)
-                customBlinkBitmap = VtuberPresetDrawables.loadBitmapFromUri(context, config.vtuberBlinkImageUri)
-                customBlinkTalkBitmap = VtuberPresetDrawables.loadBitmapFromUri(context, config.vtuberBlinkTalkImageUri)
-            } else {
-                customIdleBitmap = null
-                customTalkBitmap = null
-                customBlinkBitmap = null
-                customBlinkTalkBitmap = null
-            }
+            customIdleBitmap = VtuberPresetDrawables.loadBitmapFromUri(context, config.vtuberIdleImageUri)
+            customTalkBitmap = VtuberPresetDrawables.loadBitmapFromUri(context, config.vtuberTalkImageUri)
+            customBlinkBitmap = VtuberPresetDrawables.loadBitmapFromUri(context, config.vtuberBlinkImageUri)
+            customBlinkTalkBitmap = VtuberPresetDrawables.loadBitmapFromUri(context, config.vtuberBlinkTalkImageUri)
         } catch (t: Throwable) {
             customIdleBitmap = null
             customTalkBitmap = null
@@ -189,26 +182,24 @@ class VtuberOverlayView(
                 canvas.rotate(currentHeadRoll, w / 2f, h / 2f)
             }
 
-            if (config.vtuberPreset == VtuberPreset.CUSTOM) {
-                val activeBitmap = getCustomBitmapForState(currentState)
-                if (activeBitmap != null && !activeBitmap.isRecycled) {
-                    val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-                    val src = Rect(0, 0, activeBitmap.width, activeBitmap.height)
-                    val cy = (h / 2f) + currentBounceOffset
-                    val size = minOf(w, h) * 0.92f
-                    val dst = RectF(
-                        (w - size) / 2f,
-                        cy - (size / 2f),
-                        (w + size) / 2f,
-                        cy + (size / 2f)
-                    )
-                    canvas.drawBitmap(activeBitmap, src, dst, paint)
-                    canvas.restore()
-                    return
-                }
+            val activeBitmap = getCustomBitmapForState(currentState)
+            if (activeBitmap != null && !activeBitmap.isRecycled) {
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+                val src = Rect(0, 0, activeBitmap.width, activeBitmap.height)
+                val cy = (h / 2f) + currentBounceOffset
+                val size = minOf(w, h) * 0.92f
+                val dst = RectF(
+                    (w - size) / 2f,
+                    cy - (size / 2f),
+                    (w + size) / 2f,
+                    cy + (size / 2f)
+                )
+                canvas.drawBitmap(activeBitmap, src, dst, paint)
+                canvas.restore()
+                return
             }
 
-            // Renderizado del preset vectorial (Cyber Cat, Anime Aoi, Pixel Slime)
+            // Renderizado de avatar fallback si aún no se han subido imágenes
             VtuberPresetDrawables.drawPreset(
                 canvas = canvas,
                 width = w,

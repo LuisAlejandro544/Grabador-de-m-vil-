@@ -52,7 +52,6 @@ vortex-studio/
 │       │   │   │   ├── ServiceParamsExtractor.kt # Validador y extractor de parámetros
 │       │   │   │   ├── FacecamOverlayManager.kt  # Orquestador de la ventana flotante de cámara
 │       │   │   │   ├── FloatingBubbleManager.kt  # Gestor de burbuja y menú de herramientas
-│       │   │   │   ├── TouchVisualizerOverlay.kt # Indicador táctil de pantalla
 │       │   │   │   ├── WatermarkOverlayManager.kt # Marca de agua y logotipo dinámico
 │       │   │   │   ├── SceneOverlayManager.kt    # Marcos PNG y alertas de escena
 │       │   │   │   ├── controller/               # Controladores de Notificaciones y Screenshots
@@ -66,6 +65,9 @@ vortex-studio/
 │       │   │   │   │   └── ServiceChronometerTimer.kt  # Tiempo y salvaguarda periódica de disco
 │       │   │   │   ├── dispatcher/               # Despachador de Acciones y Tipos de Servicio
 │       │   │   │   │   └── ServiceActionDispatcher.kt  # Foreground Types (A14+) y Overlays
+│       │   │   │   ├── overlay/                  # Coordinador Modular de Overlays
+│       │   │   │   │   ├── ServiceOverlayCoordinator.kt # Orquestador de capas visuales flotantes
+│       │   │   │   │   └── SceneOverlayDrawables.kt    # Gráficos vectoriales de overlays
 │       │   │   │   ├── facecam/                  # Submódulos de la Facecam Flotante
 │       │   │   │   │   ├── FacecamCameraEngine.kt      # Streaming CameraX, lente y target FPS
 │       │   │   │   │   ├── FacecamWindowHost.kt        # LayoutParams y gestión en WindowManager
@@ -80,7 +82,7 @@ vortex-studio/
 │       │   │   │   │   ├── VtuberOverlayManager.kt     # Orquestador del ciclo de vida y pipelines de tracking
 │       │   │   │   │   ├── VtuberOverlayView.kt        # Renderizado en Canvas con rotación de cabeza y rebote
 │       │   │   │   │   ├── VtuberAudioReactor.kt       # Reactor RMS de micrófono para modo voz/híbrido
-│       │   │   │   │   ├── VtuberPresetDrawables.kt    # Generación y almacenamiento de presets
+│       │   │   │   │   ├── VtuberPresetDrawables.kt    # Almacenamiento seguro interno de sprites PNG
 │       │   │   │   │   └── VtuberState.kt              # Estados y modelo de datos VtuberFacePose
 │       │   │   │   ├── vumeter/                  # Vúmetro LED y Mezclador Flotante
 │       │   │   │   └── capture/                  # Codificadores, DSP y MuxerManager (Zero-Latency AV Sync Engine)
@@ -134,7 +136,7 @@ vortex-studio/
 │       │   │               ├── AudioSettingsCard.kt        # Audio DSP, Noise Gate y Ducking
 │       │   │               ├── FacecamSettingsCard.kt      # Facecam, RGB y Belleza
 │       │   │               ├── VtuberSettingsCard.kt       # PNGtuber 2D reactivo
-│       │   │               ├── TouchVisualizerSettingsCard.kt # Toques táctiles
+│       │   │               ├── TouchVisualizerSettingsCard.kt # Asistente y acceso a toques/deslices nativos (60 FPS)
 │       │   │               ├── WatermarkSettingsCard.kt    # Marca de agua superpuesta
 │       │   │               ├── SceneOverlaySettingsCard.kt # Marcos y alertas de escena
 │       │   │               ├── FloatingBubbleSettingsCard.kt # Burbuja flotante
@@ -150,6 +152,7 @@ vortex-studio/
 ├── changelog-beta-release.md   # Notas y novedades de la versión Beta para Pre-releases
 ├── commit_message.txt          # Historial de cambios en español
 ├── CONTRIBUTING.md             # Guía de contribución comunitaria y política de PRs
+├── FEEDBACK_SURVEY.md          # Estructura y preguntas de la encuesta de feedback
 ├── LICENSE                     # Licencia Pública General de GNU v3 (GPLv3)
 ├── README.md                   # Documentación general del producto
 ├── ROADMAP.md                  # Mapa de fases y objetivos

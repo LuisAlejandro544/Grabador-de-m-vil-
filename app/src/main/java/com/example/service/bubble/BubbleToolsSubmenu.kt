@@ -24,7 +24,6 @@ class BubbleToolsSubmenu(
     private val onFacecamToggleClicked: () -> Unit,
     private val onBeautyToggleClicked: () -> Unit,
     private val onRgbBorderToggleClicked: () -> Unit,
-    private val onTouchToggleClicked: () -> Unit,
     private val onWatermarkToggleClicked: () -> Unit = {},
     private val onSceneOverlayToggleClicked: () -> Unit = {},
     private val onVtuberToggleClicked: () -> Unit = {},
@@ -59,11 +58,6 @@ class BubbleToolsSubmenu(
     private val iconRgb: ImageView
     private val tvRgb: TextView
     private val dotRgb: View
-
-    private val btnTouch: LinearLayout
-    private val iconTouch: ImageView
-    private val tvTouch: TextView
-    private val dotTouch: View
 
     private val btnWatermark: LinearLayout
     private val iconWatermark: ImageView
@@ -231,22 +225,7 @@ class BubbleToolsSubmenu(
         dotRgb = rgbTile.statusDot
         gridLayout.addView(btnRgb)
 
-        // 8. Toques Táctiles en pantalla
-        val touchTile = createGridTile(
-            iconRes = android.R.drawable.ic_menu_directions,
-            label = "Toques",
-            onClick = {
-                onVibrateRequested()
-                onTouchToggleClicked()
-            }
-        )
-        btnTouch = touchTile.container
-        iconTouch = touchTile.icon
-        tvTouch = touchTile.label
-        dotTouch = touchTile.statusDot
-        gridLayout.addView(btnTouch)
-
-        // 9. Logo / Marca de agua
+        // 8. Logo / Marca de agua
         val watermarkTile = createGridTile(
             iconRes = android.R.drawable.ic_menu_gallery,
             label = "Logo",
@@ -261,7 +240,7 @@ class BubbleToolsSubmenu(
         dotWatermark = watermarkTile.statusDot
         gridLayout.addView(btnWatermark)
 
-        // 10. Marco / Overlay de Escena
+        // 9. Marco / Overlay de Escena
         val overlayTile = createGridTile(
             iconRes = android.R.drawable.ic_menu_crop,
             label = "Marco",
@@ -417,19 +396,6 @@ class BubbleToolsSubmenu(
             activeBgColor = BubbleColors.COLOR_RGB_ON_BG,
             activeTextColor = BubbleColors.COLOR_RGB_ON_TEXT,
             activeLabel = "RGB"
-        )
-    }
-
-    fun updateTouchStatus(active: Boolean) {
-        updateToggleAppearance(
-            active = active,
-            container = btnTouch,
-            icon = iconTouch,
-            label = tvTouch,
-            dot = dotTouch,
-            activeBgColor = BubbleColors.COLOR_TOUCH_ON_BG,
-            activeTextColor = BubbleColors.COLOR_TOUCH_ON_TEXT,
-            activeLabel = "Toques"
         )
     }
 

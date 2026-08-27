@@ -29,6 +29,7 @@ import com.example.model.VideoFps
 import com.example.model.VideoResolution
 import com.example.model.VtuberPreset
 import com.example.model.VtuberSize
+import com.example.model.VtuberTrackingMode
 import com.example.model.WatermarkSize
 import com.example.model.WatermarkType
 import com.example.ui.components.settings.AudioSettingsCard
@@ -45,8 +46,6 @@ import com.example.ui.components.settings.NativeModulesStatusCard
 import com.example.ui.components.settings.OnboardingTutorialCard
 import com.example.ui.components.settings.OverlaySettingsEvents
 import com.example.ui.components.settings.SceneOverlaySettingsCard
-import com.example.ui.components.settings.TouchAvatarSettingsCard
-import com.example.ui.components.settings.TouchAvatarSettingsEvents
 import com.example.ui.components.settings.TouchVisualizerSettingsCard
 import com.example.ui.components.settings.VideoQualitySettingsCard
 import com.example.ui.components.settings.VideoSettingsEvents
@@ -65,7 +64,6 @@ fun SettingsView(
     audioEvents: AudioSettingsEvents,
     facecamEvents: FacecamSettingsEvents,
     vtuberEvents: VtuberSettingsEvents,
-    touchAvatarEvents: TouchAvatarSettingsEvents,
     overlayEvents: OverlaySettingsEvents,
     generalEvents: GeneralSettingsEvents,
     modifier: Modifier = Modifier,
@@ -160,24 +158,8 @@ fun SettingsView(
             onBlinkTalkImageSelected = vtuberEvents.onUpdateVtuberBlinkTalkImage
         )
 
-        // Avatar VTuber Reactivo a Toques Táctiles ("Bongo Cat" Handcam)
-        TouchAvatarSettingsCard(
-            config = config,
-            onToggleTouchAvatar = touchAvatarEvents.onToggleTouchAvatar,
-            onUpdateTouchAvatarGenre = touchAvatarEvents.onUpdateTouchAvatarGenre,
-            onUpdateTouchAvatarSize = touchAvatarEvents.onUpdateTouchAvatarSize,
-            onUpdateTouchAvatarOpacity = touchAvatarEvents.onUpdateTouchAvatarOpacity,
-            onToggleTouchAvatarVoiceSync = touchAvatarEvents.onToggleTouchAvatarVoiceSync,
-            onUpdateTouchAvatarCustomImageUri = touchAvatarEvents.onUpdateTouchAvatarCustomImageUri
-        )
-
-        // Visualizador de Toques Táctiles
-        TouchVisualizerSettingsCard(
-            showTouchVisualizer = config.showTouchVisualizer,
-            touchVisualizerColor = config.touchVisualizerColor,
-            onToggleTouchVisualizer = overlayEvents.onToggleTouchVisualizer,
-            onUpdateTouchVisualizerColor = overlayEvents.onUpdateTouchVisualizerColor
-        )
+        // Mostrar Toques y Deslices Nativos del Sistema (60 FPS)
+        TouchVisualizerSettingsCard()
 
         // Calidad de Video (Resolución, FPS, Bitrate Personalizado)
         VideoQualitySettingsCard(
@@ -279,7 +261,7 @@ fun SettingsView(
     onToggleFacecamRgbBorder: (Boolean) -> Unit = {},
     onToggleVtuber: (Boolean) -> Unit = {},
     onUpdateVtuberPreset: (VtuberPreset) -> Unit = {},
-    onUpdateVtuberTrackingMode: (com.example.model.VtuberTrackingMode) -> Unit = {},
+    onUpdateVtuberTrackingMode: (VtuberTrackingMode) -> Unit = {},
     onToggleVtuberHeadTilt: (Boolean) -> Unit = {},
     onUpdateVtuberEyeBlinkSensitivity: (Float) -> Unit = {},
     onUpdateVtuberMouthSensitivity: (Float) -> Unit = {},
@@ -290,12 +272,6 @@ fun SettingsView(
     onUpdateVtuberTalkImage: (String?) -> Unit = {},
     onUpdateVtuberBlinkImage: (String?) -> Unit = {},
     onUpdateVtuberBlinkTalkImage: (String?) -> Unit = {},
-    onToggleTouchAvatar: (Boolean) -> Unit = {},
-    onUpdateTouchAvatarGenre: (com.example.model.TouchAvatarGenre) -> Unit = {},
-    onUpdateTouchAvatarSize: (com.example.model.TouchAvatarSize) -> Unit = {},
-    onUpdateTouchAvatarOpacity: (Float) -> Unit = {},
-    onToggleTouchAvatarVoiceSync: (Boolean) -> Unit = {},
-    onUpdateTouchAvatarCustomImageUri: (String?) -> Unit = {},
     onToggleTouchVisualizer: (Boolean) -> Unit = {},
     onUpdateTouchVisualizerColor: (TouchColorOption) -> Unit = {},
     onToggleWatermark: (Boolean) -> Unit = {},
@@ -363,14 +339,6 @@ fun SettingsView(
             onUpdateVtuberBlinkImage = onUpdateVtuberBlinkImage,
             onUpdateVtuberBlinkTalkImage = onUpdateVtuberBlinkTalkImage
         ),
-        touchAvatarEvents = TouchAvatarSettingsEvents(
-            onToggleTouchAvatar = onToggleTouchAvatar,
-            onUpdateTouchAvatarGenre = onUpdateTouchAvatarGenre,
-            onUpdateTouchAvatarSize = onUpdateTouchAvatarSize,
-            onUpdateTouchAvatarOpacity = onUpdateTouchAvatarOpacity,
-            onToggleTouchAvatarVoiceSync = onToggleTouchAvatarVoiceSync,
-            onUpdateTouchAvatarCustomImageUri = onUpdateTouchAvatarCustomImageUri
-        ),
         overlayEvents = OverlaySettingsEvents(
             onToggleTouchVisualizer = onToggleTouchVisualizer,
             onUpdateTouchVisualizerColor = onUpdateTouchVisualizerColor,
@@ -399,4 +367,3 @@ fun SettingsView(
         modifier = modifier
     )
 }
-

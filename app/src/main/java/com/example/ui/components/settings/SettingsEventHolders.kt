@@ -58,7 +58,7 @@ data class FacecamSettingsEvents(
 )
 
 /**
- * Agrupación de eventos de Avatar 2D / PNGtuber reactivo por voz.
+ * Agrupación de eventos de Avatar 2D / PNGtuber reactivo por voz y seguimiento facial.
  */
 data class VtuberSettingsEvents(
     val onToggleVtuber: (Boolean) -> Unit = {},
@@ -74,18 +74,6 @@ data class VtuberSettingsEvents(
     val onUpdateVtuberTalkImage: (String?) -> Unit = {},
     val onUpdateVtuberBlinkImage: (String?) -> Unit = {},
     val onUpdateVtuberBlinkTalkImage: (String?) -> Unit = {}
-)
-
-/**
- * Agrupación de eventos de Avatar VTuber Reactivo a Toques Táctiles ("Bongo Cat" Handcam).
- */
-data class TouchAvatarSettingsEvents(
-    val onToggleTouchAvatar: (Boolean) -> Unit = {},
-    val onUpdateTouchAvatarGenre: (com.example.model.TouchAvatarGenre) -> Unit = {},
-    val onUpdateTouchAvatarSize: (com.example.model.TouchAvatarSize) -> Unit = {},
-    val onUpdateTouchAvatarOpacity: (Float) -> Unit = {},
-    val onToggleTouchAvatarVoiceSync: (Boolean) -> Unit = {},
-    val onUpdateTouchAvatarCustomImageUri: (String?) -> Unit = {}
 )
 
 /**

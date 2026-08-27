@@ -128,10 +128,7 @@ enum class SceneOverlayType(val label: String, val description: String) {
 }
 
 enum class VtuberPreset(val label: String, val description: String) {
-    CYBER_CAT("Gato Ciberpunk", "Gatito mecha con audífonos gamer neón"),
-    ANIME_AOI("Aoi Chibi", "Personaje anime con coletas y lazo"),
-    PIXEL_SLIME("Slime Gamer", "Slime verde retro con corona dorada"),
-    CUSTOM("Avatar Personalizado", "Tus propios archivos PNG transparentes")
+    CUSTOM("Avatar Personalizado (PNGs)", "Tus propios archivos PNG transparentes (4 estados)")
 }
 
 enum class VtuberTrackingMode(val label: String, val description: String) {
@@ -150,19 +147,6 @@ enum class ImageFormatOption(val label: String, val extension: String, val descr
     PNG("PNG", "png", "Sin pérdida de calidad (Máxima nitidez, mayor tamaño)"),
     JPEG("JPG / JPEG", "jpg", "Compresión estándar (Ahorro de espacio configurable)"),
     WEBP("WebP", "webp", "Formato moderno y ligero (Ultra eficiente en tamaño)")
-}
-
-enum class TouchAvatarGenre(val label: String, val shortDesc: String, val iconEmoji: String) {
-    RHYTHM_4K("Juegos de Ritmo / 4 Teclas", "Teclado reactivo con 4 flechas de colores (← ↓ ↑ →)", "🎵"),
-    SHOOTER_FPS("Shooter / Battle Royale", "Joystick táctil izquierdo + Gatillo y apuntado derecho", "🎯"),
-    FIGHTING_ACTION("Lucha / Arcade / Acción", "D-Pad direccional + 4 Botones de combo (A/B/X/Y)", "🥊"),
-    CASUAL_TAP("Casual / Táctil Libre", "Manos reactivas con pulsaciones y gestos libres", "⚡")
-}
-
-enum class TouchAvatarSize(val label: String, val dpWidth: Int, val dpHeight: Int) {
-    COMPACT("Compacto", 140, 100),
-    MEDIUM("Estándar", 180, 130),
-    LARGE("Amplio", 230, 165)
 }
 
 data class RecordingConfig(
@@ -197,7 +181,7 @@ data class RecordingConfig(
     val sceneOverlayOpacity: Float = 0.90f,
     val sceneOverlayImageUri: String? = null,
     val showVtuber: Boolean = false,
-    val vtuberPreset: VtuberPreset = VtuberPreset.CYBER_CAT,
+    val vtuberPreset: VtuberPreset = VtuberPreset.CUSTOM,
     val vtuberTrackingMode: VtuberTrackingMode = VtuberTrackingMode.VOICE_ONLY,
     val vtuberSize: VtuberSize = VtuberSize.MEDIUM,
     val vtuberSensitivity: Float = 0.18f,
@@ -209,12 +193,6 @@ data class RecordingConfig(
     val vtuberTalkImageUri: String? = null,
     val vtuberBlinkImageUri: String? = null,
     val vtuberBlinkTalkImageUri: String? = null,
-    val showTouchAvatar: Boolean = false,
-    val touchAvatarGenre: TouchAvatarGenre = TouchAvatarGenre.RHYTHM_4K,
-    val touchAvatarSize: TouchAvatarSize = TouchAvatarSize.MEDIUM,
-    val touchAvatarOpacity: Float = 0.95f,
-    val touchAvatarVoiceSync: Boolean = true,
-    val touchAvatarCustomImageUri: String? = null,
     val gameAudioGain: Float = 1.0f,
     val micAudioGain: Float = 1.25f,
     val audioDuckingEnabled: Boolean = true,
