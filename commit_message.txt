@@ -1,19 +1,5 @@
-perf(capture): optimizar pipeline de captura para SoCs móviles de gama de entrada con arquitectura Zero-Allocation y VBR
+fix(build): resolver conflicto de bibliotecas nativas duplicadas en mergeReleaseNativeLibs
 
-- Arquitectura Zero-Allocation en Workers de Audio:
-  * Creación de `AudioFrameBuffer` con pools de reciclaje de búferes PCM en `InternalAudioWorker` y `MicAudioWorker`.
-  * Reemplazo de `ByteArrayOutputStream` e instanciaciones dinámicas en el bucle principal de `AudioEncoderWorker` por un búfer circular en memoria fija (Zero Heap Allocations).
-  * Eliminación total de pausas del Garbage Collector (GC) causadas por acumulación y fragmentación de memoria durante la grabación.
-
-- Priorización y contención de hilos de CPU:
-  * Asignación de prioridad `THREAD_PRIORITY_BACKGROUND` en hilos de codificación y lectura de audio/video (`VideoEncoderModule`, `InternalAudioWorker`, `MicAudioWorker`, `AudioEncoderWorker`).
-  * Concesión de los núcleos principales de alto rendimiento al proceso del juego en primer plano para evitar caídas de FPS y sobrecalentamiento térmico.
-
-- Optimización del codificador de video por hardware (H.264 / AVC):
-  * Configuración de tasa de bits variable (`BITRATE_MODE_VBR`) y perfil `AVCProfileMain` con fallback automático a `Baseline`.
-  * Reducción de la carga térmica en la GPU y del consumo de ancho de banda del bus de memoria.
-
-- Integración y Compilación Nativa Completa en Gradle/CMake:
-  * Compilación de `libvortex_rust_network.so` como librería compartida nativa conectada a `NativeRustNetwork` para streaming RTMP/SRT y cálculos de aspecto.
-  * Compilación e inclusión en el APK de los binarios compartidos de FFmpeg (`libavcodec.so`, `libavformat.so`, `libavfilter.so`, `libavutil.so`, `libswscale.so`, `libswresample.so`).
-  * Vinculación y enlace dinámico de la suite completa de códecs y procesamiento nativo en `libobs_core.so` mediante `CMakeLists.txt`.
+- Configuración de empaquetado `packaging.jniLibs.pickFirsts` en `app/build.gradle.kts` para resolver colisiones de rutas duplicadas en `libvortex_rust_network.so`, `libavcodec.so`, `libavformat.so`, `libavfilter.so`, `libavutil.so`, `libswscale.so`, `libswresample.so` y `libc++_shared.so`.
+- Permite la coexistencia transparente entre los binarios generados por el paso de `cargo-ndk` en `src/main/jniLibs` y las salidas de compilación de CMake en GitHub Actions.
+- Garantiza que la tarea `:app:mergeReleaseNativeLibs` finalice con éxito durante la generación del APK release en los flujos de CI/CD.

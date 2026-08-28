@@ -98,6 +98,20 @@ android {
     buildConfig = true
   }
   testOptions { unitTests { isIncludeAndroidResources = true } }
+  packaging {
+    jniLibs {
+      pickFirsts += listOf(
+        "**/libvortex_rust_network.so",
+        "**/libavcodec.so",
+        "**/libavformat.so",
+        "**/libavfilter.so",
+        "**/libavutil.so",
+        "**/libswscale.so",
+        "**/libswresample.so",
+        "**/libc++_shared.so"
+      )
+    }
+  }
   dependenciesInfo {
     includeInApk = false
     includeInBundle = true
