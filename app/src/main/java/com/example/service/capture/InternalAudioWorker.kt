@@ -7,6 +7,7 @@ import android.media.AudioPlaybackCaptureConfiguration
 import android.media.AudioRecord
 import android.media.projection.MediaProjection
 import android.os.Build
+import android.os.Process
 import android.os.SystemClock
 import android.util.Log
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -14,6 +15,8 @@ import java.util.concurrent.ConcurrentLinkedQueue
 /**
  * Worker desacoplado responsable exclusivamente de capturar el audio interno del juego / sistema
  * utilizando la API [AudioPlaybackCaptureConfiguration] en Android 10+ (API 29+).
+ * Diseñado con arquitectura Zero-Allocation para eliminar pausas de Garbage Collector (GC)
+ * y prioridad de hilo secundaria para no competir con los núcleos principales de CPU del juego.
  */
 class InternalAudioWorker(
     private val mediaProjection: MediaProjection?,
@@ -23,16 +26,30 @@ class InternalAudioWorker(
 ) {
     companion object {
         private const val TAG = "InternalAudioWorker"
-        private const val BUFFER_SIZE = 4096
-        private const val MAX_QUEUE_CAPACITY = 20
+        private const val BUFFER_SIZE = AudioFrameBuffer.DEFAULT_CAPACITY
+        private const val MAX_QUEUE_CAPACITY = 16
+        private const val POOL_CAPACITY = 24
     }
 
     private var audioRecord: AudioRecord? = null
     private var workerThread: Thread? = null
-    val audioQueue = ConcurrentLinkedQueue<ByteArray>()
+    private val bufferPool = ConcurrentLinkedQueue<AudioFrameBuffer>()
+    val audioQueue = ConcurrentLinkedQueue<AudioFrameBuffer>()
+
+    init {
+        for (i in 0 until POOL_CAPACITY) {
+            bufferPool.offer(AudioFrameBuffer())
+        }
+    }
 
     val isInitialized: Boolean
         get() = audioRecord != null && audioRecord?.state == AudioRecord.STATE_INITIALIZED
+
+    fun recycleBuffer(buffer: AudioFrameBuffer) {
+        if (bufferPool.size < POOL_CAPACITY) {
+            bufferPool.offer(buffer)
+        }
+    }
 
     @SuppressLint("MissingPermission")
     fun initialize(): Boolean {
@@ -86,26 +103,33 @@ class InternalAudioWorker(
 
         workerThread = Thread({
             try {
+                Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
+            } catch (_: Exception) {}
+
+            try {
                 record.startRecording()
             } catch (e: Exception) {
                 Log.w(TAG, "Error iniciando AudioRecord interno: ${e.message}")
             }
 
-            val buf = ByteArray(BUFFER_SIZE)
             while (isRecordingProvider()) {
                 try {
-                    val readBytes = record.read(buf, 0, BUFFER_SIZE)
+                    val frameBuffer = bufferPool.poll() ?: AudioFrameBuffer()
+                    val readBytes = record.read(frameBuffer.data, 0, BUFFER_SIZE)
                     if (readBytes > 0) {
-                        // Solo encolar si no está en pausa; si está en pausa, los datos se leen del hardware y se descartan para evitar Buffer Overrun en audioserver
+                        frameBuffer.size = readBytes
                         if (!isPausedProvider()) {
-                            val data = buf.copyOf(readBytes)
                             if (audioQueue.size >= MAX_QUEUE_CAPACITY) {
-                                audioQueue.poll() // Dropear buffer antiguo para evitar desincronización
+                                val dropped = audioQueue.poll()
+                                if (dropped != null) recycleBuffer(dropped)
                             }
-                            audioQueue.offer(data)
+                            audioQueue.offer(frameBuffer)
+                        } else {
+                            recycleBuffer(frameBuffer)
                         }
                     } else {
-                        SystemClock.sleep(5)
+                        recycleBuffer(frameBuffer)
+                        SystemClock.sleep(4)
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "Excepción leyendo audio interno: ${e.message}")
@@ -135,5 +159,6 @@ class InternalAudioWorker(
         }
         audioRecord = null
         audioQueue.clear()
+        bufferPool.clear()
     }
 }

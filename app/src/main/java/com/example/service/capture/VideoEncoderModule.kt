@@ -3,15 +3,16 @@ package com.example.service.capture
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
-import android.os.SystemClock
+import android.os.Process
 import android.util.Log
 import android.view.Surface
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Módulo de codificación de video por hardware (H.264 / AVC).
  * Proporciona el [Surface] de entrada para el [android.hardware.display.VirtualDisplay]
  * y corre el worker de drenado que escribe en [MuxerManager].
+ * Optimizado con bitrate variable (VBR) y perfil adaptativo para minimizar la carga térmica
+ * y el consumo de ancho de banda en procesadores móviles.
  */
 class VideoEncoderModule(
     private val width: Int,
@@ -42,25 +43,34 @@ class VideoEncoderModule(
             setInteger(MediaFormat.KEY_FRAME_RATE, fps)
             setInteger(MediaFormat.KEY_CAPTURE_RATE, fps)
             setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, I_FRAME_INTERVAL)
-            setInteger(MediaFormat.KEY_BITRATE_MODE, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR)
-            setInteger(MediaFormat.KEY_COMPLEXITY, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR)
-            setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.AVCProfileHigh)
-            setInteger(MediaFormat.KEY_LEVEL, MediaCodecInfo.CodecProfileLevel.AVCLevel41)
+            setInteger(MediaFormat.KEY_BITRATE_MODE, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR)
+            setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.AVCProfileMain)
+            setInteger(MediaFormat.KEY_LEVEL, MediaCodecInfo.CodecProfileLevel.AVCLevel4)
             // Repetir el fotograma anterior si la pantalla permanece estática para evitar congelamientos en el timeline de video
             val repeatIntervalUs = (1_000_000L / fps.coerceAtLeast(15))
             setLong(MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER, repeatIntervalUs)
         }
 
         val encoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
-        encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+        try {
+            encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+        } catch (e: Exception) {
+            Log.w(TAG, "Fallo al configurar perfil Main, aplicando fallback Baseline: ${e.message}")
+            format.setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline)
+            encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+        }
         inputSurface = encoder.createInputSurface()
         encoder.start()
         videoEncoder = encoder
-        Log.i(TAG, "VideoEncoder configurado con éxito (${width}x$height, ${fps}fps, ${bitrate}bps)")
+        Log.i(TAG, "VideoEncoder configurado con éxito (${width}x$height, ${fps}fps, VBR ${bitrate}bps)")
     }
 
     fun startWorker() {
         videoThread = Thread({
+            try {
+                Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
+            } catch (_: Exception) {}
+
             val encoder = videoEncoder ?: return@Thread
             val bufferInfo = MediaCodec.BufferInfo()
 
@@ -84,7 +94,7 @@ class VideoEncoderModule(
                                         muxerManager.writeVideoSample(outputBuffer, bufferInfo)
                                     }
                                 }
-                                // CRÍTICO: Siempre liberar el búfer de hardware inmediatamente para evitar bloquear el VirtualDisplay y que el sistema mate el proceso
+                                // CRÍTICO: Siempre liberar el búfer de hardware inmediatamente para evitar bloquear el VirtualDisplay
                                 encoder.releaseOutputBuffer(outputBufferIndex, false)
                             }
                         }

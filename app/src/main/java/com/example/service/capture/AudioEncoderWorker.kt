@@ -3,13 +3,15 @@ package com.example.service.capture
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
+import android.os.Process
 import android.os.SystemClock
 import android.util.Log
-import java.io.ByteArrayOutputStream
 
 /**
  * Worker especializado en la codificación por hardware AAC y sincronización de búferes PCM de audio.
  * Desacopla la lógica de temporización, cola de codificación y drenado hacia [MuxerManager].
+ * Diseñado con arquitectura Zero-Allocation con búfer circular pre-asignado y reciclaje de objetos
+ * para no interferir en el rendimiento de los juegos pesados.
  */
 class AudioEncoderWorker(
     private val sampleRate: Int,
@@ -24,6 +26,7 @@ class AudioEncoderWorker(
         private const val TAG = "AudioEncoderWorker"
         private const val AUDIO_BIT_RATE = 192000
         private const val TIMEOUT_USEC = 10000L
+        private const val RING_BUFFER_SIZE = 32768
     }
 
     private var audioEncoder: MediaCodec? = null
@@ -66,8 +69,19 @@ class AudioEncoderWorker(
         val isDualAudioMode = internalWorker != null && micWorker != null
 
         encoderWorkerThread = Thread({
+            try {
+                Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
+            } catch (_: Exception) {}
+
             val bufferInfo = MediaCodec.BufferInfo()
-            val micAccumulator = ByteArrayOutputStream(16384)
+
+            // Búferes pre-asignados reutilizables para evitar instanciación dinámica en el bucle
+            val micRingBuffer = ByteArray(RING_BUFFER_SIZE)
+            var micRingCount = 0
+
+            val micHoldingBuffer = ByteArray(AudioFrameBuffer.DEFAULT_CAPACITY)
+            val silentHoldingBuffer = ByteArray(AudioFrameBuffer.DEFAULT_CAPACITY)
+
             var lastInternalDataTime = SystemClock.uptimeMillis()
 
             while (isRecordingProvider()) {
@@ -78,51 +92,70 @@ class AudioEncoderWorker(
                         // --- MODO DUAL SINCRONIZADO (AUDIO DEL JUEGO + MICRÓFONO) ---
                         if (micWorker != null && !micWorker.isMicMuted) {
                             while (true) {
-                                val chunk = micWorker.audioQueue.poll() ?: break
-                                micAccumulator.write(chunk)
+                                val micFrame = micWorker.audioQueue.poll() ?: break
+                                val bytesToAdd = micFrame.size
+                                val spaceLeft = RING_BUFFER_SIZE - micRingCount
+                                val copySize = minOf(bytesToAdd, spaceLeft)
+                                if (copySize > 0) {
+                                    System.arraycopy(micFrame.data, 0, micRingBuffer, micRingCount, copySize)
+                                    micRingCount += copySize
+                                }
+                                micWorker.recycleBuffer(micFrame)
                             }
                         }
 
-                        val internalData = internalWorker?.audioQueue?.poll()
+                        val internalFrame = internalWorker?.audioQueue?.poll()
                         var finalBytes: ByteArray? = null
                         var finalSize = 0
 
-                        if (internalData != null) {
+                        if (internalFrame != null) {
                             lastInternalDataTime = SystemClock.uptimeMillis()
-                            val neededBytes = internalData.size
-                            val micData = ByteArray(neededBytes)
+                            val neededBytes = minOf(internalFrame.size, micHoldingBuffer.size)
 
-                            if (micWorker != null && !micWorker.isMicMuted && micAccumulator.size() > 0) {
-                                val currentMicBytes = micAccumulator.toByteArray()
-                                val bytesToCopy = minOf(neededBytes, currentMicBytes.size)
-                                System.arraycopy(currentMicBytes, 0, micData, 0, bytesToCopy)
-
-                                micAccumulator.reset()
-                                if (currentMicBytes.size > bytesToCopy) {
-                                    val remaining = currentMicBytes.size - bytesToCopy
-                                    val safeRemaining = minOf(remaining, 16384)
-                                    val startOffset = currentMicBytes.size - safeRemaining
-                                    micAccumulator.write(currentMicBytes, startOffset, safeRemaining)
+                            if (micWorker != null && !micWorker.isMicMuted && micRingCount > 0) {
+                                val bytesFromMic = minOf(neededBytes, micRingCount)
+                                System.arraycopy(micRingBuffer, 0, micHoldingBuffer, 0, bytesFromMic)
+                                if (bytesFromMic < neededBytes) {
+                                    java.util.Arrays.fill(micHoldingBuffer, bytesFromMic, neededBytes, 0.toByte())
                                 }
+
+                                val remaining = micRingCount - bytesFromMic
+                                if (remaining > 0) {
+                                    System.arraycopy(micRingBuffer, bytesFromMic, micRingBuffer, 0, remaining)
+                                }
+                                micRingCount = remaining
+                            } else {
+                                java.util.Arrays.fill(micHoldingBuffer, 0, neededBytes, 0.toByte())
                             }
 
-                            val (mixed, size) = mixer.mixDualAudio(internalData, micData)
+                            val (mixed, size) = mixer.mixDualAudio(
+                                internalData = internalFrame.data,
+                                internalSize = internalFrame.size,
+                                micData = micHoldingBuffer,
+                                micSize = neededBytes
+                            )
                             finalBytes = mixed
                             finalSize = size
-                        } else {
-                            // Fallback si la fuente del juego tarda más de 50ms (ej. pantalla de carga o silencio completo)
-                            val elapsedSinceInternal = SystemClock.uptimeMillis() - lastInternalDataTime
-                            if (elapsedSinceInternal > 50L && micAccumulator.size() >= 4096) {
-                                val currentMicBytes = micAccumulator.toByteArray()
-                                val chunkSize = 4096
-                                val micChunk = currentMicBytes.copyOf(chunkSize)
-                                micAccumulator.reset()
-                                if (currentMicBytes.size > chunkSize) {
-                                    micAccumulator.write(currentMicBytes, chunkSize, currentMicBytes.size - chunkSize)
-                                }
 
-                                val silentInternal = ByteArray(chunkSize)
-                                val (mixed, size) = mixer.mixDualAudio(silentInternal, micChunk)
+                            internalWorker.recycleBuffer(internalFrame)
+                        } else {
+                            // Fallback si la fuente del juego tarda más de 50ms
+                            val elapsedSinceInternal = SystemClock.uptimeMillis() - lastInternalDataTime
+                            if (elapsedSinceInternal > 50L && micRingCount >= 4096) {
+                                val chunkSize = 4096
+                                System.arraycopy(micRingBuffer, 0, micHoldingBuffer, 0, chunkSize)
+                                val remaining = micRingCount - chunkSize
+                                if (remaining > 0) {
+                                    System.arraycopy(micRingBuffer, chunkSize, micRingBuffer, 0, remaining)
+                                }
+                                micRingCount = remaining
+
+                                val (mixed, size) = mixer.mixDualAudio(
+                                    internalData = silentHoldingBuffer,
+                                    internalSize = chunkSize,
+                                    micData = micHoldingBuffer,
+                                    micSize = chunkSize
+                                )
                                 finalBytes = mixed
                                 finalSize = size
                             }
@@ -134,36 +167,40 @@ class AudioEncoderWorker(
 
                         drainAudioEncoder(encoder, bufferInfo, isPaused)
 
-                        if (internalData == null) {
+                        if (internalFrame == null) {
                             SystemClock.sleep(4)
                         }
                     } else {
                         // --- MODO FUENTE ÚNICA (SOLO JUEGO O SOLO MICRÓFONO) ---
-                        val internalData = internalWorker?.audioQueue?.poll()
-                        val micData = if (micWorker?.isMicMuted == false) {
+                        val internalFrame = internalWorker?.audioQueue?.poll()
+                        val micFrame = if (micWorker?.isMicMuted == false) {
                             micWorker.audioQueue.poll()
                         } else null
 
-                        if (internalData == null && micData == null) {
+                        if (internalFrame == null && micFrame == null) {
                             drainAudioEncoder(encoder, bufferInfo, isPaused)
-                            SystemClock.sleep(5)
+                            SystemClock.sleep(4)
                             continue
                         }
 
                         var finalBytes: ByteArray? = null
                         var finalSize = 0
 
-                        if (internalData != null) {
-                            finalBytes = internalData
-                            finalSize = internalData.size
-                        } else if (micData != null) {
-                            val (proc, size) = mixer.processSingleMicAudio(micData)
+                        if (internalFrame != null) {
+                            finalBytes = internalFrame.data
+                            finalSize = internalFrame.size
+                            if (!isPaused && finalSize > 0) {
+                                feedEncoder(encoder, finalBytes, finalSize)
+                            }
+                            internalWorker.recycleBuffer(internalFrame)
+                        } else if (micFrame != null) {
+                            val (proc, size) = mixer.processSingleMicAudio(micFrame.data, micFrame.size)
                             finalBytes = proc
                             finalSize = size
-                        }
-
-                        if (finalBytes != null && finalSize > 0 && !isPaused) {
-                            feedEncoder(encoder, finalBytes, finalSize)
+                            if (!isPaused && finalSize > 0) {
+                                feedEncoder(encoder, finalBytes, finalSize)
+                            }
+                            micWorker?.recycleBuffer(micFrame)
                         }
 
                         drainAudioEncoder(encoder, bufferInfo, isPaused)

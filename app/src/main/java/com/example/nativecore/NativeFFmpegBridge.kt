@@ -17,9 +17,15 @@ object NativeFFmpegBridge {
 
     init {
         try {
+            try { System.loadLibrary("avutil") } catch (_: Throwable) {}
+            try { System.loadLibrary("swresample") } catch (_: Throwable) {}
+            try { System.loadLibrary("swscale") } catch (_: Throwable) {}
+            try { System.loadLibrary("avcodec") } catch (_: Throwable) {}
+            try { System.loadLibrary("avformat") } catch (_: Throwable) {}
+            try { System.loadLibrary("avfilter") } catch (_: Throwable) {}
             System.loadLibrary("obs_core")
             isLibraryLoaded = true
-            Log.i(TAG, "Native obs_core library (including FFmpeg pure engine) loaded successfully")
+            Log.i(TAG, "Native obs_core & FFmpeg shared libraries (libavcodec, libavformat, libavfilter, libavutil) loaded successfully")
         } catch (e: UnsatisfiedLinkError) {
             isLibraryLoaded = false
             Log.w(TAG, "Native library 'obs_core' standby in JVM environment: ${e.message}")

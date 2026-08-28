@@ -54,8 +54,17 @@ class AudioDspMixer(
     }
 
     fun mixDualAudio(internalData: ByteArray, micData: ByteArray): Pair<ByteArray, Int> {
-        val pcmCount = minOf(internalData.size, micData.size)
-        val finalSize = maxOf(internalData.size, micData.size)
+        return mixDualAudio(internalData, internalData.size, micData, micData.size)
+    }
+
+    fun mixDualAudio(
+        internalData: ByteArray,
+        internalSize: Int,
+        micData: ByteArray,
+        micSize: Int
+    ): Pair<ByteArray, Int> {
+        val pcmCount = minOf(internalSize, micSize)
+        val finalSize = maxOf(internalSize, micSize)
         ensureMixBufSize(finalSize)
 
         val processedBytes = if (NativeAudioDSPBridge.isNativeReady()) {
@@ -69,13 +78,13 @@ class AudioDspMixer(
         } else 0
 
         return if (processedBytes > 0) {
-            if (internalData.size > processedBytes) {
+            if (internalSize > processedBytes) {
                 System.arraycopy(
                     internalData,
                     processedBytes,
                     mixBuf,
                     processedBytes,
-                    internalData.size - processedBytes
+                    internalSize - processedBytes
                 )
             }
             Pair(mixBuf, finalSize)
@@ -93,17 +102,17 @@ class AudioDspMixer(
                 mixBuf[idx] = (mixed and 0xFF).toByte()
                 mixBuf[idx + 1] = ((mixed shr 8) and 0xFF).toByte()
             }
-            if (internalData.size > micData.size) {
-                System.arraycopy(internalData, pcmCount, mixBuf, pcmCount, internalData.size - pcmCount)
-            } else if (micData.size > internalData.size) {
-                System.arraycopy(micData, pcmCount, mixBuf, pcmCount, micData.size - pcmCount)
+            if (internalSize > micSize) {
+                System.arraycopy(internalData, pcmCount, mixBuf, pcmCount, internalSize - pcmCount)
+            } else if (micSize > internalSize) {
+                System.arraycopy(micData, pcmCount, mixBuf, pcmCount, micSize - pcmCount)
             }
             Pair(mixBuf, finalSize)
         }
     }
 
-    fun processSingleMicAudio(micData: ByteArray): Pair<ByteArray, Int> {
-        val finalSize = micData.size
+    fun processSingleMicAudio(micData: ByteArray, micSize: Int = micData.size): Pair<ByteArray, Int> {
+        val finalSize = micSize
         ensureMixBufSize(finalSize)
         val processed = if (NativeAudioDSPBridge.isNativeReady()) {
             NativeAudioDSPBridge.processAndMixAudio(
